@@ -1,5 +1,7 @@
 # HTMLBed
 
+Language: English | [简体中文](./README.zh-CN.md)
+
 HTMLBed is a lightweight HTML publishing and lifecycle management system. It stores original HTML files privately, exposes only valid public URLs through an application gateway, and gives a single administrator a web UI for upload, expiry, status, and deletion workflows.
 
 ## Architecture
