@@ -26,6 +26,9 @@ jobs:
       - name: Build admin
         run: pnpm --filter @htmlbed/admin build
 
+      - name: Build worker
+        run: pnpm --filter @htmlbed/worker run build
+
       - name: Apply D1 migrations
         working-directory: apps/worker
         run: pnpm wrangler d1 migrations apply htmlbed-db --remote

@@ -11,7 +11,8 @@
     "format": "prettier --check .",
     "lint": "pnpm --filter @htmlbed/core run build && eslint . --max-warnings=0",
     "test": "pnpm --filter @htmlbed/core run build && vitest run",
-    "typecheck": "pnpm -r run typecheck"
+    "typecheck": "pnpm -r run typecheck",
+    "wrangler": "pnpm --filter @htmlbed/worker exec wrangler"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

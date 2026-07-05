@@ -262,26 +262,7 @@ export class HtmlBedService {
   }
 
   async getDashboardStats(now = new Date()): Promise<DashboardStats> {
-    const result = await this.repository.listItems({
-      page: 1,
-      pageSize: 10000,
-      includeDeleted: true
-    });
-    const soon = addDays(now, 7).getTime();
-    return {
-      total: result.items.filter((item) => item.status !== "deleted").length,
-      publicCount: result.items.filter(
-        (item) => item.status === "active" && item.visibility === "public"
-      ).length,
-      urlExpired: result.items.filter(
-        (item) => item.status !== "deleted" && Date.parse(item.urlExpiresAt) <= now.getTime()
-      ).length,
-      fileDeletingSoon: result.items.filter((item) => {
-        const expires = Date.parse(item.fileExpiresAt);
-        return item.status !== "deleted" && expires > now.getTime() && expires <= soon;
-      }).length,
-      deleted: result.items.filter((item) => item.status === "deleted").length
-    };
+    return this.repository.getDashboardStats(now.toISOString(), addDays(now, 7).toISOString());
   }
 
   publicUrl(slug: string): string {

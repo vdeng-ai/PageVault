@@ -6,6 +6,7 @@ import { AppError, type MetadataRepository } from "@htmlbed/core";
 import type {
   AuditLogInput,
   CreateItemInput,
+  DashboardStats,
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
@@ -23,6 +24,14 @@ type BindValue = string | number | null;
 
 interface CountRow {
   total: number;
+}
+
+interface DashboardStatsRow {
+  total: number;
+  public_count: number;
+  url_expired: number;
+  file_deleting_soon: number;
+  deleted: number;
 }
 
 function stringField(row: Record<string, SQLOutputValue>, key: keyof HtmlItemRow): string {
@@ -81,6 +90,21 @@ function countRow(row: Record<string, SQLOutputValue> | undefined): CountRow | u
   return { total: numberField(row, "total" as keyof HtmlItemRow) };
 }
 
+function dashboardStatsRow(
+  row: Record<string, SQLOutputValue> | undefined
+): DashboardStatsRow | undefined {
+  if (!row) {
+    return undefined;
+  }
+  return {
+    total: numberField(row, "total" as keyof HtmlItemRow),
+    public_count: numberField(row, "public_count" as keyof HtmlItemRow),
+    url_expired: numberField(row, "url_expired" as keyof HtmlItemRow),
+    file_deleting_soon: numberField(row, "file_deleting_soon" as keyof HtmlItemRow),
+    deleted: numberField(row, "deleted" as keyof HtmlItemRow)
+  };
+}
+
 export class NodeSqliteRepository implements MetadataRepository {
   constructor(private readonly db: DatabaseSync) {}
 
@@ -135,6 +159,32 @@ export class NodeSqliteRepository implements MetadataRepository {
       page,
       pageSize,
       total: totalRow?.total ?? 0
+    };
+  }
+
+  async getDashboardStats(now: string, soon: string): Promise<DashboardStats> {
+    const row = dashboardStatsRow(
+      this.db
+        .prepare(
+          `
+            SELECT
+              COALESCE(SUM(CASE WHEN status != 'deleted' THEN 1 ELSE 0 END), 0) AS total,
+              COALESCE(SUM(CASE WHEN status = 'active' AND visibility = 'public' THEN 1 ELSE 0 END), 0) AS public_count,
+              COALESCE(SUM(CASE WHEN status != 'deleted' AND url_expires_at <= ? THEN 1 ELSE 0 END), 0) AS url_expired,
+              COALESCE(SUM(CASE WHEN status != 'deleted' AND file_expires_at > ? AND file_expires_at <= ? THEN 1 ELSE 0 END), 0) AS file_deleting_soon,
+              COALESCE(SUM(CASE WHEN status = 'deleted' THEN 1 ELSE 0 END), 0) AS deleted
+            FROM html_items
+          `
+        )
+        .get(now, now, soon)
+    );
+
+    return {
+      total: row?.total ?? 0,
+      publicCount: row?.public_count ?? 0,
+      urlExpired: row?.url_expired ?? 0,
+      fileDeletingSoon: row?.file_deleting_soon ?? 0,
+      deleted: row?.deleted ?? 0
     };
   }
 

@@ -2,6 +2,7 @@ import { AppError, type MetadataRepository } from "@htmlbed/core";
 import type {
   AuditLogInput,
   CreateItemInput,
+  DashboardStats,
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
@@ -16,6 +17,14 @@ import {
 } from "./item-row.js";
 
 type BindValue = string | number | null;
+
+interface DashboardStatsRow {
+  total: number;
+  public_count: number;
+  url_expired: number;
+  file_deleting_soon: number;
+  deleted: number;
+}
 
 export class CloudflareD1Repository implements MetadataRepository {
   constructor(private readonly db: D1Database) {}
@@ -60,6 +69,31 @@ export class CloudflareD1Repository implements MetadataRepository {
       page,
       pageSize,
       total: countRow?.total ?? 0
+    };
+  }
+
+  async getDashboardStats(now: string, soon: string): Promise<DashboardStats> {
+    const row = await this.db
+      .prepare(
+        `
+          SELECT
+            COALESCE(SUM(CASE WHEN status != 'deleted' THEN 1 ELSE 0 END), 0) AS total,
+            COALESCE(SUM(CASE WHEN status = 'active' AND visibility = 'public' THEN 1 ELSE 0 END), 0) AS public_count,
+            COALESCE(SUM(CASE WHEN status != 'deleted' AND url_expires_at <= ? THEN 1 ELSE 0 END), 0) AS url_expired,
+            COALESCE(SUM(CASE WHEN status != 'deleted' AND file_expires_at > ? AND file_expires_at <= ? THEN 1 ELSE 0 END), 0) AS file_deleting_soon,
+            COALESCE(SUM(CASE WHEN status = 'deleted' THEN 1 ELSE 0 END), 0) AS deleted
+          FROM html_items
+        `
+      )
+      .bind(now, now, soon)
+      .first<DashboardStatsRow>();
+
+    return {
+      total: row?.total ?? 0,
+      publicCount: row?.public_count ?? 0,
+      urlExpired: row?.url_expired ?? 0,
+      fileDeletingSoon: row?.file_deleting_soon ?? 0,
+      deleted: row?.deleted ?? 0
     };
   }
 

@@ -16,11 +16,11 @@ HTMLBed 是一个轻量级 HTML 发布与生命周期管理系统。它私有存
 2. 创建私有 R2 bucket：`pnpm wrangler r2 bucket create htmlbed-files`。
 3. 创建 D1 数据库：`pnpm wrangler d1 create htmlbed-db`。
 4. 将返回的 D1 `database_id` 写入 `apps/worker/wrangler.jsonc`。
-5. 应用迁移：`pnpm --filter @htmlbed/worker wrangler d1 migrations apply htmlbed-db --remote`。
+5. 应用迁移：`pnpm wrangler d1 migrations apply htmlbed-db --remote`。
 6. 生成密码哈希：`pnpm tsx scripts/hash-password.ts`。
-7. 使用 `wrangler secret put` 设置 Worker secrets：`ADMIN_EMAIL`、`ADMIN_PASSWORD_HASH` 和 `SESSION_SECRET`。
+7. 使用 `pnpm wrangler secret put` 设置 Worker secrets：`ADMIN_EMAIL`、`ADMIN_PASSWORD_HASH` 和 `SESSION_SECRET`。
 8. 将两个自定义域名配置到同一个 Worker：`admin-html.example.com/*` 和 `h.example.com/*`。
-9. 构建并部署：`pnpm run build`，然后执行 `pnpm --filter @htmlbed/worker wrangler deploy`。
+9. 构建并部署：`pnpm run build`，然后执行 `pnpm wrangler deploy`。
 
 Cloudflare 会在推送到 `main` 时通过 `.github/workflows/deploy-cloudflare.yml` 从 GitHub 部署。该 workflow 需要的仓库 secrets 是 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。Worker 运行时 secrets 需要用 Wrangler 手动初始化，不会存储在 GitHub 中。
 
@@ -63,7 +63,7 @@ HTMLBed 有意不对上传的 HTML 进行清理、重写、脚本注入或任何
 
 ## 迁移
 
-Cloudflare：`pnpm --filter @htmlbed/worker wrangler d1 migrations apply htmlbed-db --remote`。
+Cloudflare：`pnpm wrangler d1 migrations apply htmlbed-db --remote`。
 
 Docker：`pnpm tsx scripts/local-migrate.ts`，或启动容器；容器 entrypoint 会先运行迁移再提供服务。
 

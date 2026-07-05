@@ -1,7 +1,9 @@
 import { createHtmlBedConfig, HtmlBedService, HTML_CONTENT_TYPE, pbkdf2Sha256 } from "@htmlbed/core";
+import { addDays } from "@htmlbed/core";
 import type {
   AuditLogInput,
   CreateItemInput,
+  DashboardStats,
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
@@ -15,25 +17,37 @@ import { createRequestHandler } from "../app.js";
 import type { AppBindings } from "../bindings.js";
 
 class MemoryStorage implements StorageProvider {
-  async putObject(_key: string, _body: ArrayBuffer, _contentType: string): Promise<void> {}
-  async getObject(_key: string): Promise<StoredObject | null> {
-    return { body: new ArrayBuffer(0), contentType: HTML_CONTENT_TYPE };
+  readonly objects = new Map<string, StoredObject>();
+
+  async putObject(key: string, body: ArrayBuffer, contentType: string): Promise<void> {
+    this.objects.set(key, { body, contentType, size: body.byteLength });
   }
-  async deleteObject(_key: string): Promise<void> {}
+  async getObject(key: string): Promise<StoredObject | null> {
+    return this.objects.get(key) ?? null;
+  }
+  async deleteObject(key: string): Promise<void> {
+    this.objects.delete(key);
+  }
 }
 
 class MemoryRepository implements MetadataRepository {
+  readonly items = new Map<string, HtmlItem>();
+
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
+    this.items.set(input.item.id, input.item);
     return input.item;
   }
-  async getItemById(_id: string): Promise<HtmlItem | null> {
-    return null;
+  async getItemById(id: string): Promise<HtmlItem | null> {
+    return this.items.get(id) ?? null;
   }
-  async getItemBySlug(_slug: string): Promise<HtmlItem | null> {
-    return null;
+  async getItemBySlug(slug: string): Promise<HtmlItem | null> {
+    return Array.from(this.items.values()).find((item) => item.slug === slug) ?? null;
   }
   async listItems(input: ListItemsInput): Promise<ListItemsResult> {
     return { items: [], page: input.page, pageSize: input.pageSize, total: 0 };
+  }
+  async getDashboardStats(_now: string, _soon: string): Promise<DashboardStats> {
+    return { total: 0, publicCount: 0, urlExpired: 0, fileDeletingSoon: 0, deleted: 0 };
   }
   async updateItem(_id: string, _patch: UpdateItemInput): Promise<HtmlItem> {
     throw new Error("not implemented");
@@ -56,16 +70,42 @@ async function createFixture() {
     ADMIN_BASE_URL: "https://admin.test",
     PUBLIC_BASE_URL: "https://public.test"
   };
+  const repo = new MemoryRepository();
+  const storage = new MemoryStorage();
   const service = new HtmlBedService(
-    new MemoryRepository(),
-    new MemoryStorage(),
+    repo,
+    storage,
     createHtmlBedConfig({ publicBaseUrl: "https://public.test" })
   );
   const handle = createRequestHandler({
     createService: () => service,
     fetchAsset: async () => new Response("<div id=\"root\"></div>", { headers: { "Content-Type": "text/html" } })
   });
-  return { env, handle };
+  return { env, handle, repo, storage };
+}
+
+function item(overrides: Partial<HtmlItem> = {}): HtmlItem {
+  const now = new Date("2026-07-05T00:00:00.000Z");
+  return {
+    id: overrides.id ?? "item-1",
+    title: "Product",
+    originalFilename: "product.html",
+    slug: overrides.slug ?? "product-a1b2c3d4",
+    objectKey: overrides.objectKey ?? "objects/item-1/index.html",
+    contentType: HTML_CONTENT_TYPE,
+    sizeBytes: 12,
+    sha256: "hash",
+    visibility: overrides.visibility ?? "public",
+    status: overrides.status ?? "active",
+    urlExpiresAt: overrides.urlExpiresAt ?? addDays(now, 7).toISOString(),
+    fileExpiresAt: overrides.fileExpiresAt ?? addDays(now, 180).toISOString(),
+    accessCount: 0,
+    lastAccessedAt: null,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    deletedAt: null,
+    ...overrides
+  };
 }
 
 describe("admin auth routes", () => {
@@ -126,5 +166,85 @@ describe("admin auth routes", () => {
       env
     );
     expect(response.status).toBe(403);
+  });
+});
+
+describe("public routes", () => {
+  it("serves active HTML on public slug variants", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const active = item();
+    await repo.createItem({ item: active });
+    await storage.putObject(active.objectKey, new TextEncoder().encode("<h1>ok</h1>").buffer, HTML_CONTENT_TYPE);
+
+    const plain = await handle(new Request("https://public.test/p/product-a1b2c3d4"), env);
+    expect(plain.status).toBe(200);
+    await expect(plain.text()).resolves.toBe("<h1>ok</h1>");
+
+    const withSlash = await handle(new Request("https://public.test/p/product-a1b2c3d4/"), env);
+    expect(withSlash.status).toBe(200);
+
+    const withHtml = await handle(new Request("https://public.test/p/product-a1b2c3d4.html"), env);
+    expect(withHtml.status).toBe(200);
+
+    const head = await handle(new Request("https://public.test/p/product-a1b2c3d4", { method: "HEAD" }), env);
+    expect(head.status).toBe(200);
+    await expect(head.text()).resolves.toBe("");
+  });
+
+  it("keeps public host enumeration and API paths hidden", async () => {
+    const { env, handle } = await createFixture();
+    await expect(handle(new Request("https://public.test/"), env)).resolves.toMatchObject({
+      status: 404
+    });
+    await expect(handle(new Request("https://public.test/api/admin/items"), env)).resolves.toMatchObject({
+      status: 404
+    });
+    await expect(handle(new Request("https://public.test/files"), env)).resolves.toMatchObject({
+      status: 404
+    });
+  });
+
+  it("returns 404 for malformed encoded slugs", async () => {
+    const { env, handle } = await createFixture();
+    const response = await handle(new Request("https://public.test/p/%E0%A4%A"), env);
+    expect(response.status).toBe(404);
+  });
+
+  it("maps public item states to the planned status codes", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const disabled = item({
+      id: "disabled",
+      slug: "disabled-a1b2c3d4",
+      objectKey: "objects/disabled/index.html",
+      status: "disabled"
+    });
+    const privateItem = item({
+      id: "private",
+      slug: "private-a1b2c3d4",
+      objectKey: "objects/private/index.html",
+      visibility: "private"
+    });
+    const expired = item({
+      id: "expired",
+      slug: "expired-a1b2c3d4",
+      objectKey: "objects/expired/index.html",
+      urlExpiresAt: "2026-01-01T00:00:00.000Z"
+    });
+    await repo.createItem({ item: disabled });
+    await repo.createItem({ item: privateItem });
+    await repo.createItem({ item: expired });
+    await storage.putObject(disabled.objectKey, new ArrayBuffer(1), HTML_CONTENT_TYPE);
+    await storage.putObject(privateItem.objectKey, new ArrayBuffer(1), HTML_CONTENT_TYPE);
+    await storage.putObject(expired.objectKey, new ArrayBuffer(1), HTML_CONTENT_TYPE);
+
+    await expect(handle(new Request("https://public.test/p/disabled-a1b2c3d4"), env)).resolves.toMatchObject({
+      status: 403
+    });
+    await expect(handle(new Request("https://public.test/p/private-a1b2c3d4"), env)).resolves.toMatchObject({
+      status: 404
+    });
+    await expect(handle(new Request("https://public.test/p/expired-a1b2c3d4"), env)).resolves.toMatchObject({
+      status: 410
+    });
   });
 });

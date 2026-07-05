@@ -1,6 +1,7 @@
 import type {
   AuditLogInput,
   CreateItemInput,
+  DashboardStats,
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
@@ -12,6 +13,7 @@ export interface MetadataRepository {
   getItemById(id: string): Promise<HtmlItem | null>;
   getItemBySlug(slug: string): Promise<HtmlItem | null>;
   listItems(input: ListItemsInput): Promise<ListItemsResult>;
+  getDashboardStats(now: string, soon: string): Promise<DashboardStats>;
   updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem>;
   markDeleted(id: string, deletedAt: string): Promise<void>;
   incrementAccess(id: string, accessedAt: string): Promise<void>;

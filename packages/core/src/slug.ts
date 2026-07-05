@@ -23,6 +23,10 @@ export function buildPublicSlug(filename: string, shortId: string): string {
   return `${slugifyFilename(filename)}-${shortId.toLowerCase()}`;
 }
 
-export function normalizePublicSlug(value: string): string {
-  return decodeURIComponent(value).replace(/\.html$/i, "").replace(/\/+$/g, "");
+export function normalizePublicSlug(value: string): string | null {
+  try {
+    return decodeURIComponent(value).replace(/\.html$/i, "").replace(/\/+$/g, "");
+  } catch {
+    return null;
+  }
 }

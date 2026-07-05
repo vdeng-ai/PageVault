@@ -117,12 +117,15 @@ export function buildListWhere(input: {
       conditions.push("status = 'deleted'");
       break;
     case "url_expired":
-      conditions.push("status != 'deleted'");
+      conditions.push("status = 'active'");
+      conditions.push("visibility = 'public'");
+      conditions.push("file_expires_at > ?");
       conditions.push("url_expires_at <= ?");
-      values.push(now);
+      values.push(now, now);
       break;
     case "file_expired":
-      conditions.push("status != 'deleted'");
+      conditions.push("status = 'active'");
+      conditions.push("visibility = 'public'");
       conditions.push("file_expires_at <= ?");
       values.push(now);
       break;

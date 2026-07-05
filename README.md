@@ -16,11 +16,11 @@ HTMLBed is a lightweight HTML publishing and lifecycle management system. It sto
 2. Create the private R2 bucket: `pnpm wrangler r2 bucket create htmlbed-files`.
 3. Create the D1 database: `pnpm wrangler d1 create htmlbed-db`.
 4. Put the returned D1 `database_id` into `apps/worker/wrangler.jsonc`.
-5. Apply migrations: `pnpm --filter @htmlbed/worker wrangler d1 migrations apply htmlbed-db --remote`.
+5. Apply migrations: `pnpm wrangler d1 migrations apply htmlbed-db --remote`.
 6. Generate a password hash: `pnpm tsx scripts/hash-password.ts`.
-7. Set Worker secrets with `wrangler secret put`: `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, and `SESSION_SECRET`.
+7. Set Worker secrets with `pnpm wrangler secret put`: `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, and `SESSION_SECRET`.
 8. Configure both custom domains to the same Worker: `admin-html.example.com/*` and `h.example.com/*`.
-9. Build and deploy: `pnpm run build` then `pnpm --filter @htmlbed/worker wrangler deploy`.
+9. Build and deploy: `pnpm run build` then `pnpm wrangler deploy`.
 
 Cloudflare deploys from GitHub on pushes to `main` using `.github/workflows/deploy-cloudflare.yml`. The repository secrets required by the workflow are `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Worker runtime secrets are initialized manually with Wrangler and are not stored in GitHub.
 
@@ -63,7 +63,7 @@ HTMLBed intentionally does not sanitize, rewrite, inject scripts into, or otherw
 
 ## Migrations
 
-Cloudflare: `pnpm --filter @htmlbed/worker wrangler d1 migrations apply htmlbed-db --remote`.
+Cloudflare: `pnpm wrangler d1 migrations apply htmlbed-db --remote`.
 
 Docker: `pnpm tsx scripts/local-migrate.ts` or start the container, whose entrypoint runs migrations before serving.
 

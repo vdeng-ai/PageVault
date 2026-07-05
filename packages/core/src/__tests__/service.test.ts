@@ -7,6 +7,7 @@ import type { StorageProvider, StoredObject } from "../storage.js";
 import type {
   AuditLogInput,
   CreateItemInput,
+  DashboardStats,
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
@@ -49,6 +50,26 @@ class MemoryRepository implements MetadataRepository {
   async listItems(input: ListItemsInput): Promise<ListItemsResult> {
     const items = Array.from(this.items.values()).filter((item) => input.includeDeleted || item.status !== "deleted");
     return { items, page: input.page, pageSize: input.pageSize, total: items.length };
+  }
+
+  async getDashboardStats(now: string, soon: string): Promise<DashboardStats> {
+    const items = Array.from(this.items.values());
+    return {
+      total: items.filter((nextItem) => nextItem.status !== "deleted").length,
+      publicCount: items.filter(
+        (nextItem) => nextItem.status === "active" && nextItem.visibility === "public"
+      ).length,
+      urlExpired: items.filter(
+        (nextItem) => nextItem.status !== "deleted" && nextItem.urlExpiresAt <= now
+      ).length,
+      fileDeletingSoon: items.filter(
+        (nextItem) =>
+          nextItem.status !== "deleted" &&
+          nextItem.fileExpiresAt > now &&
+          nextItem.fileExpiresAt <= soon
+      ).length,
+      deleted: items.filter((nextItem) => nextItem.status === "deleted").length
+    };
   }
 
   async updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem> {
@@ -216,5 +237,54 @@ describe("garbage collection", () => {
     expect(result).toMatchObject({ scanned: 1, deleted: 1, failed: [] });
     expect((await repo.getItemById("expired"))?.status).toBe("deleted");
     expect(await storage.getObject(expired.objectKey)).toBeNull();
+  });
+});
+
+describe("dashboard stats", () => {
+  it("counts all repository items without list pagination", async () => {
+    const { service, repo } = createService();
+    const now = new Date("2026-07-05T00:00:00.000Z");
+
+    for (let index = 0; index < 125; index += 1) {
+      await repo.createItem({
+        item: item({
+          id: `active-${index}`,
+          slug: `active-${index}-a1b2c3d4`,
+          objectKey: `objects/active-${index}/index.html`
+        })
+      });
+    }
+    await repo.createItem({
+      item: item({
+        id: "expired",
+        slug: "expired-a1b2c3d4",
+        objectKey: "objects/expired/index.html",
+        urlExpiresAt: addDays(now, -1).toISOString()
+      })
+    });
+    await repo.createItem({
+      item: item({
+        id: "soon",
+        slug: "soon-a1b2c3d4",
+        objectKey: "objects/soon/index.html",
+        fileExpiresAt: addDays(now, 3).toISOString()
+      })
+    });
+    await repo.createItem({
+      item: item({
+        id: "deleted",
+        slug: "deleted-a1b2c3d4",
+        objectKey: "objects/deleted/index.html",
+        status: "deleted"
+      })
+    });
+
+    await expect(service.getDashboardStats(now)).resolves.toEqual({
+      total: 127,
+      publicCount: 127,
+      urlExpired: 1,
+      fileDeletingSoon: 1,
+      deleted: 1
+    });
   });
 });

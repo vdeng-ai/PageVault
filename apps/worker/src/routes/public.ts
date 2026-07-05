@@ -9,7 +9,7 @@ function publicSlugFromPath(pathname: string): string | null {
     return null;
   }
   const slug = normalizePublicSlug(match[1]);
-  return slug.length > 0 ? slug : null;
+  return slug && slug.length > 0 ? slug : null;
 }
 
 function logAccessFailure(error: unknown, slug: string): void {
