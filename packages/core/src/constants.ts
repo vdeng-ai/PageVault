@@ -1,0 +1,8 @@
+export const DEFAULT_URL_EXPIRE_DAYS = 7;
+export const DEFAULT_FILE_EXPIRE_DAYS = 180;
+export const DEFAULT_MAX_UPLOAD_SIZE_MB = 10;
+export const HTML_CONTENT_TYPE = "text/html; charset=utf-8";
+export const SESSION_COOKIE_NAME = "htmlbed_session";
+export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+export const PBKDF2_ITERATIONS = 310000;
+export const MAX_SLUG_BASE_LENGTH = 80;

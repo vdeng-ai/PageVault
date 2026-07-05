@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "noEmit": true,
+    "paths": {
+      "@htmlbed/core": ["packages/core/src/index.ts"]
+    },
+    "types": ["node"]
+  },
+  "include": [
+    "eslint.config.js",
+    "scripts/**/*.ts",
+    "apps/worker/src/**/*.ts",
+    "apps/worker/src/worker-configuration.d.ts"
+  ],
+  "exclude": ["apps/admin/src", "packages/core/src"]
+}

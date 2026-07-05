@@ -1,0 +1,25 @@
+{
+  "name": "@htmlbed/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "pnpm --filter @htmlbed/core run build && wrangler types src/worker-configuration.d.ts && tsc -p tsconfig.json",
+    "dev": "wrangler dev",
+    "gc": "node dist/cli.js gc",
+    "lint": "eslint src --max-warnings=0",
+    "start": "node dist/node-server.js",
+    "test": "vitest run src",
+    "typecheck": "pnpm --filter @htmlbed/core run build && wrangler types src/worker-configuration.d.ts && tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.18.2",
+    "@htmlbed/core": "workspace:*",
+    "hono": "^4.8.10",
+    "zod": "^4.0.17"
+  },
+  "devDependencies": {
+    "wrangler": "^4.30.0"
+  }
+}

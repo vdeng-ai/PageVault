@@ -1,0 +1,43 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "htmlbed",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../admin/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "r2_buckets": [
+    {
+      "binding": "HTML_BUCKET",
+      "bucket_name": "htmlbed-files"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "htmlbed-db",
+      "database_id": "REPLACE_WITH_REAL_DATABASE_ID",
+      "migrations_dir": "../../migrations"
+    }
+  ],
+  "triggers": {
+    "crons": ["17 3 * * *"]
+  },
+  "vars": {
+    "APP_ENV": "production",
+    "PUBLIC_BASE_URL": "https://h.example.com",
+    "ADMIN_BASE_URL": "https://admin-html.example.com",
+    "DEFAULT_URL_EXPIRE_DAYS": "7",
+    "DEFAULT_FILE_EXPIRE_DAYS": "180",
+    "MAX_UPLOAD_SIZE_MB": "10"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "head_sampling_rate": 1
+    }
+  }
+}
