@@ -10,46 +10,238 @@ HTMLBed 是一个轻量级 HTML 发布与生命周期管理系统。它私有存
 - Docker 兼容：Node.js 22、SQLite、本地文件存储，以及同一套核心服务包。
 - 业务逻辑位于 `packages/core`；Cloudflare 和 Docker 代码是适配器。
 
+## 部署前置条件
+
+- Node.js 22。安装 Node 后，启用 Corepack 并安装依赖：
+
+  ```bash
+  corepack enable
+  pnpm install
+  ```
+
+  Corepack 是现代 Node.js 自带的包管理器代理工具。它会读取 `package.json` 里的 `packageManager` 字段，并启用对应版本的包管理器。本仓库声明的是 `pnpm@10.15.0`。`pnpm install` 会安装 monorepo 依赖，后续 `pnpm run build` 会构建所有包。
+
+- 如果使用 Cloudflare 部署，需要一个 Cloudflare 账号，以及一个已经添加到 Cloudflare DNS 的域名。Cloudflare 把托管的根域名称为 zone，例如 `example.com`。添加 Custom Domain 前，zone 应处于 active 状态。实际操作上，这通常意味着你已经在 Cloudflare 添加域名，并在域名注册商处把 nameservers 改成 Cloudflare 提供的 nameservers。
+- 生产环境需要两个主机名：
+  - 管理端主机名，例如 `admin-html.example.com`
+  - 公开访问主机名，例如 `h.example.com`
+- 单管理员账号的密码哈希：
+
+  ```bash
+  pnpm tsx scripts/hash-password.ts
+  ```
+
+  尽量使用交互式提示输入密码。把密码作为命令参数传入可能会留下 shell history。
+
+- 一个足够长的随机 `SESSION_SECRET`，例如：
+
+  ```bash
+  openssl rand -base64 32
+  ```
+
 ## Cloudflare 部署
 
-1. 安装依赖：`pnpm install`。
-2. 创建私有 R2 bucket：`pnpm wrangler r2 bucket create htmlbed-files`。
-3. 创建 D1 数据库：`pnpm wrangler d1 create htmlbed-db`。
-4. 将返回的 D1 `database_id` 写入 `apps/worker/wrangler.jsonc`。
-5. 应用迁移：`pnpm wrangler d1 migrations apply htmlbed-db --remote`。
-6. 生成密码哈希：`pnpm tsx scripts/hash-password.ts`。
-7. 使用 `pnpm wrangler secret put` 设置 Worker secrets：`ADMIN_EMAIL`、`ADMIN_PASSWORD_HASH` 和 `SESSION_SECRET`。
-8. 将两个自定义域名配置到同一个 Worker：`admin-html.example.com/*` 和 `h.example.com/*`。
-9. 构建并部署：`pnpm run build`，然后执行 `pnpm wrangler deploy`。
+Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运行 HTMLBed 的 Cloudflare serverless 应用：它通过 Workers Static Assets 提供管理端 SPA，用 D1 存储元数据，用私有 R2 bucket 存储原始 HTML 文件，并通过配置的 Cron Trigger 执行清理。
 
-Cloudflare 会在推送到 `main` 时通过 `.github/workflows/deploy-cloudflare.yml` 从 GitHub 部署。该 workflow 需要的仓库 secrets 是 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。Worker 运行时 secrets 需要用 Wrangler 手动初始化，不会存储在 GitHub 中。
+1. 通过 Wrangler 登录 Cloudflare。
+
+   ```bash
+   pnpm wrangler login
+   pnpm wrangler whoami
+   ```
+
+   Wrangler 是 Cloudflare 的命令行工具。本仓库建议用 `pnpm wrangler ...` 调用它，这样会使用 `apps/worker/package.json` 中固定的 Wrangler 版本。`pnpm wrangler login` 会打开浏览器，让你授权 Wrangler。`pnpm wrangler whoami` 用来确认当前命令会操作哪个 Cloudflare 账号。
+
+2. 创建资源前，先检查 `apps/worker/wrangler.jsonc`。
+
+   将 `PUBLIC_BASE_URL` 和 `ADMIN_BASE_URL` 改为你的真实 origin，不要带结尾斜杠。不要把 secrets 写入这个文件。如果你修改了 R2 bucket 名、D1 数据库名或 Worker 名，也要同步更新该文件中的对应配置。
+
+   这个文件里几个重要配置的含义：
+
+   - `name`：Worker 名称，默认是 `htmlbed`。
+   - `assets`：告诉 Wrangler 管理端前端构建产物在 `apps/admin/dist`。
+   - `r2_buckets`：把私有 R2 bucket 绑定到 Worker。应用代码读取 `HTML_BUCKET` 这个 binding，因此不要改这个 binding 名。
+   - `d1_databases`：把 D1 数据库绑定到 Worker。创建数据库后必须替换其中的 `database_id`。
+   - `triggers`：配置每天执行清理任务的 Cron Trigger。
+   - `vars`：保存 `ADMIN_BASE_URL`、`PUBLIC_BASE_URL` 等非敏感变量。`SESSION_SECRET` 这类敏感值属于 secrets，要通过 `wrangler secret put` 存到 Cloudflare，不要写进 `wrangler.jsonc`、`.env`、shell history 或 GitHub 跟踪的文件。
+
+3. 创建私有 R2 bucket。
+
+   ```bash
+   pnpm wrangler r2 bucket create htmlbed-files
+   ```
+
+   R2 是 Cloudflare 的对象存储。HTMLBed 用这个 bucket 保存上传的原始 HTML 文件。不要把这个 bucket 设为公开。公开 R2 访问会绕过 HTMLBed 的过期时间、状态、删除、审计和访问次数检查。
+
+4. 创建 D1 数据库。
+
+   ```bash
+   pnpm wrangler d1 create htmlbed-db
+   ```
+
+   D1 是 Cloudflare 的 SQLite 兼容数据库。HTMLBed 用它保存 slug、状态、过期时间、访问计数等元数据。Wrangler 会输出一个 `database_id`；将这个值复制到 `apps/worker/wrangler.jsonc` 的 `d1_databases` 配置中。除非你有意改名，否则 `database_name` 可以继续使用 `htmlbed-db`。
+
+5. 将 D1 迁移应用到远端数据库。
+
+   ```bash
+   pnpm wrangler d1 migrations apply htmlbed-db --remote
+   ```
+
+   这一步会创建 HTMLBed 需要的数据表。这里要使用 `--remote`，因为目标是生产环境的 Cloudflare D1 数据库，不是 Wrangler 本地开发数据库。
+
+6. 交互式设置 Worker secrets。
+
+   ```bash
+   pnpm wrangler secret put ADMIN_EMAIL
+   pnpm wrangler secret put ADMIN_PASSWORD_HASH
+   pnpm wrangler secret put SESSION_SECRET
+   ```
+
+   按提示分别粘贴管理员邮箱、`scripts/hash-password.ts` 的输出和生成的 session secret。
+
+7. 构建并部署。
+
+   ```bash
+   pnpm run build
+   pnpm wrangler deploy
+   ```
+
+   你不需要在部署前手动创建 Worker。首次部署时，Wrangler 会根据 `wrangler.jsonc` 中的 `name` 创建 Worker；后续部署会更新同一个 Worker。
+
+8. 首次成功部署后，再添加 Custom Domains。
+
+   在 Cloudflare dashboard 中打开已经部署好的 `htmlbed` Worker，然后进入该 Worker 的 Domains & Routes 区域。添加这两个 Worker custom domains：
+
+   ```text
+   admin-html.example.com
+   h.example.com
+   ```
+
+   选择拥有根域名的 Cloudflare zone，例如 `example.com`。Cloudflare 会为 custom domain 管理 Worker 路由和证书。如果某个 hostname 已经有冲突的 DNS 记录，需要先删除或调整那条记录。
+
+   Custom Domain 会把一个主机名直接指向 Worker，这是本项目在 Cloudflare 上推荐的方式。只有当你明确想在已有 Cloudflare 代理 DNS 记录上使用 route pattern 时，才使用 Workers routes。Route 更适合 Worker 放在已有源站前面的场景；HTMLBed 的 Cloudflare 模式通常没有单独源站。Route pattern 例如：
+
+   ```text
+   admin-html.example.com/* -> htmlbed
+   h.example.com/*          -> htmlbed
+   ```
+
+   应用会根据请求中的 `Host` header 判断当前是管理端还是公开访问端。
+
+9. 验证部署。
+
+   - 打开 `ADMIN_BASE_URL`，使用 `ADMIN_EMAIL` 和原始管理员密码登录。
+   - 在管理端上传一个小的 HTML 文件。
+   - 打开 `PUBLIC_BASE_URL` 下生成的公开 URL。
+   - 确认公开根路径、公开主机名上的管理路径、公开主机名上的 API 路径没有被暴露。
+   - 测试时如需查看实时 Worker 日志，可使用 `pnpm wrangler tail`。
+
+仓库当前没有包含用于自动部署 Cloudflare 的 GitHub Actions workflow。如果后续添加 CI/CD，Wrangler 通常需要的仓库级 secrets 是 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。`ADMIN_PASSWORD_HASH` 和 `SESSION_SECRET` 等运行时 secrets 仍应由 Cloudflare secrets 管理，不应写入 GitHub 跟踪的文件。
+
+### Cloudflare 常见问题
+
+- 需要先在 dashboard 里创建 Worker 吗？
+  不需要。使用 Wrangler。`pnpm wrangler deploy` 会根据 `apps/worker/wrangler.jsonc` 创建或更新 Worker。
+- 什么时候添加 Custom Domains？
+  首次成功部署后再添加，因为 dashboard 需要先有一个已存在的 Worker 才能绑定 custom domain。
+- 为什么需要两个域名？
+  管理端 UI 和公开 HTML 网关有意使用不同主机名。session cookie 只作用于管理端主机名，公开主机名只提供有效的已发布 HTML URL。
+- 如果后续修改 `ADMIN_BASE_URL` 或 `PUBLIC_BASE_URL` 怎么办？
+  修改 `apps/worker/wrangler.jsonc`，执行 `pnpm run build`，再执行 `pnpm wrangler deploy`。同时确保 Cloudflare 里的 custom domain 也对应新的主机名。
+- Custom Domain 访问不了怎么办？
+  确认根域名在 Cloudflare 中处于 active 状态、该 hostname 没有冲突 DNS 记录，并且 Worker dashboard 中 custom domain 的状态已经 active。
+- 部署后 Worker 返回 500 怎么办？
+  先用 `pnpm wrangler secret list` 确认三个 secrets 都存在，再用 `pnpm wrangler tail` 查看实时日志。
 
 ## Docker 部署
 
-1. 生成 `ADMIN_PASSWORD_HASH`：`pnpm tsx scripts/hash-password.ts`。
-2. 复制 `docker/docker-compose.example.yml`，并设置真实的域名和 secrets。
-3. 启动服务：`docker compose -f docker/docker-compose.example.yml up -d --build`。
-4. 将两个域名反向代理到容器端口，例如：
-   - `admin-html.example.com -> http://127.0.0.1:13080`
-   - `h.example.com -> http://127.0.0.1:13080`
+Docker 模式使用同一套服务层，运行在 Node.js 22、SQLite 和本地对象存储之上。
 
-Docker 默认将 SQLite 元数据和 HTML 对象存储在 `/data/htmlbed` 下。
+Docker 是不使用 Cloudflare 托管运行时的部署方式。它不用 D1 和 R2，而是把元数据存到 SQLite，把文件存到本地磁盘。你仍然需要两个主机名，因为 HTMLBed 会根据请求的 `Host` header 判断请求属于管理端还是公开访问端。
+
+1. 准备主机专用的 compose 文件。
+
+   将 `docker/docker-compose.example.yml` 复制到部署位置，例如 `/opt/htmlbed/docker-compose.yml`，然后替换所有示例域名、邮箱和 secrets。如果文件中包含真实 secrets，不要提交到 Git。
+
+2. 设置必需的运行时值。
+
+   示例 compose 文件已经包含 Docker 模式所需的核心变量：
+
+   ```yaml
+   APP_ENV: production
+   RUNTIME: node
+   DB_DRIVER: sqlite
+   STORAGE_DRIVER: local
+   SQLITE_PATH: /data/htmlbed/htmlbed.sqlite
+   LOCAL_STORAGE_DIR: /data/htmlbed/objects
+   ADMIN_BASE_URL: https://admin-html.example.com
+   PUBLIC_BASE_URL: https://h.example.com
+   ADMIN_EMAIL: admin@example.com
+   ADMIN_PASSWORD_HASH: replace_me
+   SESSION_SECRET: replace_me
+   ```
+
+   将 `ADMIN_PASSWORD_HASH` 替换为 `pnpm tsx scripts/hash-password.ts` 的输出，将 `SESSION_SECRET` 替换为足够长的随机值。
+
+3. 启动服务：
+
+   ```bash
+   docker compose -f /opt/htmlbed/docker-compose.yml up -d --build
+   ```
+
+   容器 entrypoint 会在启动服务前执行 SQLite 迁移。元数据和上传的 HTML 对象默认存储在 `/data/htmlbed` 下，因此该目录必须持久化并纳入备份。
+
+4. 配置 TLS 和反向代理。
+
+   将两个主机名都转发到同一个容器端口，并保留原始 `Host` header：
+
+   ```text
+   admin-html.example.com -> http://127.0.0.1:13080
+   h.example.com          -> http://127.0.0.1:13080
+   ```
+
+   HTTPS 应在反向代理层终止。不要让反向代理直接暴露 `/data/htmlbed`。
+
+   保留 `Host` 是必需的。如果反向代理把所有请求都改写成 `127.0.0.1`，HTMLBed 就无法判断请求来自管理端主机名还是公开访问主机名。
+
+5. 验证 Docker 部署：
+
+   ```bash
+   docker compose -f /opt/htmlbed/docker-compose.yml ps
+   docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed
+   ```
+
+   然后在管理端主机名登录、上传一个小的 HTML 文件，并在公开访问主机名打开生成的公开 URL。
+
+6. 安全升级。
+
+   先备份 `/data/htmlbed/htmlbed.sqlite` 和 `/data/htmlbed/objects`，再更新镜像或代码仓库，并重建重启：
+
+   ```bash
+   docker compose -f /opt/htmlbed/docker-compose.yml up -d --build
+   ```
+
+   当前 schema 的启动迁移是幂等的。
 
 ## 环境变量
 
-| 名称 | 必需 | 说明 |
-| --- | --- | --- |
-| `ADMIN_EMAIL` | 是 | 单个管理员邮箱。 |
-| `ADMIN_PASSWORD_HASH` | 是 | 由 `scripts/hash-password.ts` 生成的 PBKDF2-SHA256 哈希。 |
-| `SESSION_SECRET` | 是 | 用于签名 session cookie 的密钥。 |
-| `ADMIN_BASE_URL` | 是 | 管理端 origin，例如 `https://admin-html.example.com`。 |
-| `PUBLIC_BASE_URL` | 是 | 公开访问 origin，例如 `https://h.example.com`。 |
-| `DEFAULT_URL_EXPIRE_DAYS` | 否 | 默认为 `7`。 |
-| `DEFAULT_FILE_EXPIRE_DAYS` | 否 | 默认为 `180`。 |
-| `MAX_UPLOAD_SIZE_MB` | 否 | 默认为 `10`。 |
-| `SQLITE_PATH` | Docker | SQLite 文件路径。 |
-| `LOCAL_STORAGE_DIR` | Docker | 本地对象目录。 |
-| `PORT` | Docker | HTTP 端口，默认为 `3000`。 |
+| 名称                       | 位置                           | 必需 | 说明                                                      |
+| -------------------------- | ------------------------------ | ---- | --------------------------------------------------------- |
+| `ADMIN_EMAIL`              | Cloudflare secret / Docker env | 是   | 单个管理员邮箱。                                          |
+| `ADMIN_PASSWORD_HASH`      | Cloudflare secret / Docker env | 是   | 由 `scripts/hash-password.ts` 生成的 PBKDF2-SHA256 哈希。 |
+| `SESSION_SECRET`           | Cloudflare secret / Docker env | 是   | 用于签名 session cookie 的密钥。                          |
+| `APP_ENV`                  | Cloudflare var / Docker env    | 建议 | 部署时使用 `production`。                                 |
+| `ADMIN_BASE_URL`           | Cloudflare var / Docker env    | 是   | 管理端 origin，例如 `https://admin-html.example.com`。    |
+| `PUBLIC_BASE_URL`          | Cloudflare var / Docker env    | 是   | 公开访问 origin，例如 `https://h.example.com`。           |
+| `DEFAULT_URL_EXPIRE_DAYS`  | Cloudflare var / Docker env    | 否   | 默认为 `7`。                                              |
+| `DEFAULT_FILE_EXPIRE_DAYS` | Cloudflare var / Docker env    | 否   | 默认为 `180`。                                            |
+| `MAX_UPLOAD_SIZE_MB`       | Cloudflare var / Docker env    | 否   | 默认为 `10`。                                             |
+| `RUNTIME`                  | Docker env                     | 是   | 使用 `node`。                                             |
+| `DB_DRIVER`                | Docker env                     | 是   | 使用 `sqlite`。                                           |
+| `STORAGE_DRIVER`           | Docker env                     | 是   | 使用 `local`。                                            |
+| `SQLITE_PATH`              | Docker env                     | 否   | SQLite 文件路径，默认为 `/data/htmlbed/htmlbed.sqlite`。  |
+| `LOCAL_STORAGE_DIR`        | Docker env                     | 否   | 本地对象目录，默认为 `/data/htmlbed/objects`。            |
+| `PORT`                     | Docker env                     | 否   | 容器内 HTTP 端口，默认为 `3000`。                         |
 
 ## 安全模型
 
@@ -61,11 +253,13 @@ R2 bucket 不能公开。公开的 R2 bucket 会绕过 URL 过期时间、状态
 
 HTMLBed 有意不对上传的 HTML 进行清理、重写、脚本注入或任何其他修改。只有经过身份验证的管理员可以上传文件，系统会存储并返回原始字节。
 
-## 迁移
+## 迁移与维护
 
-Cloudflare：`pnpm wrangler d1 migrations apply htmlbed-db --remote`。
-
-Docker：`pnpm tsx scripts/local-migrate.ts`，或启动容器；容器 entrypoint 会先运行迁移再提供服务。
+- Cloudflare 迁移：`pnpm wrangler d1 migrations apply htmlbed-db --remote`。
+- Docker 迁移：容器 entrypoint 会在提供服务前运行迁移。本地 Node 运行可使用 `pnpm tsx scripts/local-migrate.ts`。
+- Cloudflare 日志：使用 `pnpm wrangler tail`。
+- Docker 日志：使用 `docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed`。
+- 轮换管理员凭据时，先生成新的密码哈希并更新 `ADMIN_PASSWORD_HASH`；如需让现有 session 失效，可同时轮换 `SESSION_SECRET`。
 
 ## 未来计划
 

@@ -10,46 +10,238 @@ HTMLBed is a lightweight HTML publishing and lifecycle management system. It sto
 - Docker-compatible: Node.js 22, SQLite, local file storage, and the same core service package.
 - Business logic lives in `packages/core`; Cloudflare and Docker code are adapters.
 
+## Deployment Prerequisites
+
+- Node.js 22. After installing Node, enable Corepack and install dependencies:
+
+  ```bash
+  corepack enable
+  pnpm install
+  ```
+
+  Corepack is shipped with modern Node.js. It reads the `packageManager` field in `package.json` and activates the matching package manager version. In this repository that means `pnpm@10.15.0`. `pnpm install` then installs the monorepo dependencies, and later `pnpm run build` builds all packages.
+
+- For Cloudflare deployment, a Cloudflare account and a domain added to Cloudflare DNS. Cloudflare calls a managed root domain a zone, such as `example.com`. The zone should be active before you add custom domains. In practice this means you have added the domain to Cloudflare and updated the nameservers at your registrar.
+- Two hostnames for production:
+  - admin hostname, for example `admin-html.example.com`
+  - public hostname, for example `h.example.com`
+- A password hash for the single administrator account:
+
+  ```bash
+  pnpm tsx scripts/hash-password.ts
+  ```
+
+  Use the interactive prompt when possible. Passing the password as a command argument can leave it in shell history.
+
+- A long random `SESSION_SECRET`. For example:
+
+  ```bash
+  openssl rand -base64 32
+  ```
+
 ## Cloudflare Deployment
 
-1. Install dependencies: `pnpm install`.
-2. Create the private R2 bucket: `pnpm wrangler r2 bucket create htmlbed-files`.
-3. Create the D1 database: `pnpm wrangler d1 create htmlbed-db`.
-4. Put the returned D1 `database_id` into `apps/worker/wrangler.jsonc`.
-5. Apply migrations: `pnpm wrangler d1 migrations apply htmlbed-db --remote`.
-6. Generate a password hash: `pnpm tsx scripts/hash-password.ts`.
-7. Set Worker secrets with `pnpm wrangler secret put`: `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, and `SESSION_SECRET`.
-8. Configure both custom domains to the same Worker: `admin-html.example.com/*` and `h.example.com/*`.
-9. Build and deploy: `pnpm run build` then `pnpm wrangler deploy`.
+Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare serverless application that runs HTMLBed: it serves the admin SPA from Workers Static Assets, stores metadata in D1, stores original HTML files in a private R2 bucket, and runs the configured Cron Trigger for cleanup.
 
-Cloudflare deploys from GitHub on pushes to `main` using `.github/workflows/deploy-cloudflare.yml`. The repository secrets required by the workflow are `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Worker runtime secrets are initialized manually with Wrangler and are not stored in GitHub.
+1. Log in to Cloudflare through Wrangler.
+
+   ```bash
+   pnpm wrangler login
+   pnpm wrangler whoami
+   ```
+
+   Wrangler is Cloudflare's command-line tool. Use `pnpm wrangler ...` in this repository so you run the project-pinned Wrangler version from `apps/worker/package.json`. `pnpm wrangler login` opens a browser so you can authorize Wrangler. `pnpm wrangler whoami` confirms which Cloudflare account Wrangler will use.
+
+2. Review `apps/worker/wrangler.jsonc` before creating resources.
+
+   Set `PUBLIC_BASE_URL` and `ADMIN_BASE_URL` to your real origins, without trailing slashes. Keep secrets out of this file. If you change the R2 bucket name, D1 database name, or Worker name, update the matching entries in the same file.
+
+   Important entries in this file:
+
+   - `name`: the Worker name. The default is `htmlbed`.
+   - `assets`: points Wrangler at the built admin frontend in `apps/admin/dist`.
+   - `r2_buckets`: binds the private R2 bucket to the Worker. The application code reads the `HTML_BUCKET` binding, so keep that binding name intact.
+   - `d1_databases`: binds the D1 database to the Worker. You must replace `database_id` after creating the database.
+   - `triggers`: schedules the daily cleanup Cron Trigger.
+   - `vars`: stores non-secret values such as `ADMIN_BASE_URL` and `PUBLIC_BASE_URL`. Secrets such as `SESSION_SECRET` are stored in Cloudflare with `wrangler secret put` and must not be written to `wrangler.jsonc`, `.env`, shell history, or GitHub-tracked files.
+
+3. Create the private R2 bucket.
+
+   ```bash
+   pnpm wrangler r2 bucket create htmlbed-files
+   ```
+
+   R2 is Cloudflare's object storage. HTMLBed uses this bucket for the original uploaded HTML files. Do not make this bucket public. Public R2 access would bypass HTMLBed's expiry, status, deletion, audit, and access-count checks.
+
+4. Create the D1 database.
+
+   ```bash
+   pnpm wrangler d1 create htmlbed-db
+   ```
+
+   D1 is Cloudflare's SQLite-compatible database. HTMLBed uses it for metadata such as slug, status, expiry, and counters. Wrangler prints a `database_id`; copy that value into the `d1_databases` entry in `apps/worker/wrangler.jsonc`. The `database_name` can stay as `htmlbed-db` unless you intentionally chose another name.
+
+5. Apply D1 migrations to the remote database.
+
+   ```bash
+   pnpm wrangler d1 migrations apply htmlbed-db --remote
+   ```
+
+   This creates the tables HTMLBed needs. Use `--remote` because this database is the production Cloudflare D1 database, not Wrangler's local development database.
+
+6. Set Worker secrets interactively.
+
+   ```bash
+   pnpm wrangler secret put ADMIN_EMAIL
+   pnpm wrangler secret put ADMIN_PASSWORD_HASH
+   pnpm wrangler secret put SESSION_SECRET
+   ```
+
+   Paste the administrator email, the output from `scripts/hash-password.ts`, and the generated session secret when prompted.
+
+7. Build and deploy.
+
+   ```bash
+   pnpm run build
+   pnpm wrangler deploy
+   ```
+
+   You do not need to create a Worker manually before this. On the first deploy, Wrangler creates the Worker named by `name` in `wrangler.jsonc`; on later deploys, it updates the same Worker.
+
+8. Add custom domains after the first successful deploy.
+
+   In the Cloudflare dashboard, open the deployed `htmlbed` Worker, then open its Domains & Routes area. Add these as Worker custom domains:
+
+   ```text
+   admin-html.example.com
+   h.example.com
+   ```
+
+   Choose the Cloudflare zone that owns the root domain, for example `example.com`. Cloudflare will manage the Worker routing and certificate for the custom domain. If a hostname already has a conflicting DNS record, remove or change that record first.
+
+   A custom domain sends a hostname directly to the Worker, which is the recommended setup for HTMLBed on Cloudflare. Use Workers routes only if you intentionally want route patterns on existing Cloudflare-proxied DNS records. Routes are useful when a Worker sits in front of another origin server; HTMLBed's Cloudflare mode normally does not need that extra origin. Route patterns look like this:
+
+   ```text
+   admin-html.example.com/* -> htmlbed
+   h.example.com/*          -> htmlbed
+   ```
+
+   The application decides admin versus public behavior from the incoming `Host` header.
+
+9. Verify the deployment.
+
+   - Open `ADMIN_BASE_URL` and sign in with `ADMIN_EMAIL` and the original admin password.
+   - Upload a small HTML file from the admin UI.
+   - Open the generated public URL under `PUBLIC_BASE_URL`.
+   - Confirm public roots, admin paths on the public hostname, and API paths on the public hostname are not exposed.
+   - Use `pnpm wrangler tail` if you need live Worker logs while testing.
+
+This repository currently does not include a GitHub Actions workflow for automatic Cloudflare deployment. If you add CI/CD later, the repository-level secrets normally needed by Wrangler are `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Runtime secrets such as `ADMIN_PASSWORD_HASH` and `SESSION_SECRET` should remain managed by Cloudflare secrets, not GitHub-tracked files.
+
+### Common Cloudflare Questions
+
+- Do I need to create the Worker in the dashboard first?
+  No. Use Wrangler. `pnpm wrangler deploy` creates or updates the Worker from `apps/worker/wrangler.jsonc`.
+- When do I add custom domains?
+  Add them after the first successful deploy, because the dashboard needs an existing Worker to attach them to.
+- Why two domains?
+  The admin UI and public HTML gateway intentionally use different hostnames. The session cookie is scoped to the admin hostname, and the public hostname only serves valid published HTML URLs.
+- What if I change `ADMIN_BASE_URL` or `PUBLIC_BASE_URL` later?
+  Update `apps/worker/wrangler.jsonc`, run `pnpm run build`, then run `pnpm wrangler deploy` again. Also update the matching custom domain in Cloudflare.
+- What if the custom domain does not resolve?
+  Confirm the root domain is active in Cloudflare, the hostname has no conflicting DNS record, and the custom domain status in the Worker dashboard is active.
+- What if the Worker returns 500 after deploy?
+  Check that all three secrets exist with `pnpm wrangler secret list`, then inspect live logs with `pnpm wrangler tail`.
 
 ## Docker Deployment
 
-1. Generate `ADMIN_PASSWORD_HASH`: `pnpm tsx scripts/hash-password.ts`.
-2. Copy `docker/docker-compose.example.yml` and set real values for domains and secrets.
-3. Start the service: `docker compose -f docker/docker-compose.example.yml up -d --build`.
-4. Reverse proxy both domains to the container port, for example:
-   - `admin-html.example.com -> http://127.0.0.1:13080`
-   - `h.example.com -> http://127.0.0.1:13080`
+Docker mode runs the same service layer with Node.js 22, SQLite, and local object storage.
 
-Docker stores SQLite metadata and HTML objects under `/data/htmlbed` by default.
+Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores metadata in SQLite and files on disk. You still need two hostnames, because HTMLBed uses the incoming `Host` header to decide whether a request belongs to the admin UI or the public gateway.
+
+1. Prepare a host-specific compose file.
+
+   Copy `docker/docker-compose.example.yml` to a deployment location such as `/opt/htmlbed/docker-compose.yml`, then replace all example domains, email addresses, and secrets. Do not commit the filled file if it contains real secrets.
+
+2. Set the required runtime values.
+
+   The example compose file already includes the required Docker mode values:
+
+   ```yaml
+   APP_ENV: production
+   RUNTIME: node
+   DB_DRIVER: sqlite
+   STORAGE_DRIVER: local
+   SQLITE_PATH: /data/htmlbed/htmlbed.sqlite
+   LOCAL_STORAGE_DIR: /data/htmlbed/objects
+   ADMIN_BASE_URL: https://admin-html.example.com
+   PUBLIC_BASE_URL: https://h.example.com
+   ADMIN_EMAIL: admin@example.com
+   ADMIN_PASSWORD_HASH: replace_me
+   SESSION_SECRET: replace_me
+   ```
+
+   Replace `ADMIN_PASSWORD_HASH` with the output from `pnpm tsx scripts/hash-password.ts` and `SESSION_SECRET` with a long random value.
+
+3. Start the service:
+
+   ```bash
+   docker compose -f /opt/htmlbed/docker-compose.yml up -d --build
+   ```
+
+   The container entrypoint runs the SQLite migration before starting the server. Metadata and uploaded HTML objects are stored under `/data/htmlbed` by default, so that directory must be persistent and included in backups.
+
+4. Configure TLS and reverse proxy.
+
+   Route both hostnames to the same container port and preserve the original `Host` header:
+
+   ```text
+   admin-html.example.com -> http://127.0.0.1:13080
+   h.example.com          -> http://127.0.0.1:13080
+   ```
+
+   Terminate HTTPS at the reverse proxy. Do not serve `/data/htmlbed` directly from the proxy.
+
+   Preserving `Host` is required. If the reverse proxy rewrites every request to `127.0.0.1`, HTMLBed can no longer tell whether the request came from the admin hostname or the public hostname.
+
+5. Verify Docker deployment:
+
+   ```bash
+   docker compose -f /opt/htmlbed/docker-compose.yml ps
+   docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed
+   ```
+
+   Then sign in on the admin hostname, upload a small HTML file, and open the generated public URL on the public hostname.
+
+6. Upgrade safely.
+
+   Back up `/data/htmlbed/htmlbed.sqlite` and `/data/htmlbed/objects`, update the source image or repository, then rebuild and restart:
+
+   ```bash
+   docker compose -f /opt/htmlbed/docker-compose.yml up -d --build
+   ```
+
+   The startup migration is idempotent for the current schema.
 
 ## Environment Variables
 
-| Name | Required | Description |
-| --- | --- | --- |
-| `ADMIN_EMAIL` | yes | Single administrator email. |
-| `ADMIN_PASSWORD_HASH` | yes | PBKDF2-SHA256 hash from `scripts/hash-password.ts`. |
-| `SESSION_SECRET` | yes | Secret used to sign session cookies. |
-| `ADMIN_BASE_URL` | yes | Admin origin, for example `https://admin-html.example.com`. |
-| `PUBLIC_BASE_URL` | yes | Public origin, for example `https://h.example.com`. |
-| `DEFAULT_URL_EXPIRE_DAYS` | no | Defaults to `7`. |
-| `DEFAULT_FILE_EXPIRE_DAYS` | no | Defaults to `180`. |
-| `MAX_UPLOAD_SIZE_MB` | no | Defaults to `10`. |
-| `SQLITE_PATH` | Docker | SQLite file path. |
-| `LOCAL_STORAGE_DIR` | Docker | Local object directory. |
-| `PORT` | Docker | HTTP port, defaults to `3000`. |
+| Name                       | Where                          | Required    | Description                                                   |
+| -------------------------- | ------------------------------ | ----------- | ------------------------------------------------------------- |
+| `ADMIN_EMAIL`              | Cloudflare secret / Docker env | yes         | Single administrator email.                                   |
+| `ADMIN_PASSWORD_HASH`      | Cloudflare secret / Docker env | yes         | PBKDF2-SHA256 hash from `scripts/hash-password.ts`.           |
+| `SESSION_SECRET`           | Cloudflare secret / Docker env | yes         | Secret used to sign session cookies.                          |
+| `APP_ENV`                  | Cloudflare var / Docker env    | recommended | Use `production` for deployment.                              |
+| `ADMIN_BASE_URL`           | Cloudflare var / Docker env    | yes         | Admin origin, for example `https://admin-html.example.com`.   |
+| `PUBLIC_BASE_URL`          | Cloudflare var / Docker env    | yes         | Public origin, for example `https://h.example.com`.           |
+| `DEFAULT_URL_EXPIRE_DAYS`  | Cloudflare var / Docker env    | no          | Defaults to `7`.                                              |
+| `DEFAULT_FILE_EXPIRE_DAYS` | Cloudflare var / Docker env    | no          | Defaults to `180`.                                            |
+| `MAX_UPLOAD_SIZE_MB`       | Cloudflare var / Docker env    | no          | Defaults to `10`.                                             |
+| `RUNTIME`                  | Docker env                     | yes         | Use `node`.                                                   |
+| `DB_DRIVER`                | Docker env                     | yes         | Use `sqlite`.                                                 |
+| `STORAGE_DRIVER`           | Docker env                     | yes         | Use `local`.                                                  |
+| `SQLITE_PATH`              | Docker env                     | no          | SQLite file path, defaults to `/data/htmlbed/htmlbed.sqlite`. |
+| `LOCAL_STORAGE_DIR`        | Docker env                     | no          | Local object directory, defaults to `/data/htmlbed/objects`.  |
+| `PORT`                     | Docker env                     | no          | HTTP port inside the container, defaults to `3000`.           |
 
 ## Security Model
 
@@ -61,11 +253,13 @@ The admin and public surfaces should use different hostnames. The `htmlbed_sessi
 
 HTMLBed intentionally does not sanitize, rewrite, inject scripts into, or otherwise alter uploaded HTML. Only authenticated administrators can upload files, and the system stores and returns the original bytes.
 
-## Migrations
+## Migrations and Maintenance
 
-Cloudflare: `pnpm wrangler d1 migrations apply htmlbed-db --remote`.
-
-Docker: `pnpm tsx scripts/local-migrate.ts` or start the container, whose entrypoint runs migrations before serving.
+- Cloudflare migrations: `pnpm wrangler d1 migrations apply htmlbed-db --remote`.
+- Docker migrations: the container entrypoint runs migrations before serving. For a local Node run, use `pnpm tsx scripts/local-migrate.ts`.
+- Cloudflare logs: use `pnpm wrangler tail`.
+- Docker logs: use `docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed`.
+- Rotate admin credentials by generating a new password hash and updating `ADMIN_PASSWORD_HASH`; existing sessions can be invalidated by rotating `SESSION_SECRET`.
 
 ## Future Plans
 
