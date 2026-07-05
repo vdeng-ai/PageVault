@@ -5,13 +5,15 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "pnpm --filter @htmlbed/core run build && wrangler types src/worker-configuration.d.ts && tsc -p tsconfig.json",
+    "build": "pnpm --filter @htmlbed/core run build && wrangler types src/worker-configuration.d.ts --strict-vars false && tsc -p tsconfig.json",
+    "deploy": "wrangler deploy --keep-vars --secrets-file .env.production",
+    "deploy:dry-run": "wrangler deploy --dry-run --keep-vars --secrets-file .env.production",
     "dev": "wrangler dev",
     "gc": "node dist/cli.js gc",
     "lint": "eslint src --max-warnings=0",
     "start": "node dist/node-server.js",
     "test": "vitest run src",
-    "typecheck": "pnpm --filter @htmlbed/core run build && wrangler types src/worker-configuration.d.ts && tsc -p tsconfig.json --noEmit"
+    "typecheck": "pnpm --filter @htmlbed/core run build && wrangler types src/worker-configuration.d.ts --strict-vars false && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.18.2",

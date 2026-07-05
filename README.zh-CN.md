@@ -54,7 +54,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
 
 2. 创建资源前，先检查 `apps/worker/wrangler.jsonc`。
 
-   将 `PUBLIC_BASE_URL` 和 `ADMIN_BASE_URL` 改为你的真实 origin，不要带结尾斜杠。不要把 secrets 写入这个文件。如果你修改了 R2 bucket 名、D1 数据库名或 Worker 名，也要同步更新该文件中的对应配置。
+   不要把真实运行时值写入这个 Git 跟踪文件。如果你修改了 R2 bucket 名、D1 数据库名或 Worker 名，要同步更新 `wrangler.jsonc` 中的对应配置。`PUBLIC_BASE_URL`、`ADMIN_BASE_URL`、`SESSION_SECRET` 等运行时值只在 `secrets.required` 中声明，真实值来自被忽略的 `.env` 文件。
 
    这个文件里几个重要配置的含义：
 
@@ -63,7 +63,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
    - `r2_buckets`：把私有 R2 bucket 绑定到 Worker。应用代码读取 `HTML_BUCKET` 这个 binding，因此不要改这个 binding 名。
    - `d1_databases`：把 D1 数据库绑定到 Worker。创建数据库后必须替换其中的 `database_id`。
    - `triggers`：配置每天执行清理任务的 Cron Trigger。
-   - `vars`：保存 `ADMIN_BASE_URL`、`PUBLIC_BASE_URL` 等非敏感变量。`SESSION_SECRET` 这类敏感值属于 secrets，要通过 `wrangler secret put` 存到 Cloudflare，不要写进 `wrangler.jsonc`、`.env`、shell history 或 GitHub 跟踪的文件。
+   - `secrets.required`：声明 Wrangler 本地开发时要从 `.env` 文件加载、部署时要从 Cloudflare secrets 提供的运行时键。
 
 3. 创建私有 R2 bucket。
 
@@ -89,24 +89,32 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
 
    这一步会创建 HTMLBed 需要的数据表。这里要使用 `--remote`，因为目标是生产环境的 Cloudflare D1 数据库，不是 Wrangler 本地开发数据库。
 
-6. 交互式设置 Worker secrets。
+6. 准备 Worker 运行时 secrets 文件。
 
-   ```bash
-   pnpm wrangler secret put ADMIN_EMAIL
-   pnpm wrangler secret put ADMIN_PASSWORD_HASH
-   pnpm wrangler secret put SESSION_SECRET
+   以 `apps/worker/.env.example` 作为键名模板，把真实部署值放到 `apps/worker/.env.production`。这个文件已被 Git 忽略，并会通过 Wrangler 的 `--secrets-file` 上传。
+
+   ```dotenv
+   APP_ENV=production
+   PUBLIC_BASE_URL=https://h.example.com
+   ADMIN_BASE_URL=https://admin-html.example.com
+   DEFAULT_URL_EXPIRE_DAYS=7
+   DEFAULT_FILE_EXPIRE_DAYS=180
+   MAX_UPLOAD_SIZE_MB=10
+   ADMIN_EMAIL=admin@example.com
+   ADMIN_PASSWORD_HASH=replace-with-password-hash
+   SESSION_SECRET=replace-with-long-random-secret
    ```
 
-   按提示分别粘贴管理员邮箱、`scripts/hash-password.ts` 的输出和生成的 session secret。
+   将 `PUBLIC_BASE_URL` 和 `ADMIN_BASE_URL` 改为你的真实 origin，不要带结尾斜杠。将 `ADMIN_PASSWORD_HASH` 改为 `scripts/hash-password.ts` 的输出，将 `SESSION_SECRET` 改为生成的随机 secret。不要提交填好真实值的文件。
 
 7. 构建并部署。
 
    ```bash
    pnpm run build
-   pnpm wrangler deploy
+   pnpm --filter @htmlbed/worker run deploy
    ```
 
-   你不需要在部署前手动创建 Worker。首次部署时，Wrangler 会根据 `wrangler.jsonc` 中的 `name` 创建 Worker；后续部署会更新同一个 Worker。
+   这个部署脚本会在 `apps/worker` 目录运行 `wrangler deploy --keep-vars --secrets-file .env.production`。如果只想预检而不上传，可执行 `pnpm --filter @htmlbed/worker run deploy:dry-run`。你不需要在部署前手动创建 Worker。首次部署时，Wrangler 会根据 `wrangler.jsonc` 中的 `name` 创建 Worker；后续部署会更新同一个 Worker。
 
 8. 首次成功部署后，再添加 Custom Domains。
 
@@ -136,22 +144,22 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
    - 确认公开根路径、公开主机名上的管理路径、公开主机名上的 API 路径没有被暴露。
    - 测试时如需查看实时 Worker 日志，可使用 `pnpm wrangler tail`。
 
-仓库当前没有包含用于自动部署 Cloudflare 的 GitHub Actions workflow。如果后续添加 CI/CD，Wrangler 通常需要的仓库级 secrets 是 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。`ADMIN_PASSWORD_HASH` 和 `SESSION_SECRET` 等运行时 secrets 仍应由 Cloudflare secrets 管理，不应写入 GitHub 跟踪的文件。
+仓库当前没有包含用于自动部署 Cloudflare 的 GitHub Actions workflow。如果后续添加 CI/CD，Wrangler 通常需要的仓库级 secrets 是 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。运行时值应通过被忽略的 `.env.production` 或等价的 CI 生成 secrets file 提供给 Cloudflare secrets，不应写入 GitHub 跟踪的文件。
 
 ### Cloudflare 常见问题
 
 - 需要先在 dashboard 里创建 Worker 吗？
-  不需要。使用 Wrangler。`pnpm wrangler deploy` 会根据 `apps/worker/wrangler.jsonc` 创建或更新 Worker。
+  不需要。使用 Wrangler。`pnpm --filter @htmlbed/worker run deploy` 会根据 `apps/worker/wrangler.jsonc` 创建或更新 Worker。
 - 什么时候添加 Custom Domains？
   首次成功部署后再添加，因为 dashboard 需要先有一个已存在的 Worker 才能绑定 custom domain。
 - 为什么需要两个域名？
   管理端 UI 和公开 HTML 网关有意使用不同主机名。session cookie 只作用于管理端主机名，公开主机名只提供有效的已发布 HTML URL。
 - 如果后续修改 `ADMIN_BASE_URL` 或 `PUBLIC_BASE_URL` 怎么办？
-  修改 `apps/worker/wrangler.jsonc`，执行 `pnpm run build`，再执行 `pnpm wrangler deploy`。同时确保 Cloudflare 里的 custom domain 也对应新的主机名。
+  修改 `apps/worker/.env.production`，执行 `pnpm --filter @htmlbed/worker run deploy`，同时确保 Cloudflare 里的 custom domain 也对应新的主机名。
 - Custom Domain 访问不了怎么办？
   确认根域名在 Cloudflare 中处于 active 状态、该 hostname 没有冲突 DNS 记录，并且 Worker dashboard 中 custom domain 的状态已经 active。
 - 部署后 Worker 返回 500 怎么办？
-  先用 `pnpm wrangler secret list` 确认三个 secrets 都存在，再用 `pnpm wrangler tail` 查看实时日志。
+  先用 `pnpm wrangler secret list` 确认所有 required runtime secrets 都存在，再用 `pnpm wrangler tail` 查看实时日志。
 
 ## Docker 部署
 
@@ -230,12 +238,12 @@ Docker 是不使用 Cloudflare 托管运行时的部署方式。它不用 D1 和
 | `ADMIN_EMAIL`              | Cloudflare secret / Docker env | 是   | 单个管理员邮箱。                                          |
 | `ADMIN_PASSWORD_HASH`      | Cloudflare secret / Docker env | 是   | 由 `scripts/hash-password.ts` 生成的 PBKDF2-SHA256 哈希。 |
 | `SESSION_SECRET`           | Cloudflare secret / Docker env | 是   | 用于签名 session cookie 的密钥。                          |
-| `APP_ENV`                  | Cloudflare var / Docker env    | 建议 | 部署时使用 `production`。                                 |
-| `ADMIN_BASE_URL`           | Cloudflare var / Docker env    | 是   | 管理端 origin，例如 `https://admin-html.example.com`。    |
-| `PUBLIC_BASE_URL`          | Cloudflare var / Docker env    | 是   | 公开访问 origin，例如 `https://h.example.com`。           |
-| `DEFAULT_URL_EXPIRE_DAYS`  | Cloudflare var / Docker env    | 否   | 默认为 `7`。                                              |
-| `DEFAULT_FILE_EXPIRE_DAYS` | Cloudflare var / Docker env    | 否   | 默认为 `180`。                                            |
-| `MAX_UPLOAD_SIZE_MB`       | Cloudflare var / Docker env    | 否   | 默认为 `10`。                                             |
+| `APP_ENV`                  | Cloudflare secret / Docker env | 建议 | 部署时使用 `production`。                                 |
+| `ADMIN_BASE_URL`           | Cloudflare secret / Docker env | 是   | 管理端 origin，例如 `https://admin-html.example.com`。    |
+| `PUBLIC_BASE_URL`          | Cloudflare secret / Docker env | 是   | 公开访问 origin，例如 `https://h.example.com`。           |
+| `DEFAULT_URL_EXPIRE_DAYS`  | Cloudflare secret / Docker env | 否   | 默认为 `7`。                                              |
+| `DEFAULT_FILE_EXPIRE_DAYS` | Cloudflare secret / Docker env | 否   | 默认为 `180`。                                            |
+| `MAX_UPLOAD_SIZE_MB`       | Cloudflare secret / Docker env | 否   | 默认为 `10`。                                             |
 | `RUNTIME`                  | Docker env                     | 是   | 使用 `node`。                                             |
 | `DB_DRIVER`                | Docker env                     | 是   | 使用 `sqlite`。                                           |
 | `STORAGE_DRIVER`           | Docker env                     | 是   | 使用 `local`。                                            |

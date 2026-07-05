@@ -54,7 +54,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
 
 2. Review `apps/worker/wrangler.jsonc` before creating resources.
 
-   Set `PUBLIC_BASE_URL` and `ADMIN_BASE_URL` to your real origins, without trailing slashes. Keep secrets out of this file. If you change the R2 bucket name, D1 database name, or Worker name, update the matching entries in the same file.
+   Keep real runtime values out of this tracked file. If you change the R2 bucket name, D1 database name, or Worker name, update the matching entries in `wrangler.jsonc`. Runtime values such as `PUBLIC_BASE_URL`, `ADMIN_BASE_URL`, and `SESSION_SECRET` are declared in `secrets.required` and supplied from an ignored `.env` file.
 
    Important entries in this file:
 
@@ -63,7 +63,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    - `r2_buckets`: binds the private R2 bucket to the Worker. The application code reads the `HTML_BUCKET` binding, so keep that binding name intact.
    - `d1_databases`: binds the D1 database to the Worker. You must replace `database_id` after creating the database.
    - `triggers`: schedules the daily cleanup Cron Trigger.
-   - `vars`: stores non-secret values such as `ADMIN_BASE_URL` and `PUBLIC_BASE_URL`. Secrets such as `SESSION_SECRET` are stored in Cloudflare with `wrangler secret put` and must not be written to `wrangler.jsonc`, `.env`, shell history, or GitHub-tracked files.
+   - `secrets.required`: declares the runtime keys that Wrangler must load from local `.env` files during development and from Cloudflare secrets during deployment.
 
 3. Create the private R2 bucket.
 
@@ -89,24 +89,32 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
 
    This creates the tables HTMLBed needs. Use `--remote` because this database is the production Cloudflare D1 database, not Wrangler's local development database.
 
-6. Set Worker secrets interactively.
+6. Prepare the Worker runtime secrets file.
 
-   ```bash
-   pnpm wrangler secret put ADMIN_EMAIL
-   pnpm wrangler secret put ADMIN_PASSWORD_HASH
-   pnpm wrangler secret put SESSION_SECRET
+   Use `apps/worker/.env.example` as the key list and put real deployment values in `apps/worker/.env.production`. This file is ignored by Git and is passed to Wrangler with `--secrets-file`.
+
+   ```dotenv
+   APP_ENV=production
+   PUBLIC_BASE_URL=https://h.example.com
+   ADMIN_BASE_URL=https://admin-html.example.com
+   DEFAULT_URL_EXPIRE_DAYS=7
+   DEFAULT_FILE_EXPIRE_DAYS=180
+   MAX_UPLOAD_SIZE_MB=10
+   ADMIN_EMAIL=admin@example.com
+   ADMIN_PASSWORD_HASH=replace-with-password-hash
+   SESSION_SECRET=replace-with-long-random-secret
    ```
 
-   Paste the administrator email, the output from `scripts/hash-password.ts`, and the generated session secret when prompted.
+   Set `PUBLIC_BASE_URL` and `ADMIN_BASE_URL` to your real origins, without trailing slashes. Set `ADMIN_PASSWORD_HASH` to the output from `scripts/hash-password.ts` and `SESSION_SECRET` to the generated random secret. Do not commit the filled file.
 
 7. Build and deploy.
 
    ```bash
    pnpm run build
-   pnpm wrangler deploy
+   pnpm --filter @htmlbed/worker run deploy
    ```
 
-   You do not need to create a Worker manually before this. On the first deploy, Wrangler creates the Worker named by `name` in `wrangler.jsonc`; on later deploys, it updates the same Worker.
+   The deploy script runs `wrangler deploy --keep-vars --secrets-file .env.production` from `apps/worker`. For a preflight without uploading, use `pnpm --filter @htmlbed/worker run deploy:dry-run`. You do not need to create a Worker manually before this. On the first deploy, Wrangler creates the Worker named by `name` in `wrangler.jsonc`; on later deploys, it updates the same Worker.
 
 8. Add custom domains after the first successful deploy.
 
@@ -136,22 +144,22 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    - Confirm public roots, admin paths on the public hostname, and API paths on the public hostname are not exposed.
    - Use `pnpm wrangler tail` if you need live Worker logs while testing.
 
-This repository currently does not include a GitHub Actions workflow for automatic Cloudflare deployment. If you add CI/CD later, the repository-level secrets normally needed by Wrangler are `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Runtime secrets such as `ADMIN_PASSWORD_HASH` and `SESSION_SECRET` should remain managed by Cloudflare secrets, not GitHub-tracked files.
+This repository currently does not include a GitHub Actions workflow for automatic Cloudflare deployment. If you add CI/CD later, the repository-level secrets normally needed by Wrangler are `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Runtime values should be provided as Cloudflare secrets through an ignored `.env.production` or an equivalent CI-generated secrets file, not GitHub-tracked files.
 
 ### Common Cloudflare Questions
 
 - Do I need to create the Worker in the dashboard first?
-  No. Use Wrangler. `pnpm wrangler deploy` creates or updates the Worker from `apps/worker/wrangler.jsonc`.
+  No. Use Wrangler. `pnpm --filter @htmlbed/worker run deploy` creates or updates the Worker from `apps/worker/wrangler.jsonc`.
 - When do I add custom domains?
   Add them after the first successful deploy, because the dashboard needs an existing Worker to attach them to.
 - Why two domains?
   The admin UI and public HTML gateway intentionally use different hostnames. The session cookie is scoped to the admin hostname, and the public hostname only serves valid published HTML URLs.
 - What if I change `ADMIN_BASE_URL` or `PUBLIC_BASE_URL` later?
-  Update `apps/worker/wrangler.jsonc`, run `pnpm run build`, then run `pnpm wrangler deploy` again. Also update the matching custom domain in Cloudflare.
+  Update `apps/worker/.env.production`, run `pnpm --filter @htmlbed/worker run deploy`, and update the matching custom domain in Cloudflare.
 - What if the custom domain does not resolve?
   Confirm the root domain is active in Cloudflare, the hostname has no conflicting DNS record, and the custom domain status in the Worker dashboard is active.
 - What if the Worker returns 500 after deploy?
-  Check that all three secrets exist with `pnpm wrangler secret list`, then inspect live logs with `pnpm wrangler tail`.
+  Check that all required runtime secrets exist with `pnpm wrangler secret list`, then inspect live logs with `pnpm wrangler tail`.
 
 ## Docker Deployment
 
@@ -230,12 +238,12 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
 | `ADMIN_EMAIL`              | Cloudflare secret / Docker env | yes         | Single administrator email.                                   |
 | `ADMIN_PASSWORD_HASH`      | Cloudflare secret / Docker env | yes         | PBKDF2-SHA256 hash from `scripts/hash-password.ts`.           |
 | `SESSION_SECRET`           | Cloudflare secret / Docker env | yes         | Secret used to sign session cookies.                          |
-| `APP_ENV`                  | Cloudflare var / Docker env    | recommended | Use `production` for deployment.                              |
-| `ADMIN_BASE_URL`           | Cloudflare var / Docker env    | yes         | Admin origin, for example `https://admin-html.example.com`.   |
-| `PUBLIC_BASE_URL`          | Cloudflare var / Docker env    | yes         | Public origin, for example `https://h.example.com`.           |
-| `DEFAULT_URL_EXPIRE_DAYS`  | Cloudflare var / Docker env    | no          | Defaults to `7`.                                              |
-| `DEFAULT_FILE_EXPIRE_DAYS` | Cloudflare var / Docker env    | no          | Defaults to `180`.                                            |
-| `MAX_UPLOAD_SIZE_MB`       | Cloudflare var / Docker env    | no          | Defaults to `10`.                                             |
+| `APP_ENV`                  | Cloudflare secret / Docker env | recommended | Use `production` for deployment.                              |
+| `ADMIN_BASE_URL`           | Cloudflare secret / Docker env | yes         | Admin origin, for example `https://admin-html.example.com`.   |
+| `PUBLIC_BASE_URL`          | Cloudflare secret / Docker env | yes         | Public origin, for example `https://h.example.com`.           |
+| `DEFAULT_URL_EXPIRE_DAYS`  | Cloudflare secret / Docker env | no          | Defaults to `7`.                                              |
+| `DEFAULT_FILE_EXPIRE_DAYS` | Cloudflare secret / Docker env | no          | Defaults to `180`.                                            |
+| `MAX_UPLOAD_SIZE_MB`       | Cloudflare secret / Docker env | no          | Defaults to `10`.                                             |
 | `RUNTIME`                  | Docker env                     | yes         | Use `node`.                                                   |
 | `DB_DRIVER`                | Docker env                     | yes         | Use `sqlite`.                                                 |
 | `STORAGE_DRIVER`           | Docker env                     | yes         | Use `local`.                                                  |

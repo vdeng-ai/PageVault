@@ -7,37 +7,46 @@
   "assets": {
     "directory": "../admin/dist",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
   },
   "r2_buckets": [
     {
       "binding": "HTML_BUCKET",
-      "bucket_name": "htmlbed-files"
-    }
+      "bucket_name": "htmlbed-files",
+    },
+    {
+      "bucket_name": "htmlbed-files",
+      "binding": "htmlbed_files",
+    },
   ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "htmlbed-db",
-      "database_id": "REPLACE_WITH_REAL_DATABASE_ID",
-      "migrations_dir": "../../migrations"
-    }
+      "database_id": "ccc1b8d1-f285-442a-b537-a551a6bfe1ea",
+      "migrations_dir": "../../migrations",
+    },
   ],
   "triggers": {
-    "crons": ["17 3 * * *"]
+    "crons": ["17 3 * * *"],
   },
-  "vars": {
-    "APP_ENV": "production",
-    "PUBLIC_BASE_URL": "https://h.example.com",
-    "ADMIN_BASE_URL": "https://admin-html.example.com",
-    "DEFAULT_URL_EXPIRE_DAYS": "7",
-    "DEFAULT_FILE_EXPIRE_DAYS": "180",
-    "MAX_UPLOAD_SIZE_MB": "10"
+  "secrets": {
+    "required": [
+      "APP_ENV",
+      "PUBLIC_BASE_URL",
+      "ADMIN_BASE_URL",
+      "DEFAULT_URL_EXPIRE_DAYS",
+      "DEFAULT_FILE_EXPIRE_DAYS",
+      "MAX_UPLOAD_SIZE_MB",
+      "ADMIN_EMAIL",
+      "ADMIN_PASSWORD_HASH",
+      "SESSION_SECRET",
+    ],
   },
   "observability": {
     "enabled": true,
     "logs": {
-      "head_sampling_rate": 1
-    }
-  }
+      "head_sampling_rate": 1,
+    },
+  },
 }

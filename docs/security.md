@@ -29,6 +29,8 @@ Only one administrator is supported. Login uses:
 - `ADMIN_PASSWORD_HASH`
 - `SESSION_SECRET`
 
+Cloudflare deployment treats all runtime configuration declared in `apps/worker/wrangler.jsonc` under `secrets.required` as secrets. Keep real values in ignored files such as `apps/worker/.env` or `apps/worker/.env.production`, and deploy with the worker package's `deploy` script so Wrangler uploads them with `--secrets-file`.
+
 The session cookie is `htmlbed_session` with `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, and seven-day `Max-Age`. The cookie must be scoped to the admin hostname, not a parent domain.
 
 All admin write operations require `X-CSRF-Token`. The token is returned by `GET /api/auth/me` and is bound to the signed session.

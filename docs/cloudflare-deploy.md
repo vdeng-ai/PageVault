@@ -41,9 +41,9 @@ HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and t
 
    Wrangler is Cloudflare's command-line tool. `pnpm wrangler login` authorizes it, and `pnpm wrangler whoami` confirms which Cloudflare account will receive the R2 bucket, D1 database, secrets, and Worker deployment.
 
-2. Edit `apps/worker/wrangler.jsonc`.
+2. Review `apps/worker/wrangler.jsonc`.
 
-   Set `ADMIN_BASE_URL` and `PUBLIC_BASE_URL` to your two real HTTPS origins, without trailing slashes. Keep binding names such as `HTML_BUCKET` and `DB` unchanged unless you also update the application code. `ADMIN_PASSWORD_HASH` and `SESSION_SECRET` are secrets, so do not write them to `wrangler.jsonc`, `.env`, shell history, or tracked documentation.
+   Keep real runtime values out of this tracked file. Keep binding names such as `HTML_BUCKET` and `DB` unchanged unless you also update the application code. If you change the R2 bucket name, D1 database name, or Worker name, update the matching entries in this file. Runtime keys are declared in `secrets.required`; their real values come from ignored `.env` files and Cloudflare secrets.
 
 3. Create the private R2 bucket:
 
@@ -67,22 +67,32 @@ HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and t
    pnpm wrangler d1 migrations apply htmlbed-db --remote
    ```
 
-6. Set Worker secrets interactively:
+6. Prepare the Worker runtime secrets file.
 
-   ```bash
-   pnpm wrangler secret put ADMIN_EMAIL
-   pnpm wrangler secret put ADMIN_PASSWORD_HASH
-   pnpm wrangler secret put SESSION_SECRET
+   Use `apps/worker/.env.example` as the key list and put real deployment values in `apps/worker/.env.production`. This file is ignored by Git and is passed to Wrangler with `--secrets-file`.
+
+   ```dotenv
+   APP_ENV=production
+   PUBLIC_BASE_URL=https://h.example.com
+   ADMIN_BASE_URL=https://admin-html.example.com
+   DEFAULT_URL_EXPIRE_DAYS=7
+   DEFAULT_FILE_EXPIRE_DAYS=180
+   MAX_UPLOAD_SIZE_MB=10
+   ADMIN_EMAIL=admin@example.com
+   ADMIN_PASSWORD_HASH=replace-with-password-hash
+   SESSION_SECRET=replace-with-long-random-secret
    ```
+
+   Set `PUBLIC_BASE_URL` and `ADMIN_BASE_URL` to your two real HTTPS origins, without trailing slashes. Set `ADMIN_PASSWORD_HASH` to the output from `scripts/hash-password.ts` and `SESSION_SECRET` to the generated random secret. Do not commit the filled file.
 
 7. Build and deploy the Worker:
 
    ```bash
    pnpm run build
-   pnpm wrangler deploy
+   pnpm --filter @htmlbed/worker run deploy
    ```
 
-   You do not need to create the Worker manually in the Cloudflare dashboard. On first deploy, Wrangler reads `apps/worker/wrangler.jsonc` and creates the Worker named `htmlbed`; on later deploys, it updates that Worker.
+   The deploy script runs `wrangler deploy --keep-vars --secrets-file .env.production` from `apps/worker`. For a preflight without uploading, use `pnpm --filter @htmlbed/worker run deploy:dry-run`. You do not need to create the Worker manually in the Cloudflare dashboard. On first deploy, Wrangler reads `apps/worker/wrangler.jsonc` and creates the Worker named `htmlbed`; on later deploys, it updates that Worker.
 
 8. Add Worker custom domains in the Cloudflare dashboard.
 
@@ -108,9 +118,9 @@ HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and t
 - `pnpm wrangler whoami` shows the wrong account: log out or switch accounts before creating resources.
 - `database_id` errors: verify the ID copied from `pnpm wrangler d1 create htmlbed-db` matches `apps/worker/wrangler.jsonc`.
 - Custom domain does not resolve: confirm the Cloudflare zone is active and the custom domain status is active in the Worker dashboard.
-- Login or upload fails after deploy: confirm `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, and `SESSION_SECRET` exist with `pnpm wrangler secret list`.
+- Login or upload fails after deploy: confirm all required runtime secrets exist with `pnpm wrangler secret list`.
 - Worker returns 500: inspect live logs with `pnpm wrangler tail`.
 
 ## CI/CD
 
-This repository currently does not include a GitHub Actions workflow for automatic Cloudflare deployment. If you add one later, Wrangler commonly needs repository-level `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets. Runtime secrets should remain managed by Cloudflare secrets.
+This repository currently does not include a GitHub Actions workflow for automatic Cloudflare deployment. If you add one later, Wrangler commonly needs repository-level `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets. Runtime values should be provided as Cloudflare secrets through an ignored `.env.production` or an equivalent CI-generated secrets file.
