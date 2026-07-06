@@ -13,7 +13,7 @@ describe("wrangler static assets routing", () => {
 
     expect(assetsBlock).toBeTruthy();
     expect(assetsBlock).toMatch(/"run_worker_first"\s*:\s*\[/);
-    expect(assetsBlock).toMatch(/"\/"/);
+    expect(assetsBlock).not.toMatch(/"\/"\s*,/);
     expect(assetsBlock).toMatch(/"\/\*"/);
     expect(assetsBlock).toMatch(/"!\/assets\/\*"/);
   });
