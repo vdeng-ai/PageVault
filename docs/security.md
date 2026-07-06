@@ -11,6 +11,8 @@ Public requests are only accepted on the configured public hostname and only for
 
 Everything else on the public hostname returns `404`, including `/`, `/api/*`, `/admin/*`, `/files`, `/list`, and `/sitemap.xml`.
 
+The public hostname must remain anonymously reachable. If you use Cloudflare Access, Zero Trust policies, Basic Auth, firewall rules, or another upstream authentication layer, scope it only to the admin hostname such as `admin-html.vdengai.com`; do not protect the public hostname such as `h.vdengai.com` or a wildcard like `*.vdengai.com`.
+
 ## Storage
 
 R2 buckets must stay private. Public access always flows through the Worker:
@@ -34,6 +36,8 @@ Cloudflare deployment treats all runtime configuration declared in `apps/worker/
 The session cookie is `htmlbed_session` with `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, and seven-day `Max-Age`. The cookie must be scoped to the admin hostname, not a parent domain.
 
 All admin write operations require `X-CSRF-Token`. The token is returned by `GET /api/auth/me` and is bound to the signed session.
+
+External access controls may be added in front of the admin hostname, but they must not match the public hostname. Generated URLs under `PUBLIC_BASE_URL`, for example `https://h.vdengai.com/p/html-ed559a5f`, are intended to be reachable without an admin session.
 
 ## HTML Content
 

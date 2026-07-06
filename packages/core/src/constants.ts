@@ -4,5 +4,7 @@ export const DEFAULT_MAX_UPLOAD_SIZE_MB = 10;
 export const HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 export const SESSION_COOKIE_NAME = "htmlbed_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
-export const PBKDF2_ITERATIONS = 310000;
+export const PBKDF2_MIN_ITERATIONS = 100000;
+export const PBKDF2_MAX_ITERATIONS = 100000;
+export const PBKDF2_ITERATIONS = PBKDF2_MAX_ITERATIONS;
 export const MAX_SLUG_BASE_LENGTH = 80;
