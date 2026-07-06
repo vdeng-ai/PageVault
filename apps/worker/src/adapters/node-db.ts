@@ -4,6 +4,7 @@ import { mkdirSync } from "node:fs";
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
 import { AppError, type MetadataRepository } from "@htmlbed/core";
 import type {
+  AccessCountInput,
   AuditLogInput,
   CreateItemInput,
   DashboardStats,
@@ -223,11 +224,26 @@ export class NodeSqliteRepository implements MetadataRepository {
   }
 
   async incrementAccess(id: string, accessedAt: string): Promise<void> {
-    this.db
-      .prepare(
-        "UPDATE html_items SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?"
-      )
-      .run(accessedAt, id);
+    await this.incrementAccessBatch([{ id, count: 1, accessedAt }]);
+  }
+
+  async incrementAccessBatch(input: AccessCountInput[]): Promise<void> {
+    if (input.length === 0) {
+      return;
+    }
+    const statement = this.db.prepare(
+      "UPDATE html_items SET access_count = access_count + ?, last_accessed_at = ? WHERE id = ?"
+    );
+    this.db.exec("BEGIN IMMEDIATE TRANSACTION");
+    try {
+      for (const entry of input) {
+        statement.run(entry.count, entry.accessedAt, entry.id);
+      }
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   async findExpiredFiles(now: string, limit: number): Promise<HtmlItem[]> {

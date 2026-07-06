@@ -1,9 +1,15 @@
 import type { HtmlBedService } from "@htmlbed/core";
 import { HTML_CONTENT_TYPE, normalizePublicSlug } from "@htmlbed/core";
-import type { AppBindings } from "../bindings.js";
+import type { AppBindings, WaitUntilContext } from "../bindings.js";
 import { publicErrorPage, publicSecurityHeaders } from "../middleware/security-headers.js";
+import { recordPublicAccess } from "../access-counter.js";
+import {
+  cachePublicHtmlResponse,
+  effectivePublicHtmlCacheSeconds,
+  matchPublicHtmlCache,
+} from "../public-cache.js";
 
-function publicSlugFromPath(pathname: string): string | null {
+export function publicSlugFromPath(pathname: string): string | null {
   const match = /^\/p\/([^/]+)\/?$/.exec(pathname);
   if (!match?.[1]) {
     return null;
@@ -12,20 +18,20 @@ function publicSlugFromPath(pathname: string): string | null {
   return slug && slug.length > 0 ? slug : null;
 }
 
-function logAccessFailure(error: unknown, slug: string): void {
-  console.error(
-    JSON.stringify({
-      message: "access counter failed",
-      slug,
-      error: error instanceof Error ? error.message : String(error)
-    })
-  );
+function publicHtmlHeaders(contentType: string, ttlSeconds: number): HeadersInit {
+  const headers = { ...publicSecurityHeaders };
+  delete headers["Cache-Control"];
+  return {
+    ...headers,
+    "Cache-Control": `public, max-age=0, s-maxage=${ttlSeconds}`,
+    "Content-Type": contentType
+  };
 }
 
 export async function handlePublicRequest(
   request: Request,
-  _env: AppBindings,
-  ctx: ExecutionContext | undefined,
+  env: AppBindings,
+  ctx: WaitUntilContext | undefined,
   service: HtmlBedService
 ): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
@@ -37,8 +43,17 @@ export async function handlePublicRequest(
   if (!slug) {
     return publicErrorPage(404);
   }
+  const now = new Date();
 
-  const result = await service.getPublicHtml(slug);
+  const cached = await matchPublicHtmlCache(env, slug, request.method);
+  if (cached) {
+    if (cached.itemId) {
+      recordPublicAccess(service, env, ctx, cached.itemId, slug);
+    }
+    return cached.response;
+  }
+
+  const result = await service.getPublicHtml(slug, now);
   if (result.kind === "not_found") {
     return publicErrorPage(404);
   }
@@ -49,20 +64,20 @@ export async function handlePublicRequest(
     return publicErrorPage(410);
   }
 
-  const accessPromise = service.recordAccess(result.item.id).catch((error: unknown) => {
-    logAccessFailure(error, slug);
-  });
-  if (ctx) {
-    ctx.waitUntil(accessPromise);
-  } else {
-    void accessPromise;
-  }
+  recordPublicAccess(service, env, ctx, result.item.id, slug);
+  const ttlSeconds = effectivePublicHtmlCacheSeconds(
+    env,
+    result.item.urlExpiresAt,
+    result.item.fileExpiresAt,
+    now
+  );
 
-  return new Response(request.method === "HEAD" ? null : result.object.body, {
+  const response = new Response(request.method === "HEAD" ? null : result.object.body, {
     status: 200,
-    headers: {
-      ...publicSecurityHeaders,
-      "Content-Type": result.object.contentType ?? HTML_CONTENT_TYPE
-    }
+    headers: publicHtmlHeaders(result.object.contentType ?? HTML_CONTENT_TYPE, ttlSeconds)
   });
+  if (request.method === "GET") {
+    cachePublicHtmlResponse(env, ctx, slug, result.item.id, response, ttlSeconds);
+  }
+  return response;
 }

@@ -13,6 +13,9 @@ export interface AppBindings {
   DEFAULT_URL_EXPIRE_DAYS?: string;
   DEFAULT_FILE_EXPIRE_DAYS?: string;
   MAX_UPLOAD_SIZE_MB?: string;
+  PUBLIC_HTML_CACHE_SECONDS?: string;
+  ACCESS_COUNT_FLUSH_SECONDS?: string;
+  ACCESS_COUNT_MODE?: string;
 }
 
 export interface AppVariables {
@@ -26,3 +29,6 @@ export type HonoRuntime = {
 
 export type ServiceFactory = (env: AppBindings) => HtmlBedService;
 export type AssetFetcher = (request: Request, env: AppBindings) => Promise<Response>;
+export interface WaitUntilContext {
+  waitUntil(promise: Promise<unknown>): void;
+}

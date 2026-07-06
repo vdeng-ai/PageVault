@@ -67,6 +67,12 @@ export interface AuditLogInput {
   createdAt: string;
 }
 
+export interface AccessCountInput {
+  id: string;
+  count: number;
+  accessedAt: string;
+}
+
 export interface UploadHtmlInput {
   filename: string;
   body: ArrayBuffer;
@@ -115,6 +121,7 @@ export interface BatchResult {
 export interface GcResult {
   scanned: number;
   deleted: number;
+  deletedSlugs: string[];
   failed: Array<{ id: string; error: string }>;
 }
 

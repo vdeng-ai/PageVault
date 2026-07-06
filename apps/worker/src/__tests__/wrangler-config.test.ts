@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("wrangler static assets routing", () => {
-  it("runs the Worker before assets so the public host cannot serve the admin SPA", async () => {
+  it("uses selective Worker-first routing so static assets can bypass Worker", async () => {
     const config = await readFile(
       new URL("../../wrangler.jsonc", import.meta.url),
       "utf8",
@@ -12,6 +12,9 @@ describe("wrangler static assets routing", () => {
     )?.groups?.body;
 
     expect(assetsBlock).toBeTruthy();
-    expect(assetsBlock).toMatch(/"run_worker_first"\s*:\s*true/);
+    expect(assetsBlock).toMatch(/"run_worker_first"\s*:\s*\[/);
+    expect(assetsBlock).toMatch(/"\/"/);
+    expect(assetsBlock).toMatch(/"\/\*"/);
+    expect(assetsBlock).toMatch(/"!\/assets\/\*"/);
   });
 });

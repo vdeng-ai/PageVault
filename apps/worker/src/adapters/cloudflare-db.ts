@@ -1,5 +1,6 @@
 import { AppError, type MetadataRepository } from "@htmlbed/core";
 import type {
+  AccessCountInput,
   AuditLogInput,
   CreateItemInput,
   DashboardStats,
@@ -142,12 +143,22 @@ export class CloudflareD1Repository implements MetadataRepository {
   }
 
   async incrementAccess(id: string, accessedAt: string): Promise<void> {
-    await this.db
-      .prepare(
-        "UPDATE html_items SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?"
+    await this.incrementAccessBatch([{ id, count: 1, accessedAt }]);
+  }
+
+  async incrementAccessBatch(input: AccessCountInput[]): Promise<void> {
+    if (input.length === 0) {
+      return;
+    }
+    await this.db.batch(
+      input.map((entry) =>
+        this.db
+          .prepare(
+            "UPDATE html_items SET access_count = access_count + ?, last_accessed_at = ? WHERE id = ?"
+          )
+          .bind(entry.count, entry.accessedAt, entry.id)
       )
-      .bind(accessedAt, id)
-      .run();
+    );
   }
 
   async findExpiredFiles(now: string, limit: number): Promise<HtmlItem[]> {

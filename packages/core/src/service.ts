@@ -13,6 +13,7 @@ import type { StorageProvider } from "./storage.js";
 import type {
   BatchInput,
   BatchResult,
+  AccessCountInput,
   DashboardStats,
   GcResult,
   HtmlBedConfig,
@@ -163,7 +164,17 @@ export class HtmlBedService {
   }
 
   async recordAccess(id: string, now = new Date()): Promise<void> {
-    await this.repository.incrementAccess(id, now.toISOString());
+    await this.recordAccessBatch([{ id, count: 1, accessedAt: now.toISOString() }]);
+  }
+
+  async recordAccessBatch(input: AccessCountInput[]): Promise<void> {
+    const entries = input.filter(
+      (entry) => entry.id.length > 0 && Number.isInteger(entry.count) && entry.count > 0
+    );
+    if (entries.length === 0) {
+      return;
+    }
+    await this.repository.incrementAccessBatch(entries);
   }
 
   async listItems(input: ListItemsInput): Promise<ListItemsResult> {
@@ -238,6 +249,7 @@ export class HtmlBedService {
   async garbageCollectExpiredFiles(now = new Date(), limit = 100): Promise<GcResult> {
     const expired = await this.repository.findExpiredFiles(now.toISOString(), limit);
     const failed: Array<{ id: string; error: string }> = [];
+    const deletedSlugs: string[] = [];
     let deleted = 0;
 
     for (const item of expired) {
@@ -246,6 +258,7 @@ export class HtmlBedService {
         await this.repository.markDeleted(item.id, now.toISOString());
         await this.audit(item.id, "gc_delete", "File retention expired", now);
         deleted += 1;
+        deletedSlugs.push(item.slug);
       } catch (error) {
         failed.push({
           id: item.id,
@@ -257,6 +270,7 @@ export class HtmlBedService {
     return {
       scanned: expired.length,
       deleted,
+      deletedSlugs,
       failed
     };
   }

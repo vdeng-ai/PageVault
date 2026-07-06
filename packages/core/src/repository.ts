@@ -1,4 +1,5 @@
 import type {
+  AccessCountInput,
   AuditLogInput,
   CreateItemInput,
   DashboardStats,
@@ -17,6 +18,7 @@ export interface MetadataRepository {
   updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem>;
   markDeleted(id: string, deletedAt: string): Promise<void>;
   incrementAccess(id: string, accessedAt: string): Promise<void>;
+  incrementAccessBatch(input: AccessCountInput[]): Promise<void>;
   findExpiredFiles(now: string, limit: number): Promise<HtmlItem[]>;
   writeAuditLog(input: AuditLogInput): Promise<void>;
 }

@@ -5,6 +5,7 @@ import type { MetadataRepository } from "../repository.js";
 import { HtmlBedService, createHtmlBedConfig } from "../service.js";
 import type { StorageProvider, StoredObject } from "../storage.js";
 import type {
+  AccessCountInput,
   AuditLogInput,
   CreateItemInput,
   DashboardStats,
@@ -90,13 +91,19 @@ class MemoryRepository implements MetadataRepository {
   }
 
   async incrementAccess(id: string, accessedAt: string): Promise<void> {
-    const item = this.items.get(id);
-    if (item) {
-      this.items.set(id, {
-        ...item,
-        accessCount: item.accessCount + 1,
-        lastAccessedAt: accessedAt
-      });
+    await this.incrementAccessBatch([{ id, count: 1, accessedAt }]);
+  }
+
+  async incrementAccessBatch(input: AccessCountInput[]): Promise<void> {
+    for (const entry of input) {
+      const item = this.items.get(entry.id);
+      if (item) {
+        this.items.set(entry.id, {
+          ...item,
+          accessCount: item.accessCount + entry.count,
+          lastAccessedAt: entry.accessedAt
+        });
+      }
     }
   }
 
@@ -147,6 +154,24 @@ function item(overrides: Partial<HtmlItem> = {}): HtmlItem {
     ...overrides
   };
 }
+
+describe("access counting", () => {
+  it("records access counts in batches", async () => {
+    const { service, repo } = createService();
+    await repo.createItem({ item: item({ id: "a", slug: "a-a1b2c3d4" }) });
+    await repo.createItem({ item: item({ id: "b", slug: "b-a1b2c3d4" }) });
+
+    await service.recordAccessBatch([
+      { id: "a", count: 4, accessedAt: "2026-07-05T00:01:00.000Z" },
+      { id: "b", count: 2, accessedAt: "2026-07-05T00:02:00.000Z" },
+      { id: "b", count: 0, accessedAt: "2026-07-05T00:03:00.000Z" }
+    ]);
+
+    expect((await repo.getItemById("a"))?.accessCount).toBe(4);
+    expect((await repo.getItemById("a"))?.lastAccessedAt).toBe("2026-07-05T00:01:00.000Z");
+    expect((await repo.getItemById("b"))?.accessCount).toBe(2);
+  });
+});
 
 describe("public access", () => {
   const now = new Date("2026-07-05T00:00:00.000Z");
@@ -234,7 +259,7 @@ describe("garbage collection", () => {
 
     const result = await service.garbageCollectExpiredFiles(now);
 
-    expect(result).toMatchObject({ scanned: 1, deleted: 1, failed: [] });
+    expect(result).toMatchObject({ scanned: 1, deleted: 1, deletedSlugs: [expired.slug], failed: [] });
     expect((await repo.getItemById("expired"))?.status).toBe("deleted");
     expect(await storage.getObject(expired.objectKey)).toBeNull();
   });

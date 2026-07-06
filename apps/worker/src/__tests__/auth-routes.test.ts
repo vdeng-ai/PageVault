@@ -6,6 +6,7 @@ import {
 } from "@htmlbed/core";
 import { addDays } from "@htmlbed/core";
 import type {
+  AccessCountInput,
   AuditLogInput,
   CreateItemInput,
   DashboardStats,
@@ -18,6 +19,11 @@ import type {
   UpdateItemInput,
 } from "@htmlbed/core";
 import { describe, expect, it } from "vitest";
+import {
+  flushAccessCounts,
+  recordPublicAccess,
+  resetAccessCounterForTests,
+} from "../access-counter.js";
 import { createRequestHandler } from "../app.js";
 import type { AppBindings } from "../bindings.js";
 
@@ -41,6 +47,7 @@ class MemoryStorage implements StorageProvider {
 
 class MemoryRepository implements MetadataRepository {
   readonly items = new Map<string, HtmlItem>();
+  accessWrites = 0;
 
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
     this.items.set(input.item.id, input.item);
@@ -73,7 +80,22 @@ class MemoryRepository implements MetadataRepository {
     throw new Error("not implemented");
   }
   async markDeleted(_id: string, _deletedAt: string): Promise<void> {}
-  async incrementAccess(_id: string, _accessedAt: string): Promise<void> {}
+  async incrementAccess(id: string, accessedAt: string): Promise<void> {
+    await this.incrementAccessBatch([{ id, count: 1, accessedAt }]);
+  }
+  async incrementAccessBatch(input: AccessCountInput[]): Promise<void> {
+    this.accessWrites += 1;
+    for (const entry of input) {
+      const item = this.items.get(entry.id);
+      if (item) {
+        this.items.set(entry.id, {
+          ...item,
+          accessCount: item.accessCount + entry.count,
+          lastAccessedAt: entry.accessedAt,
+        });
+      }
+    }
+  }
   async findExpiredFiles(_now: string, _limit: number): Promise<HtmlItem[]> {
     return [];
   }
@@ -93,6 +115,7 @@ async function createFixture() {
     APP_ENV: "production",
     ADMIN_BASE_URL: "https://admin.test",
     PUBLIC_BASE_URL: "https://public.test",
+    ACCESS_COUNT_MODE: "off",
   };
   const repo = new MemoryRepository();
   const storage = new MemoryStorage();
@@ -108,7 +131,7 @@ async function createFixture() {
         headers: { "Content-Type": "text/html" },
       }),
   });
-  return { env, handle, repo, storage };
+  return { env, handle, repo, service, storage };
 }
 
 function item(overrides: Partial<HtmlItem> = {}): HtmlItem {
@@ -301,6 +324,9 @@ describe("public routes", () => {
       env,
     );
     expect(plain.status).toBe(200);
+    expect(plain.headers.get("Cache-Control")).toBe(
+      "public, max-age=0, s-maxage=300",
+    );
     await expect(plain.text()).resolves.toBe("<h1>ok</h1>");
 
     const withSlash = await handle(
@@ -349,6 +375,33 @@ describe("public routes", () => {
     await expect(response.text()).resolves.toBe("<h1>public</h1>");
   });
 
+  it("clamps public HTML cache TTL to item expiry", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const urlExpiresAt = new Date(Date.now() + 60_000).toISOString();
+    const active = item({
+      slug: "short-cache-a1b2c3d4",
+      objectKey: "objects/short-cache/index.html",
+      urlExpiresAt,
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(
+      active.objectKey,
+      new TextEncoder().encode("<h1>short</h1>").buffer,
+      HTML_CONTENT_TYPE,
+    );
+
+    const response = await handle(
+      new Request("https://public.test/p/short-cache-a1b2c3d4"),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    const cacheControl = response.headers.get("Cache-Control") ?? "";
+    const ttl = Number(/s-maxage=(\d+)/.exec(cacheControl)?.[1] ?? Number.NaN);
+    expect(ttl).toBeGreaterThan(0);
+    expect(ttl).toBeLessThanOrEqual(60);
+  });
+
   it("keeps public host enumeration and API paths hidden", async () => {
     const { env, handle } = await createFixture();
     await expect(
@@ -358,11 +411,6 @@ describe("public routes", () => {
     });
     await expect(
       handle(new Request("https://public.test/api/admin/items"), env),
-    ).resolves.toMatchObject({
-      status: 404,
-    });
-    await expect(
-      handle(new Request("https://public.test/assets/index.js"), env),
     ).resolves.toMatchObject({
       status: 404,
     });
@@ -381,6 +429,30 @@ describe("public routes", () => {
     ).resolves.toMatchObject({
       status: 404,
     });
+  });
+
+  it("does not cache non-public item state responses", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const disabled = item({
+      id: "disabled",
+      slug: "disabled-a1b2c3d4",
+      objectKey: "objects/disabled/index.html",
+      status: "disabled",
+    });
+    await repo.createItem({ item: disabled });
+    await storage.putObject(
+      disabled.objectKey,
+      new ArrayBuffer(1),
+      HTML_CONTENT_TYPE,
+    );
+
+    const response = await handle(
+      new Request("https://public.test/p/disabled-a1b2c3d4"),
+      env,
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   });
 
   it("returns 404 for malformed encoded slugs", async () => {
@@ -446,5 +518,43 @@ describe("public routes", () => {
     ).resolves.toMatchObject({
       status: 410,
     });
+  });
+});
+
+describe("access counter", () => {
+  it("batches public access counts until flushed", async () => {
+    resetAccessCounterForTests(new Date("2026-07-05T00:00:00.000Z").getTime());
+    const { env, repo, service } = await createFixture();
+    await repo.createItem({ item: item({ id: "a", slug: "a-a1b2c3d4" }) });
+
+    recordPublicAccess(
+      service,
+      {
+        ...env,
+        ACCESS_COUNT_MODE: "windowed",
+        ACCESS_COUNT_FLUSH_SECONDS: "300",
+      },
+      undefined,
+      "a",
+      "a-a1b2c3d4",
+      new Date("2026-07-05T00:01:00.000Z"),
+    );
+    recordPublicAccess(
+      service,
+      {
+        ...env,
+        ACCESS_COUNT_MODE: "windowed",
+        ACCESS_COUNT_FLUSH_SECONDS: "300",
+      },
+      undefined,
+      "a",
+      "a-a1b2c3d4",
+      new Date("2026-07-05T00:02:00.000Z"),
+    );
+
+    expect((await repo.getItemById("a"))?.accessCount).toBe(0);
+    await flushAccessCounts(service);
+    expect((await repo.getItemById("a"))?.accessCount).toBe(2);
+    expect(repo.accessWrites).toBe(1);
   });
 });

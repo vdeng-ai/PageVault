@@ -4,6 +4,7 @@ import type { Context, Hono } from "hono";
 import { z } from "zod";
 import type { HonoRuntime, ServiceFactory } from "../bindings.js";
 import { requireAdmin, requireAdminWrite } from "../middleware/admin-auth.js";
+import { purgePublicHtmlCache } from "../public-cache.js";
 
 const isoDate = z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Invalid ISO date");
 
@@ -59,6 +60,24 @@ function itemDto(api: HtmlBedService, item: HtmlItem) {
     publicUrl: api.publicUrl(item.slug),
     derivedStatus: getDerivedStatus(item)
   };
+}
+
+async function existingItemSlugs(api: HtmlBedService, ids: string[]): Promise<string[]> {
+  const slugs = new Set<string>();
+  for (const id of ids) {
+    try {
+      slugs.add((await api.getItem(id)).slug);
+    } catch {
+      // Keep mutations best-effort for batch requests. The service reports per-id failures.
+    }
+  }
+  return Array.from(slugs);
+}
+
+function purgeSlugs(c: Context<HonoRuntime>, slugs: string[]): void {
+  for (const slug of slugs) {
+    purgePublicHtmlCache(c.env, c.executionCtx, slug);
+  }
 }
 
 function listInput(c: Context<HonoRuntime>): ListItemsInput {
@@ -155,11 +174,16 @@ export function registerAdminRoutes(app: Hono<HonoRuntime>, createService: Servi
     if (parsed.data.status !== undefined) patch.status = parsed.data.status;
     if (parsed.data.urlExpiresAt !== undefined) patch.urlExpiresAt = parsed.data.urlExpiresAt;
     if (parsed.data.fileExpiresAt !== undefined) patch.fileExpiresAt = parsed.data.fileExpiresAt;
-    return c.json(itemDto(api, await api.updateItem(c.req.param("id"), patch)));
+    const updated = await api.updateItem(c.req.param("id"), patch);
+    purgeSlugs(c, [updated.slug]);
+    return c.json(itemDto(api, updated));
   });
 
   app.delete("/api/admin/items/:id", requireAdminWrite, async (c) => {
-    await service(c, createService).deleteItem(c.req.param("id"));
+    const api = service(c, createService);
+    const item = await api.getItem(c.req.param("id"));
+    await api.deleteItem(item.id);
+    purgeSlugs(c, [item.slug]);
     return c.json({ ok: true });
   });
 
@@ -168,18 +192,22 @@ export function registerAdminRoutes(app: Hono<HonoRuntime>, createService: Servi
     if (!parsed.success) {
       return c.json({ error: "Invalid batch request" }, 400);
     }
-    return c.json(
-      await service(c, createService).batchUpdate({
+    const api = service(c, createService);
+    const slugs = await existingItemSlugs(api, parsed.data.ids);
+    const result = await api.batchUpdate({
         ids: parsed.data.ids,
         action: parsed.data.action,
         ...(parsed.data.days === undefined ? {} : { days: parsed.data.days }),
         ...(parsed.data.urlExpiresAt === undefined ? {} : { urlExpiresAt: parsed.data.urlExpiresAt }),
         ...(parsed.data.fileExpiresAt === undefined ? {} : { fileExpiresAt: parsed.data.fileExpiresAt })
-      })
-    );
+      });
+    purgeSlugs(c, slugs);
+    return c.json(result);
   });
 
   app.post("/api/admin/gc", requireAdminWrite, async (c) => {
-    return c.json(await service(c, createService).garbageCollectExpiredFiles());
+    const result = await service(c, createService).garbageCollectExpiredFiles();
+    purgeSlugs(c, result.deletedSlugs);
+    return c.json(result);
   });
 }
