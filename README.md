@@ -144,7 +144,50 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    - Confirm public roots, admin paths on the public hostname, and API paths on the public hostname are not exposed.
    - Use `pnpm wrangler tail` if you need live Worker logs while testing.
 
-This repository currently does not include a GitHub Actions workflow for automatic Cloudflare deployment. If you add CI/CD later, the repository-level secrets normally needed by Wrangler are `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Runtime values should be provided as Cloudflare secrets through an ignored `.env.production` or an equivalent CI-generated secrets file, not GitHub-tracked files.
+The repository includes `.github/workflows/deploy.yml` for automatic Cloudflare deployment. It runs on pushes to `main` and can also be started manually through `workflow_dispatch`. The workflow installs dependencies, runs type checks and tests, builds the admin SPA and Worker, writes an ignored `apps/worker/.env.production` file from GitHub Secrets, then runs `wrangler deploy --keep-vars --secrets-file .env.production`.
+
+Configure these GitHub Secrets in a protected `production` environment before enabling automatic deploys:
+
+1. On GitHub, open the repository, then open **Settings -> Environments -> New environment**.
+2. Name the environment `production`, then click **Configure environment**. The name must match the workflow's `environment: production` setting.
+3. Under **Deployment branches and tags**, choose **Selected branches and tags**, add a branch rule for `main`, and save it.
+4. Optionally enable **Required reviewers** so production deploys must be approved before the job can access environment secrets.
+5. Under **Environment secrets**, click **Add secret** and add each name below. Use secrets, not variables, because the workflow reads them through the `secrets.*` context.
+
+If your GitHub plan or repository type does not show environments, use **Settings -> Secrets and variables -> Actions -> Repository secrets** as a fallback. The workflow can read repository secrets with the same names, but those secrets will not have environment approval protection.
+
+Create the two Cloudflare credential values before adding the GitHub secrets.
+
+`CLOUDFLARE_ACCOUNT_ID` is the Cloudflare account ID that owns the Worker, R2 bucket, and D1 database. You can find it in any of these places:
+
+- URL: after signing in to the Cloudflare dashboard, look at the browser address bar. The account ID is usually the long alphanumeric segment immediately after `dash.cloudflare.com/`, for example `https://dash.cloudflare.com/1234567890abcdef1234567890abcdef/...`.
+- Workers & Pages: open **Workers & Pages**, then copy **Account ID** from the **Account details** area.
+- Site overview: open a Cloudflare-managed site, go to **Overview**, find the **API** section, and copy **Account ID**.
+
+`CLOUDFLARE_API_TOKEN` is a token you create for CI deployment:
+
+1. In the Cloudflare dashboard, select your profile avatar, then open **My Profile -> API Tokens**.
+2. Select **Create Token**.
+3. Use the **Edit Cloudflare Workers** template if it is available, or choose **Create Custom Token** and grant only the permissions needed to deploy Workers for this account.
+4. Scope the token to the Cloudflare account used by this deployment.
+5. Select **Continue to summary**, review the permissions, then select **Create Token**.
+6. Copy the generated token immediately. Cloudflare only shows it once. Store it as the GitHub Secret `CLOUDFLARE_API_TOKEN` or in a password manager; do not commit it.
+
+```text
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
+APP_ENV
+PUBLIC_BASE_URL
+ADMIN_BASE_URL
+DEFAULT_URL_EXPIRE_DAYS
+DEFAULT_FILE_EXPIRE_DAYS
+MAX_UPLOAD_SIZE_MB
+ADMIN_EMAIL
+ADMIN_PASSWORD_HASH
+SESSION_SECRET
+```
+
+The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply htmlbed-db --remote` before or alongside the deploy you intend to release.
 
 ### Common Cloudflare Questions
 

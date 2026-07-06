@@ -144,7 +144,50 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
    - 确认公开根路径、公开主机名上的管理路径、公开主机名上的 API 路径没有被暴露。
    - 测试时如需查看实时 Worker 日志，可使用 `pnpm wrangler tail`。
 
-仓库当前没有包含用于自动部署 Cloudflare 的 GitHub Actions workflow。如果后续添加 CI/CD，Wrangler 通常需要的仓库级 secrets 是 `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。运行时值应通过被忽略的 `.env.production` 或等价的 CI 生成 secrets file 提供给 Cloudflare secrets，不应写入 GitHub 跟踪的文件。
+仓库包含 `.github/workflows/deploy.yml`，用于自动部署到 Cloudflare。它会在推送到 `main` 时运行，也可以通过 `workflow_dispatch` 手动触发。workflow 会安装依赖、执行类型检查和测试、构建管理端 SPA 和 Worker、从 GitHub Secrets 写入被忽略的 `apps/worker/.env.production`，然后执行 `wrangler deploy --keep-vars --secrets-file .env.production`。
+
+启用自动部署前，建议在受保护的 `production` environment 中配置这些 GitHub Secrets：
+
+1. 在 GitHub 打开这个仓库，进入 **Settings -> Environments -> New environment**。
+2. environment 名称填写 `production`，然后点击 **Configure environment**。名称必须和 workflow 里的 `environment: production` 完全一致。
+3. 在 **Deployment branches and tags** 中选择 **Selected branches and tags**，添加 `main` 分支规则并保存。
+4. 可选：启用 **Required reviewers**，这样生产部署需要审核通过后，job 才能读取 environment secrets 并继续执行。
+5. 在 **Environment secrets** 中点击 **Add secret**，逐个添加下面这些名称。这里要添加到 Secrets，不是 Variables，因为 workflow 用的是 `secrets.*` 读取。
+
+如果你的 GitHub 套餐或仓库类型看不到 Environments，可以退回到 **Settings -> Secrets and variables -> Actions -> Repository secrets**，添加同名 repository secrets。workflow 也能读取这些 secrets，但不会有 environment 审核保护。
+
+先在 Cloudflare 中准备这两个凭据值，再回到 GitHub 添加 secrets。
+
+`CLOUDFLARE_ACCOUNT_ID` 是拥有这个 Worker、R2 bucket 和 D1 数据库的 Cloudflare account ID。可以用下面任意一种方式获取：
+
+- 通过 URL：登录 Cloudflare dashboard 后，看浏览器地址栏。account ID 通常就是 `dash.cloudflare.com/` 后面那串很长的字母数字字符串，例如 `https://dash.cloudflare.com/1234567890abcdef1234567890abcdef/...`。
+- 通过 Workers & Pages：进入 **Workers & Pages**，在 **Account details** 区域复制 **Account ID**。
+- 通过域名概览页：打开任意已接入 Cloudflare 的站点，进入 **Overview**，找到 **API** 模块，复制其中的 **Account ID**。
+
+`CLOUDFLARE_API_TOKEN` 是用于 CI 部署的 API token，需要手动生成：
+
+1. 在 Cloudflare dashboard 点击右上角头像，进入 **My Profile -> API Tokens**。
+2. 点击 **Create Token**。
+3. 如果有 **Edit Cloudflare Workers** 模板，优先使用这个模板；也可以选择 **Create Custom Token**，只授予部署本 account 下 Workers 所需的最小权限。
+4. 将 token 的资源范围限制到本项目部署使用的 Cloudflare account。
+5. 点击 **Continue to summary**，确认权限后点击 **Create Token**。
+6. 立即复制生成的 token。Cloudflare 只会显示这一次。把它保存为 GitHub Secret `CLOUDFLARE_API_TOKEN` 或放进密码管理器，不要提交到仓库。
+
+```text
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
+APP_ENV
+PUBLIC_BASE_URL
+ADMIN_BASE_URL
+DEFAULT_URL_EXPIRE_DAYS
+DEFAULT_FILE_EXPIRE_DAYS
+MAX_UPLOAD_SIZE_MB
+ADMIN_EMAIL
+ADMIN_PASSWORD_HASH
+SESSION_SECRET
+```
+
+部署 workflow 不会自动执行 D1 migrations。schema migrations 发生变化时，请在发布前或发布时显式执行 `pnpm wrangler d1 migrations apply htmlbed-db --remote`。
 
 ### Cloudflare 常见问题
 

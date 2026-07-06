@@ -1,0 +1,104 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: htmlbed-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Cloudflare Worker
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Activate pnpm
+        run: corepack prepare pnpm@10.15.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Write production secrets file
+        working-directory: apps/worker
+        env:
+          APP_ENV: ${{ secrets.APP_ENV }}
+          PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL }}
+          ADMIN_BASE_URL: ${{ secrets.ADMIN_BASE_URL }}
+          DEFAULT_URL_EXPIRE_DAYS: ${{ secrets.DEFAULT_URL_EXPIRE_DAYS }}
+          DEFAULT_FILE_EXPIRE_DAYS: ${{ secrets.DEFAULT_FILE_EXPIRE_DAYS }}
+          MAX_UPLOAD_SIZE_MB: ${{ secrets.MAX_UPLOAD_SIZE_MB }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+        run: |
+          set -eu
+
+          required_vars="
+          APP_ENV
+          PUBLIC_BASE_URL
+          ADMIN_BASE_URL
+          DEFAULT_URL_EXPIRE_DAYS
+          DEFAULT_FILE_EXPIRE_DAYS
+          MAX_UPLOAD_SIZE_MB
+          ADMIN_EMAIL
+          ADMIN_PASSWORD_HASH
+          SESSION_SECRET
+          "
+
+          for name in $required_vars; do
+            if [ -z "${!name}" ]; then
+              printf 'Missing GitHub secret: %s\n' "$name" >&2
+              exit 1
+            fi
+          done
+
+          {
+            printf 'APP_ENV=%s\n' "$APP_ENV"
+            printf 'PUBLIC_BASE_URL=%s\n' "$PUBLIC_BASE_URL"
+            printf 'ADMIN_BASE_URL=%s\n' "$ADMIN_BASE_URL"
+            printf 'DEFAULT_URL_EXPIRE_DAYS=%s\n' "$DEFAULT_URL_EXPIRE_DAYS"
+            printf 'DEFAULT_FILE_EXPIRE_DAYS=%s\n' "$DEFAULT_FILE_EXPIRE_DAYS"
+            printf 'MAX_UPLOAD_SIZE_MB=%s\n' "$MAX_UPLOAD_SIZE_MB"
+            printf 'ADMIN_EMAIL=%s\n' "$ADMIN_EMAIL"
+            printf 'ADMIN_PASSWORD_HASH=%s\n' "$ADMIN_PASSWORD_HASH"
+            printf 'SESSION_SECRET=%s\n' "$SESSION_SECRET"
+          } > .env.production
+
+          chmod 600 .env.production
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: pnpm
+          workingDirectory: apps/worker
+          command: deploy --keep-vars --secrets-file .env.production
