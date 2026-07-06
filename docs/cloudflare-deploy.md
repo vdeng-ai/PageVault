@@ -133,4 +133,6 @@ HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and t
 
 ## CI/CD
 
-This repository currently does not include a GitHub Actions workflow for automatic Cloudflare deployment. If you add one later, Wrangler commonly needs repository-level `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets. Runtime values should be provided as Cloudflare secrets through an ignored `.env.production` or an equivalent CI-generated secrets file.
+This repository includes `.github/workflows/deploy.yml` for automatic Cloudflare deployment. It runs on pushes to `main` and through `workflow_dispatch`, installs the root `packageManager` version with Corepack, runs checks and builds, writes `apps/worker/.env.production` from GitHub Secrets, then deploys with `wrangler deploy --keep-vars --secrets-file .env.production`.
+
+The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply htmlbed-db --remote` before or alongside the deploy you intend to release.
