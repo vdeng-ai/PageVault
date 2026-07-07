@@ -1,14 +1,15 @@
 import { Ban, Clock3, Eye, EyeOff, RefreshCcw, Trash2 } from "lucide-react";
 import type { BatchAction } from "../api/client.js";
+import { useSettings } from "../settings.js";
 
-const actions: Array<{ action: BatchAction; label: string; icon: typeof Clock3; days?: number }> = [
-  { action: "extend_url", label: "URL +7d", icon: Clock3, days: 7 },
-  { action: "extend_url", label: "URL +30d", icon: Clock3, days: 30 },
-  { action: "extend_file", label: "File +180d", icon: RefreshCcw, days: 180 },
-  { action: "set_public", label: "Public", icon: Eye },
-  { action: "set_private", label: "Private", icon: EyeOff },
-  { action: "disable", label: "Disable", icon: Ban },
-  { action: "delete", label: "Delete", icon: Trash2 }
+const actions: Array<{ action: BatchAction; icon: typeof Clock3; labelKey: "url" | "file" | "public" | "private" | "disable" | "delete"; days?: number }> = [
+  { action: "extend_url", labelKey: "url", icon: Clock3, days: 7 },
+  { action: "extend_url", labelKey: "url", icon: Clock3, days: 30 },
+  { action: "extend_file", labelKey: "file", icon: RefreshCcw, days: 180 },
+  { action: "set_public", labelKey: "public", icon: Eye },
+  { action: "set_private", labelKey: "private", icon: EyeOff },
+  { action: "disable", labelKey: "disable", icon: Ban },
+  { action: "delete", labelKey: "delete", icon: Trash2 }
 ];
 
 export function BatchToolbar({
@@ -20,9 +21,30 @@ export function BatchToolbar({
   busy: boolean;
   onAction: (action: BatchAction, days?: number) => void;
 }) {
+  const { t } = useSettings();
+
+  function actionLabel(item: (typeof actions)[number]): string {
+    if (item.labelKey === "url" && item.days !== undefined) {
+      return t("batch.urlPlusDays", { days: item.days });
+    }
+    if (item.labelKey === "file" && item.days !== undefined) {
+      return t("batch.filePlusDays", { days: item.days });
+    }
+    if (item.labelKey === "public") {
+      return t("common.public");
+    }
+    if (item.labelKey === "private") {
+      return t("common.private");
+    }
+    if (item.labelKey === "disable") {
+      return t("table.disable");
+    }
+    return t("common.delete");
+  }
+
   return (
     <div className="surface flex flex-wrap items-center gap-2 p-2">
-      <div className="mr-2 min-w-20 rounded-md bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">{selectedCount} selected</div>
+      <div className="chip mr-2 min-w-20 rounded-md px-3 py-2 text-sm font-semibold">{t("batch.selected", { count: selectedCount })}</div>
       {actions.map((item) => {
         const Icon = item.icon;
         const buttonClass = item.action === "delete" ? "btn btn-danger btn-sm" : "btn btn-secondary btn-sm";
@@ -35,7 +57,7 @@ export function BatchToolbar({
             onClick={() => onAction(item.action, item.days)}
           >
             <Icon className="h-4 w-4" aria-hidden />
-            {item.label}
+            {actionLabel(item)}
           </button>
         );
       })}

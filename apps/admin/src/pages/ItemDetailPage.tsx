@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { deleteItem, getItem, updateItem, type HtmlItem, type Visibility } from "../api/client.js";
 import { ExpiryEditor } from "../components/ExpiryEditor.js";
 import { StatusBadge } from "../components/StatusBadge.js";
+import { useSettings } from "../settings.js";
 
 export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void }) {
+  const { t } = useSettings();
   const [item, setItem] = useState<HtmlItem | null>(null);
   const [title, setTitle] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("public");
@@ -22,17 +24,17 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
         setUrlExpiresAt(nextItem.urlExpiresAt);
         setFileExpiresAt(nextItem.fileExpiresAt);
       })
-      .catch((nextError: unknown) => setError(nextError instanceof Error ? nextError.message : "Load failed"));
-  }, [id]);
+      .catch((nextError: unknown) => setError(nextError instanceof Error ? nextError.message : t("common.loadFailed")));
+  }, [id, t]);
 
   if (!item) {
     return (
       <section className="page-stack">
         <button className="btn btn-secondary btn-sm w-fit" type="button" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          Back
+          {t("common.back")}
         </button>
-        <div className="surface p-5 text-sm text-slate-500">{error ?? "Loading"}</div>
+        <div className="surface p-5 text-sm text-muted">{error ?? t("app.loading")}</div>
       </section>
     );
   }
@@ -43,12 +45,12 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
         <div>
           <button className="btn btn-secondary btn-sm mb-3" type="button" onClick={onBack}>
             <ArrowLeft className="h-4 w-4" aria-hidden />
-            Back
+            {t("common.back")}
           </button>
           <h2 className="page-title">{item.title}</h2>
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={item.derivedStatus} />
-            <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-600">{item.slug}</span>
+            <span className="chip rounded-md px-2 py-1 font-mono text-xs">{item.slug}</span>
           </div>
         </div>
         <a
@@ -58,14 +60,14 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
           rel="noreferrer"
         >
           <ExternalLink className="h-4 w-4" aria-hidden />
-          Preview
+          {t("common.preview")}
         </a>
       </div>
 
       <div className="surface p-5">
         <div className="grid gap-4">
           <label className="field-label">
-            Title
+            {t("common.title")}
             <input
               className="control px-3"
               value={title}
@@ -73,14 +75,14 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
             />
           </label>
           <label className="field-label sm:max-w-xs">
-            Visibility
+            {t("common.visibility")}
             <select
               className="control px-3"
               value={visibility}
               onChange={(event) => setVisibility(event.target.value as Visibility)}
             >
-              <option value="public">Public</option>
-              <option value="private">Private</option>
+              <option value="public">{t("common.public")}</option>
+              <option value="private">{t("common.private")}</option>
             </select>
           </label>
           <ExpiryEditor
@@ -100,12 +102,12 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
                 setError(null);
                 void updateItem(item.id, { title, visibility, urlExpiresAt, fileExpiresAt })
                   .then((nextItem) => setItem(nextItem))
-                  .catch((nextError: unknown) => setError(nextError instanceof Error ? nextError.message : "Save failed"))
+                  .catch((nextError: unknown) => setError(nextError instanceof Error ? nextError.message : t("common.saveFailed")))
                   .finally(() => setBusy(false));
               }}
             >
               <Save className="h-4 w-4" aria-hidden />
-              Save
+              {t("common.save")}
             </button>
             <button
               className="btn btn-danger"
@@ -115,24 +117,24 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
                 setBusy(true);
                 void deleteItem(item.id)
                   .then(onBack)
-                  .catch((nextError: unknown) => setError(nextError instanceof Error ? nextError.message : "Delete failed"))
+                  .catch((nextError: unknown) => setError(nextError instanceof Error ? nextError.message : t("common.deleteFailed")))
                   .finally(() => setBusy(false));
               }}
             >
               <Trash2 className="h-4 w-4" aria-hidden />
-              Delete
+              {t("common.delete")}
             </button>
           </div>
         </div>
       </div>
       <dl className="surface grid gap-3 p-5 text-sm sm:grid-cols-2">
         <div>
-          <dt className="font-semibold text-slate-500">SHA-256</dt>
-          <dd className="break-all font-mono text-slate-800">{item.sha256}</dd>
+          <dt className="font-semibold text-muted">{t("detail.sha256")}</dt>
+          <dd className="break-all font-mono text-secondary">{item.sha256}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-slate-500">Object key</dt>
-          <dd className="break-all font-mono text-slate-800">{item.objectKey}</dd>
+          <dt className="font-semibold text-muted">{t("detail.objectKey")}</dt>
+          <dd className="break-all font-mono text-secondary">{item.objectKey}</dd>
         </div>
       </dl>
     </section>

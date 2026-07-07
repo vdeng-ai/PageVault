@@ -1,5 +1,6 @@
 import { FileUp } from "lucide-react";
 import { useRef, useState } from "react";
+import { useSettings } from "../settings.js";
 
 export function UploadDropzone({
   file,
@@ -8,13 +9,14 @@ export function UploadDropzone({
   file: File | null;
   onFile: (file: File) => void;
 }) {
+  const { t } = useSettings();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
   return (
     <div
-      className={`flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-5 py-8 text-center transition ${
-        dragging ? "border-teal-500 bg-teal-50" : "border-slate-300 bg-slate-50"
+      className={`dropzone flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-5 py-8 text-center transition ${
+        dragging ? "dropzone-active" : ""
       }`}
       role="button"
       tabIndex={0}
@@ -38,16 +40,16 @@ export function UploadDropzone({
         }
       }}
     >
-      <div className="mb-3 grid h-11 w-11 place-items-center rounded-md bg-white text-teal-700 ring-1 ring-slate-200">
+      <div className="dropzone-icon mb-3 grid h-11 w-11 place-items-center rounded-md ring-1">
         <FileUp className="h-6 w-6" aria-hidden />
       </div>
-      <div className="max-w-full truncate text-sm font-semibold text-slate-950">
-        {file ? file.name : "File"}
+      <div className="max-w-full truncate text-sm font-semibold text-primary">
+        {file ? file.name : t("upload.file")}
       </div>
-      <div className="mt-1 text-xs font-medium text-slate-500">
+      <div className="mt-1 text-xs font-medium text-muted">
         {file
           ? `${(file.size / 1024).toFixed(1)} KB`
-          : ".html / .htm / .md / .jpg / .png / .webp"}
+          : t("upload.acceptedTypes")}
       </div>
       <input
         ref={inputRef}

@@ -1,0 +1,265 @@
+export type Language = "en" | "zh-CN";
+
+export type MessageArgs = Record<string, number | string>;
+
+type Message = string | ((args: MessageArgs) => string);
+
+const en = {
+  "app.loading": "Loading",
+  "app.primaryNavigation": "Primary navigation",
+  "app.signOut": "Sign out",
+
+  "settings.language": "Language",
+  "settings.theme": "Theme",
+  "settings.english": "EN",
+  "settings.chinese": "中文",
+  "settings.system": "System",
+  "settings.light": "Light",
+  "settings.dark": "Dark",
+
+  "nav.dashboard": "Dashboard",
+  "nav.upload": "Upload",
+  "nav.files": "Files",
+
+  "common.back": "Back",
+  "common.preview": "Preview",
+  "common.save": "Save",
+  "common.delete": "Delete",
+  "common.refresh": "Refresh",
+  "common.search": "Search",
+  "common.previous": "Previous",
+  "common.next": "Next",
+  "common.title": "Title",
+  "common.visibility": "Visibility",
+  "common.public": "Public",
+  "common.private": "Private",
+  "common.urlExpiry": "URL expiry",
+  "common.fileExpiry": "File expiry",
+  "common.loadFailed": "Load failed",
+  "common.loginFailed": "Login failed",
+  "common.batchFailed": "Batch failed",
+  "common.saveFailed": "Save failed",
+  "common.deleteFailed": "Delete failed",
+  "common.uploadFailed": "Upload failed",
+
+  "login.admin": "Admin",
+  "login.email": "Email",
+  "login.password": "Password",
+  "login.signIn": "Sign in",
+
+  "status.active": "Active",
+  "status.private": "Private",
+  "status.disabled": "Disabled",
+  "status.deleted": "Deleted",
+  "status.urlExpired": "URL expired",
+  "status.fileExpired": "File expired",
+
+  "dashboard.title": "Dashboard",
+  "dashboard.chartAria": "Library distribution chart",
+  "dashboard.allRecords": "All records",
+  "dashboard.totalFiles": "Total files",
+  "dashboard.totalFilesDetail": "Live files in service",
+  "dashboard.publicFiles": "Public files",
+  "dashboard.publicFilesDetail": ({ percent }) => `${percent}% of live files`,
+  "dashboard.urlExpired": "URL expired",
+  "dashboard.urlExpiredDetail": ({ percent }) => `${percent}% need URL review`,
+  "dashboard.deletingSoon": "Deleting soon",
+  "dashboard.deletingSoonDetail": "File retention ends in 7 days",
+  "dashboard.deleted": "Deleted",
+  "dashboard.deletedDetail": ({ percent }) => `${percent}% of all records`,
+  "dashboard.distributionTitle": "Library distribution",
+  "dashboard.distributionSubtitle": "Public, restricted, and deleted records",
+  "dashboard.needAttention": ({ count }) => `${count} need attention`,
+  "dashboard.public": "Public",
+  "dashboard.notPublic": "Not public",
+  "dashboard.distributionPublicDetail": ({ percent }) => `${percent}% of all records`,
+  "dashboard.distributionNotPublicDetail": ({ percent }) => `${percent}% private or restricted`,
+  "dashboard.distributionDeletedDetail": ({ percent }) => `${percent}% removed`,
+  "dashboard.noRecords": "Upload files to populate the dashboard charts.",
+  "dashboard.signalsTitle": "Operational signals",
+  "dashboard.signalsSubtitle": "Current exposure and retention workload",
+  "dashboard.publicAccess": "Public access",
+  "dashboard.publicAccessDetail": "Shareable live files",
+  "dashboard.notPublicSignalDetail": "Private or disabled live files",
+  "dashboard.urlExpiredSignalDetail": "Live files with expired links",
+  "dashboard.deletingSoonSignalDetail": "Retention ends in 7 days",
+  "dashboard.deletedSignalDetail": "Removed records",
+
+  "files.title": "Files",
+  "files.pageSummary": ({ page }) => `Page ${page}`,
+  "files.recordSummary": ({ total }) => `${total} records`,
+  "files.allStatus": "All status",
+  "files.allVisibility": "All visibility",
+  "files.pagination": ({ page, totalPages }) => `${page} / ${totalPages}`,
+
+  "table.selectAll": "Select all",
+  "table.selectItem": ({ title }) => `Select ${title}`,
+  "table.actions": "Actions",
+  "table.originalFile": "Original file",
+  "table.publicUrl": "Public URL",
+  "table.status": "Status",
+  "table.size": "Size",
+  "table.access": "Access",
+  "table.created": "Created",
+  "table.copyUrl": "Copy URL",
+  "table.openPreview": "Open preview",
+  "table.edit": "Edit",
+  "table.setPrivate": "Set private",
+  "table.setPublic": "Set public",
+  "table.restore": "Restore",
+  "table.disable": "Disable",
+
+  "batch.selected": ({ count }) => `${count} selected`,
+  "batch.urlPlusDays": ({ days }) => `URL +${days}d`,
+  "batch.filePlusDays": ({ days }) => `File +${days}d`,
+
+  "upload.title": "Upload",
+  "upload.subtitle": "Ready for a new object",
+  "upload.file": "File",
+  "upload.acceptedTypes": ".html / .htm / .md / .jpg / .png / .webp",
+  "upload.urlDays": "URL days",
+  "upload.fileDays": "File days",
+  "upload.copyUrl": "Copy URL",
+
+  "detail.objectKey": "Object key",
+  "detail.sha256": "SHA-256"
+} satisfies Record<string, Message>;
+
+type TranslationKey = keyof typeof en;
+
+const zh = {
+  "app.loading": "加载中",
+  "app.primaryNavigation": "主导航",
+  "app.signOut": "退出登录",
+
+  "settings.language": "语言",
+  "settings.theme": "风格",
+  "settings.english": "EN",
+  "settings.chinese": "中文",
+  "settings.system": "跟随系统",
+  "settings.light": "白天",
+  "settings.dark": "夜晚",
+
+  "nav.dashboard": "仪表盘",
+  "nav.upload": "上传",
+  "nav.files": "文件",
+
+  "common.back": "返回",
+  "common.preview": "预览",
+  "common.save": "保存",
+  "common.delete": "删除",
+  "common.refresh": "刷新",
+  "common.search": "搜索",
+  "common.previous": "上一页",
+  "common.next": "下一页",
+  "common.title": "标题",
+  "common.visibility": "可见性",
+  "common.public": "公开",
+  "common.private": "私有",
+  "common.urlExpiry": "URL 过期时间",
+  "common.fileExpiry": "文件过期时间",
+  "common.loadFailed": "加载失败",
+  "common.loginFailed": "登录失败",
+  "common.batchFailed": "批量操作失败",
+  "common.saveFailed": "保存失败",
+  "common.deleteFailed": "删除失败",
+  "common.uploadFailed": "上传失败",
+
+  "login.admin": "管理后台",
+  "login.email": "邮箱",
+  "login.password": "密码",
+  "login.signIn": "登录",
+
+  "status.active": "可用",
+  "status.private": "私有",
+  "status.disabled": "已停用",
+  "status.deleted": "已删除",
+  "status.urlExpired": "URL 已过期",
+  "status.fileExpired": "文件已过期",
+
+  "dashboard.title": "仪表盘",
+  "dashboard.chartAria": "资源分布图",
+  "dashboard.allRecords": "全部记录",
+  "dashboard.totalFiles": "文件总数",
+  "dashboard.totalFilesDetail": "当前可用文件",
+  "dashboard.publicFiles": "公开文件",
+  "dashboard.publicFilesDetail": ({ percent }) => `占可用文件 ${percent}%`,
+  "dashboard.urlExpired": "URL 已过期",
+  "dashboard.urlExpiredDetail": ({ percent }) => `${percent}% 需要检查 URL`,
+  "dashboard.deletingSoon": "即将删除",
+  "dashboard.deletingSoonDetail": "文件保留期将在 7 天内结束",
+  "dashboard.deleted": "已删除",
+  "dashboard.deletedDetail": ({ percent }) => `占全部记录 ${percent}%`,
+  "dashboard.distributionTitle": "资源分布",
+  "dashboard.distributionSubtitle": "公开、受限和已删除记录",
+  "dashboard.needAttention": ({ count }) => `${count} 项需要关注`,
+  "dashboard.public": "公开",
+  "dashboard.notPublic": "非公开",
+  "dashboard.distributionPublicDetail": ({ percent }) => `占全部记录 ${percent}%`,
+  "dashboard.distributionNotPublicDetail": ({ percent }) => `${percent}% 为私有或受限`,
+  "dashboard.distributionDeletedDetail": ({ percent }) => `${percent}% 已移除`,
+  "dashboard.noRecords": "上传文件后，仪表盘图表会显示数据。",
+  "dashboard.signalsTitle": "运行信号",
+  "dashboard.signalsSubtitle": "当前暴露面和保留期工作量",
+  "dashboard.publicAccess": "公开访问",
+  "dashboard.publicAccessDetail": "可分享的在线文件",
+  "dashboard.notPublicSignalDetail": "私有或停用的在线文件",
+  "dashboard.urlExpiredSignalDetail": "链接已过期的在线文件",
+  "dashboard.deletingSoonSignalDetail": "保留期将在 7 天内结束",
+  "dashboard.deletedSignalDetail": "已移除记录",
+
+  "files.title": "文件",
+  "files.pageSummary": ({ page }) => `第 ${page} 页`,
+  "files.recordSummary": ({ total }) => `${total} 条记录`,
+  "files.allStatus": "全部状态",
+  "files.allVisibility": "全部可见性",
+  "files.pagination": ({ page, totalPages }) => `${page} / ${totalPages}`,
+
+  "table.selectAll": "全选",
+  "table.selectItem": ({ title }) => `选择 ${title}`,
+  "table.actions": "操作",
+  "table.originalFile": "原始文件",
+  "table.publicUrl": "公开 URL",
+  "table.status": "状态",
+  "table.size": "大小",
+  "table.access": "访问次数",
+  "table.created": "创建时间",
+  "table.copyUrl": "复制 URL",
+  "table.openPreview": "打开预览",
+  "table.edit": "编辑",
+  "table.setPrivate": "设为私有",
+  "table.setPublic": "设为公开",
+  "table.restore": "恢复",
+  "table.disable": "停用",
+
+  "batch.selected": ({ count }) => `已选择 ${count} 项`,
+  "batch.urlPlusDays": ({ days }) => `URL +${days} 天`,
+  "batch.filePlusDays": ({ days }) => `文件 +${days} 天`,
+
+  "upload.title": "上传",
+  "upload.subtitle": "准备创建新对象",
+  "upload.file": "文件",
+  "upload.acceptedTypes": ".html / .htm / .md / .jpg / .png / .webp",
+  "upload.urlDays": "URL 天数",
+  "upload.fileDays": "文件天数",
+  "upload.copyUrl": "复制 URL",
+
+  "detail.objectKey": "对象键",
+  "detail.sha256": "SHA-256"
+} satisfies Record<TranslationKey, Message>;
+
+const dictionaries: Record<Language, Record<TranslationKey, Message>> = {
+  en,
+  "zh-CN": zh
+};
+
+export type { TranslationKey };
+
+export function languageLocale(language: Language): string {
+  return language === "zh-CN" ? "zh-CN" : "en-US";
+}
+
+export function translate(language: Language, key: TranslationKey, args: MessageArgs = {}): string {
+  const message = dictionaries[language][key];
+  return typeof message === "function" ? message(args) : message;
+}

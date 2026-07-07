@@ -1,8 +1,10 @@
 import { LockKeyhole } from "lucide-react";
 import { useState } from "react";
 import { login } from "../api/client.js";
+import { useSettings } from "../settings.js";
 
 export function LoginPage({ onLogin }: { onLogin: () => void }) {
+  const { t } = useSettings();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,22 +21,22 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
           void login(email, password)
             .then(onLogin)
             .catch((nextError: unknown) => {
-              setError(nextError instanceof Error ? nextError.message : "Login failed");
+              setError(nextError instanceof Error ? nextError.message : t("common.loginFailed"));
             })
             .finally(() => setBusy(false));
         }}
       >
         <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-md bg-teal-700 text-white shadow-sm">
+          <div className="brand-mark grid h-10 w-10 place-items-center rounded-md shadow-sm">
             <LockKeyhole className="h-5 w-5" aria-hidden />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-950">PageVault</h1>
-            <p className="text-sm font-medium text-slate-500">Admin</p>
+            <h1 className="text-xl font-semibold text-primary">PageVault</h1>
+            <p className="text-sm font-medium text-muted">{t("login.admin")}</p>
           </div>
         </div>
         <label className="field-label mb-3">
-          Email
+          {t("login.email")}
           <input
             className="control px-3"
             type="email"
@@ -44,7 +46,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
           />
         </label>
         <label className="field-label mb-4">
-          Password
+          {t("login.password")}
           <input
             className="control px-3"
             type="password"
@@ -59,7 +61,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
           type="submit"
           disabled={busy}
         >
-          Sign in
+          {t("login.signIn")}
         </button>
       </form>
     </main>

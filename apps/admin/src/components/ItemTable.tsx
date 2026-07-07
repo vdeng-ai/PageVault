@@ -9,26 +9,28 @@ import {
   Trash2,
 } from "lucide-react";
 import type { HtmlItem } from "../api/client.js";
+import { useSettings } from "../settings.js";
 import { StatusBadge } from "./StatusBadge.js";
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, locale: string): string {
   if (!value) {
     return "-";
   }
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
 }
 
-function formatSize(bytes: number): string {
+function formatSize(bytes: number, locale: string): string {
+  const numberFormatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   if (bytes < 1024) {
-    return `${bytes} B`;
+    return `${numberFormatter.format(bytes)} B`;
   }
   if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${numberFormatter.format(bytes / 1024)} KB`;
   }
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  return `${numberFormatter.format(bytes / 1024 / 1024)} MB`;
 }
 
 export function ItemTable({
@@ -54,41 +56,43 @@ export function ItemTable({
   onRestore: (item: HtmlItem) => void;
   onDelete: (item: HtmlItem) => void;
 }) {
+  const { locale, t } = useSettings();
+  const numberFormatter = new Intl.NumberFormat(locale);
   const allSelected =
     items.length > 0 && items.every((item) => selectedIds.has(item.id));
 
   return (
     <div className="surface overflow-x-auto">
       <table className="min-w-[1180px] text-left text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+        <thead className="table-head border-b text-xs uppercase">
           <tr>
             <th className="w-10 px-3 py-3">
               <input
-                aria-label="Select all"
+                aria-label={t("table.selectAll")}
                 className="accent-teal-700"
                 type="checkbox"
                 checked={allSelected}
                 onChange={(event) => onSelectAll(event.target.checked)}
               />
             </th>
-            <th className="w-64 px-3 py-3">Actions</th>
-            <th className="px-3 py-3">Title</th>
-            <th className="px-3 py-3">Original file</th>
-            <th className="w-56 px-3 py-3">Public URL</th>
-            <th className="px-3 py-3">Status</th>
-            <th className="px-3 py-3">URL expiry</th>
-            <th className="px-3 py-3">File expiry</th>
-            <th className="px-3 py-3">Size</th>
-            <th className="px-3 py-3">Access</th>
-            <th className="px-3 py-3">Created</th>
+            <th className="w-64 px-3 py-3">{t("table.actions")}</th>
+            <th className="px-3 py-3">{t("common.title")}</th>
+            <th className="px-3 py-3">{t("table.originalFile")}</th>
+            <th className="w-56 px-3 py-3">{t("table.publicUrl")}</th>
+            <th className="px-3 py-3">{t("table.status")}</th>
+            <th className="px-3 py-3">{t("common.urlExpiry")}</th>
+            <th className="px-3 py-3">{t("common.fileExpiry")}</th>
+            <th className="px-3 py-3">{t("table.size")}</th>
+            <th className="px-3 py-3">{t("table.access")}</th>
+            <th className="px-3 py-3">{t("table.created")}</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 bg-white">
+        <tbody className="table-body divide-y">
           {items.map((item) => (
-            <tr key={item.id} className="align-top transition hover:bg-slate-50">
+            <tr key={item.id} className="table-row align-top transition">
               <td className="px-3 py-3">
                 <input
-                  aria-label={`Select ${item.title}`}
+                  aria-label={t("table.selectItem", { title: item.title })}
                   className="accent-teal-700"
                   type="checkbox"
                   checked={selectedIds.has(item.id)}
@@ -99,7 +103,7 @@ export function ItemTable({
                 <div className="flex items-center gap-1">
                   <button
                     className="icon-button"
-                    title="Copy URL"
+                    title={t("table.copyUrl")}
                     type="button"
                     onClick={() => onCopy(item.publicUrl)}
                   >
@@ -107,7 +111,7 @@ export function ItemTable({
                   </button>
                   <a
                     className="icon-button"
-                    title="Open preview"
+                    title={t("table.openPreview")}
                     href={item.publicUrl}
                     target="_blank"
                     rel="noreferrer"
@@ -116,7 +120,7 @@ export function ItemTable({
                   </a>
                   <button
                     className="icon-button"
-                    title="Edit"
+                    title={t("table.edit")}
                     type="button"
                     onClick={() => onEdit(item.id)}
                   >
@@ -126,8 +130,8 @@ export function ItemTable({
                     className="icon-button"
                     title={
                       item.visibility === "public"
-                        ? "Set private"
-                        : "Set public"
+                        ? t("table.setPrivate")
+                        : t("table.setPublic")
                     }
                     type="button"
                     onClick={() => onVisibility(item)}
@@ -141,7 +145,7 @@ export function ItemTable({
                   {item.status === "disabled" ? (
                     <button
                       className="icon-button"
-                      title="Restore"
+                      title={t("table.restore")}
                       type="button"
                       onClick={() => onRestore(item)}
                     >
@@ -150,7 +154,7 @@ export function ItemTable({
                   ) : (
                     <button
                       className="icon-button"
-                      title="Disable"
+                      title={t("table.disable")}
                       type="button"
                       onClick={() => onDisable(item)}
                     >
@@ -158,8 +162,8 @@ export function ItemTable({
                     </button>
                   )}
                   <button
-                    className="icon-button text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-                    title="Delete"
+                    className="icon-button icon-button-danger"
+                    title={t("common.delete")}
                     type="button"
                     onClick={() => onDelete(item)}
                   >
@@ -167,38 +171,38 @@ export function ItemTable({
                   </button>
                 </div>
               </td>
-              <td className="max-w-48 px-3 py-3 font-semibold text-slate-950">
+              <td className="max-w-48 px-3 py-3 font-semibold text-primary">
                 <button
-                  className="text-left hover:text-teal-700"
+                  className="link-button text-left"
                   type="button"
                   onClick={() => onEdit(item.id)}
                 >
                   {item.title}
                 </button>
               </td>
-              <td className="max-w-52 px-3 py-3 text-slate-600">
+              <td className="max-w-52 px-3 py-3 text-secondary">
                 {item.originalFilename}
               </td>
               <td className="w-56 max-w-56 px-3 py-3">
-                <div className="whitespace-normal break-all rounded-md bg-slate-50 px-2 py-1 font-mono text-xs leading-5 text-slate-600">
+                <div className="inline-code whitespace-normal break-all rounded-md px-2 py-1 font-mono text-xs leading-5">
                   {item.publicUrl}
                 </div>
               </td>
               <td className="px-3 py-3">
                 <StatusBadge status={item.derivedStatus} />
               </td>
-              <td className="px-3 py-3 text-slate-600">
-                {formatDate(item.urlExpiresAt)}
+              <td className="px-3 py-3 text-secondary">
+                {formatDate(item.urlExpiresAt, locale)}
               </td>
-              <td className="px-3 py-3 text-slate-600">
-                {formatDate(item.fileExpiresAt)}
+              <td className="px-3 py-3 text-secondary">
+                {formatDate(item.fileExpiresAt, locale)}
               </td>
-              <td className="px-3 py-3 text-slate-600">
-                {formatSize(item.sizeBytes)}
+              <td className="px-3 py-3 text-secondary">
+                {formatSize(item.sizeBytes, locale)}
               </td>
-              <td className="px-3 py-3 text-slate-600">{item.accessCount}</td>
-              <td className="px-3 py-3 text-slate-600">
-                {formatDate(item.createdAt)}
+              <td className="px-3 py-3 text-secondary">{numberFormatter.format(item.accessCount)}</td>
+              <td className="px-3 py-3 text-secondary">
+                {formatDate(item.createdAt, locale)}
               </td>
             </tr>
           ))}

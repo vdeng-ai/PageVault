@@ -2,8 +2,10 @@ import { Check, Clipboard, Upload } from "lucide-react";
 import { useState } from "react";
 import { uploadHtml, type Visibility } from "../api/client.js";
 import { UploadDropzone } from "../components/UploadDropzone.js";
+import { useSettings } from "../settings.js";
 
 export function UploadPage() {
+  const { t } = useSettings();
   const [file, setFile] = useState<File | null>(null);
   const [urlExpireDays, setUrlExpireDays] = useState(7);
   const [fileExpireDays, setFileExpireDays] = useState(180);
@@ -17,15 +19,15 @@ export function UploadPage() {
     <section className="page-stack max-w-3xl">
       <div className="page-header">
         <div>
-          <h2 className="page-title">Upload</h2>
-          <p className="page-subtitle">Ready for a new object</p>
+          <h2 className="page-title">{t("upload.title")}</h2>
+          <p className="page-subtitle">{t("upload.subtitle")}</p>
         </div>
       </div>
       <div className="surface p-5">
         <UploadDropzone file={file} onFile={setFile} />
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <label className="field-label">
-            URL days
+            {t("upload.urlDays")}
             <input
               className="control px-3"
               type="number"
@@ -37,7 +39,7 @@ export function UploadPage() {
             />
           </label>
           <label className="field-label">
-            File days
+            {t("upload.fileDays")}
             <input
               className="control px-3"
               type="number"
@@ -49,7 +51,7 @@ export function UploadPage() {
             />
           </label>
           <label className="field-label">
-            Visibility
+            {t("common.visibility")}
             <select
               className="control px-3"
               value={visibility}
@@ -57,8 +59,8 @@ export function UploadPage() {
                 setVisibility(event.target.value as Visibility)
               }
             >
-              <option value="public">Public</option>
-              <option value="private">Private</option>
+              <option value="public">{t("common.public")}</option>
+              <option value="private">{t("common.private")}</option>
             </select>
           </label>
         </div>
@@ -90,14 +92,14 @@ export function UploadPage() {
                   setError(
                     nextError instanceof Error
                       ? nextError.message
-                      : "Upload failed",
+                      : t("common.uploadFailed"),
                   ),
                 )
                 .finally(() => setBusy(false));
             }}
           >
             <Upload className="h-4 w-4" aria-hidden />
-            Upload
+            {t("upload.title")}
           </button>
           {result && (
             <button
@@ -115,12 +117,12 @@ export function UploadPage() {
               ) : (
                 <Clipboard className="h-4 w-4" aria-hidden />
               )}
-              Copy URL
+              {t("upload.copyUrl")}
             </button>
           )}
         </div>
         {result && (
-          <div className="mt-4 break-all rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 font-mono text-sm text-emerald-800">
+          <div className="success-output mt-4 break-all rounded-md border px-3 py-2 font-mono text-sm">
             {result}
           </div>
         )}

@@ -1,3 +1,5 @@
+import { useSettings } from "../settings.js";
+
 function toLocalDateTime(value: string): string {
   const date = new Date(value);
   const offsetMs = date.getTimezoneOffset() * 60 * 1000;
@@ -19,10 +21,12 @@ export function ExpiryEditor({
   onUrlChange: (value: string) => void;
   onFileChange: (value: string) => void;
 }) {
+  const { t } = useSettings();
+
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <label className="field-label">
-        URL expiry
+        {t("common.urlExpiry")}
         <input
           className="control px-3"
           type="datetime-local"
@@ -31,7 +35,7 @@ export function ExpiryEditor({
         />
       </label>
       <label className="field-label">
-        File expiry
+        {t("common.fileExpiry")}
         <input
           className="control px-3"
           type="datetime-local"

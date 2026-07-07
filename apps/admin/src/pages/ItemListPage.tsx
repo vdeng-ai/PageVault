@@ -10,6 +10,7 @@ import {
 } from "../api/client.js";
 import { BatchToolbar } from "../components/BatchToolbar.js";
 import { ItemTable } from "../components/ItemTable.js";
+import { useSettings } from "../settings.js";
 
 const SEARCH_DEBOUNCE_MS = 400;
 
@@ -18,6 +19,7 @@ function isAbortError(error: unknown): boolean {
 }
 
 export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
+  const { t } = useSettings();
   const [items, setItems] = useState<HtmlItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
@@ -54,7 +56,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
             return;
           }
           setError(
-            nextError instanceof Error ? nextError.message : "Load failed",
+            nextError instanceof Error ? nextError.message : t("common.loadFailed"),
           );
         })
         .finally(() => {
@@ -63,7 +65,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
           }
         });
     },
-    [page, q, status, visibility],
+    [page, q, status, t, visibility],
   );
 
   useEffect(() => {
@@ -81,7 +83,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
 
   const totalPages =
     total === null ? null : Math.max(1, Math.ceil(total / pageSize));
-  const recordSummary = total === null ? `Page ${page}` : `${total} records`;
+  const recordSummary = total === null ? t("files.pageSummary", { page }) : t("files.recordSummary", { total });
 
   function selectedArray(): string[] {
     return Array.from(selectedIds);
@@ -98,7 +100,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
       .then(() => load())
       .catch((nextError: unknown) => {
         setError(
-          nextError instanceof Error ? nextError.message : "Batch failed",
+          nextError instanceof Error ? nextError.message : t("common.batchFailed"),
         );
         setBusy(false);
       });
@@ -108,7 +110,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
     <section className="page-stack">
       <div className="page-header">
         <div>
-          <h2 className="page-title">Files</h2>
+          <h2 className="page-title">{t("files.title")}</h2>
           <p className="page-subtitle">{recordSummary}</p>
         </div>
         <button
@@ -117,20 +119,20 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
           onClick={() => load()}
         >
           <RefreshCcw className="h-4 w-4" aria-hidden />
-          Refresh
+          {t("common.refresh")}
         </button>
       </div>
 
       <div className="surface flex flex-wrap gap-3 p-3">
         <label className="relative min-w-64 flex-1">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle"
             aria-hidden
           />
           <input
             className="control w-full pl-9 pr-3"
             value={q}
-            placeholder="Search"
+            placeholder={t("common.search")}
             onChange={(event) => {
               setPage(1);
               setQ(event.target.value);
@@ -145,13 +147,13 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
             setStatus(event.target.value);
           }}
         >
-          <option value="">All status</option>
-          <option value="active">Active</option>
-          <option value="private">Private</option>
-          <option value="disabled">Disabled</option>
-          <option value="url_expired">URL expired</option>
-          <option value="file_expired">File expired</option>
-          <option value="deleted">Deleted</option>
+          <option value="">{t("files.allStatus")}</option>
+          <option value="active">{t("status.active")}</option>
+          <option value="private">{t("status.private")}</option>
+          <option value="disabled">{t("status.disabled")}</option>
+          <option value="url_expired">{t("status.urlExpired")}</option>
+          <option value="file_expired">{t("status.fileExpired")}</option>
+          <option value="deleted">{t("status.deleted")}</option>
         </select>
         <select
           className="control min-w-40 px-3"
@@ -161,9 +163,9 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
             setVisibility(event.target.value);
           }}
         >
-          <option value="">All visibility</option>
-          <option value="public">Public</option>
-          <option value="private">Private</option>
+          <option value="">{t("files.allVisibility")}</option>
+          <option value="public">{t("common.public")}</option>
+          <option value="private">{t("common.private")}</option>
         </select>
       </div>
 
@@ -213,17 +215,17 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
           void deleteItem(item.id).then(() => load());
         }}
       />
-      <div className="flex items-center justify-between text-sm text-slate-600">
+      <div className="flex items-center justify-between text-sm text-secondary">
         <button
           className="btn btn-secondary btn-sm disabled:opacity-40"
           type="button"
           disabled={page <= 1}
           onClick={() => setPage((value) => Math.max(1, value - 1))}
         >
-          Previous
+          {t("common.previous")}
         </button>
         <span className="font-medium">
-          {totalPages === null ? `Page ${page}` : `${page} / ${totalPages}`}
+          {totalPages === null ? t("files.pageSummary", { page }) : t("files.pagination", { page, totalPages })}
         </span>
         <button
           className="btn btn-secondary btn-sm disabled:opacity-40"
@@ -231,7 +233,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
           disabled={!hasNextPage}
           onClick={() => setPage((value) => value + 1)}
         >
-          Next
+          {t("common.next")}
         </button>
       </div>
     </section>

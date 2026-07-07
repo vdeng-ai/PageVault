@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { dashboard, type DashboardStats } from "../api/client.js";
+import { useSettings } from "../settings.js";
 
 const emptyStats: DashboardStats = {
   total: 0,
@@ -17,10 +18,8 @@ const emptyStats: DashboardStats = {
   deleted: 0,
 };
 
-const numberFormatter = new Intl.NumberFormat();
-
-function formatNumber(value: number): string {
-  return numberFormatter.format(value);
+function formatNumber(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale).format(value);
 }
 
 function percent(value: number, total: number): number {
@@ -44,9 +43,15 @@ type Segment = {
 function DonutChart({
   segments,
   total,
+  totalLabel,
+  ariaLabel,
+  locale,
 }: {
   segments: Segment[];
   total: number;
+  totalLabel: string;
+  ariaLabel: string;
+  locale: string;
 }) {
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
@@ -58,14 +63,14 @@ function DonutChart({
         className="h-full w-full -rotate-90"
         viewBox="0 0 120 120"
         role="img"
-        aria-label="Library distribution chart"
+        aria-label={ariaLabel}
       >
         <circle
           cx="60"
           cy="60"
           r={radius}
           fill="none"
-          stroke="#e5eaf0"
+          stroke="var(--chart-track)"
           strokeWidth="14"
         />
         {total > 0 &&
@@ -93,11 +98,11 @@ function DonutChart({
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center">
         <div>
-          <div className="text-3xl font-semibold tracking-normal text-slate-950">
-            {formatNumber(total)}
+          <div className="text-3xl font-semibold tracking-normal text-primary">
+            {formatNumber(total, locale)}
           </div>
-          <div className="mt-1 text-xs font-semibold uppercase tracking-normal text-slate-500">
-            All records
+          <div className="mt-1 text-xs font-semibold uppercase tracking-normal text-muted">
+            {totalLabel}
           </div>
         </div>
       </div>
@@ -109,9 +114,9 @@ function MetricSkeleton() {
   return (
     <div className="surface p-4">
       <div className="animate-pulse">
-        <div className="mb-4 h-10 w-10 rounded-md bg-slate-200" />
-        <div className="h-8 w-20 rounded bg-slate-200" />
-        <div className="mt-3 h-4 w-28 rounded bg-slate-100" />
+        <div className="skeleton mb-4 h-10 w-10 rounded-md" />
+        <div className="skeleton h-8 w-20 rounded" />
+        <div className="skeleton-muted mt-3 h-4 w-28 rounded" />
       </div>
     </div>
   );
@@ -123,18 +128,18 @@ function ChartListSkeleton({ rows }: { rows: number }) {
       {Array.from({ length: rows }, (_, index) => (
         <div
           key={index}
-          className="rounded-lg border border-slate-200 bg-white p-3"
+          className="panel-row rounded-lg border p-3"
         >
           <div className="animate-pulse">
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-1 items-center gap-3">
-                <div className="h-3 w-3 rounded-sm bg-slate-200" />
+                <div className="skeleton h-3 w-3 rounded-sm" />
                 <div className="grid flex-1 gap-2">
-                  <div className="h-4 w-28 rounded bg-slate-200" />
-                  <div className="h-3 w-36 rounded bg-slate-100" />
+                  <div className="skeleton h-4 w-28 rounded" />
+                  <div className="skeleton-muted h-3 w-36 rounded" />
                 </div>
               </div>
-              <div className="h-6 w-12 rounded bg-slate-200" />
+              <div className="skeleton h-6 w-12 rounded" />
             </div>
           </div>
         </div>
@@ -150,13 +155,13 @@ function SignalSkeleton() {
         <div key={index} className="animate-pulse">
           <div className="mb-2 flex items-end justify-between gap-3">
             <div className="grid flex-1 gap-2">
-              <div className="h-4 w-28 rounded bg-slate-200" />
-              <div className="h-3 w-40 rounded bg-slate-100" />
+              <div className="skeleton h-4 w-28 rounded" />
+              <div className="skeleton-muted h-3 w-40 rounded" />
             </div>
-            <div className="h-4 w-14 rounded bg-slate-200" />
+            <div className="skeleton h-4 w-14 rounded" />
           </div>
-          <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full w-1/3 rounded-full bg-slate-200" />
+          <div className="progress-track h-3 overflow-hidden rounded-full">
+            <div className="skeleton h-full w-1/3 rounded-full" />
           </div>
         </div>
       ))}
@@ -165,6 +170,7 @@ function SignalSkeleton() {
 }
 
 export function DashboardPage() {
+  const { locale, t } = useSettings();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,10 +179,10 @@ export function DashboardPage() {
       .then(setStats)
       .catch((nextError: unknown) =>
         setError(
-          nextError instanceof Error ? nextError.message : "Load failed",
+          nextError instanceof Error ? nextError.message : t("common.loadFailed"),
         ),
       );
-  }, []);
+  }, [t]);
 
   const data = stats ?? emptyStats;
   const isLoading = stats === null && error === null;
@@ -186,98 +192,103 @@ export function DashboardPage() {
 
   const metrics = [
     {
-      label: "Total files",
+      label: t("dashboard.totalFiles"),
       value: data.total,
-      detail: "Live files in service",
+      detail: t("dashboard.totalFilesDetail"),
       icon: FileText,
-      style: "bg-teal-50 text-teal-700 ring-teal-100",
+      style: "metric-accent-teal",
+      percentTotal: data.total,
     },
     {
-      label: "Public files",
+      label: t("dashboard.publicFiles"),
       value: data.publicCount,
-      detail: `${percent(data.publicCount, data.total)}% of live files`,
+      detail: t("dashboard.publicFilesDetail", { percent: percent(data.publicCount, data.total) }),
       icon: Globe2,
-      style: "bg-sky-50 text-sky-700 ring-sky-100",
+      style: "metric-accent-sky",
+      percentTotal: data.total,
     },
     {
-      label: "URL expired",
+      label: t("dashboard.urlExpired"),
       value: data.urlExpired,
-      detail: `${percent(data.urlExpired, data.total)}% need URL review`,
+      detail: t("dashboard.urlExpiredDetail", { percent: percent(data.urlExpired, data.total) }),
       icon: Eye,
-      style: "bg-indigo-50 text-indigo-700 ring-indigo-100",
+      style: "metric-accent-indigo",
+      percentTotal: data.total,
     },
     {
-      label: "Deleting soon",
+      label: t("dashboard.deletingSoon"),
       value: data.fileDeletingSoon,
-      detail: "File retention ends in 7 days",
+      detail: t("dashboard.deletingSoonDetail"),
       icon: FileClock,
-      style: "bg-amber-50 text-amber-700 ring-amber-100",
+      style: "metric-accent-amber",
+      percentTotal: data.total,
     },
     {
-      label: "Deleted",
+      label: t("dashboard.deleted"),
       value: data.deleted,
-      detail: `${percent(data.deleted, allRecords)}% of all records`,
+      detail: t("dashboard.deletedDetail", { percent: percent(data.deleted, allRecords) }),
       icon: Trash2,
-      style: "bg-rose-50 text-rose-700 ring-rose-100",
+      style: "metric-accent-rose",
+      percentTotal: allRecords,
     },
   ];
 
   const distribution = [
     {
-      label: "Public",
+      label: t("dashboard.public"),
       value: data.publicCount,
       color: "#0284c7",
-      description: `${percent(data.publicCount, allRecords)}% of all records`,
+      description: t("dashboard.distributionPublicDetail", { percent: percent(data.publicCount, allRecords) }),
     },
     {
-      label: "Not public",
+      label: t("dashboard.notPublic"),
       value: privateCount,
       color: "#0f766e",
-      description: `${percent(privateCount, allRecords)}% private or restricted`,
+      description: t("dashboard.distributionNotPublicDetail", { percent: percent(privateCount, allRecords) }),
     },
     {
-      label: "Deleted",
+      label: t("dashboard.deleted"),
       value: data.deleted,
       color: "#e11d48",
-      description: `${percent(data.deleted, allRecords)}% removed`,
+      description: t("dashboard.distributionDeletedDetail", { percent: percent(data.deleted, allRecords) }),
     },
   ];
 
   const signals = [
     {
-      label: "Public access",
+      label: t("dashboard.publicAccess"),
       value: data.publicCount,
       total: data.total,
       color: "#0284c7",
-      description: "Shareable live files",
+      description: t("dashboard.publicAccessDetail"),
     },
     {
-      label: "Not public",
+      label: t("dashboard.notPublic"),
       value: privateCount,
       total: data.total,
       color: "#0f766e",
-      description: "Private or disabled live files",
+      description: t("dashboard.notPublicSignalDetail"),
     },
     {
-      label: "URL expired",
+      label: t("dashboard.urlExpired"),
       value: data.urlExpired,
       total: data.total,
       color: "#4f46e5",
-      description: "Live files with expired links",
+      description: t("dashboard.urlExpiredSignalDetail"),
     },
     {
-      label: "Deleting soon",
+      label: t("dashboard.deletingSoon"),
       value: data.fileDeletingSoon,
       total: data.total,
       color: "#d97706",
-      description: "Retention ends in 7 days",
+      description: t("dashboard.deletingSoonSignalDetail"),
     },
     {
-      label: "Deleted",
+      label: t("dashboard.deleted"),
       value: data.deleted,
       total: allRecords,
       color: "#e11d48",
-      description: "Removed records",
+      description: t("dashboard.deletedSignalDetail"),
     },
   ];
 
@@ -285,9 +296,9 @@ export function DashboardPage() {
     <section className="page-stack">
       <div className="page-header">
         <div>
-          <h2 className="page-title">Dashboard</h2>
+          <h2 className="page-title">{t("dashboard.title")}</h2>
           <p className="page-subtitle">
-            {new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(
+            {new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(
               new Date(),
             )}
           </p>
@@ -310,25 +321,20 @@ export function DashboardPage() {
                     >
                       <Icon className="h-5 w-5" aria-hidden />
                     </div>
-                    <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                    <span className="chip rounded-md px-2 py-1 text-xs font-semibold">
                       {metric.value === 0
                         ? "0%"
-                        : percent(
-                            metric.value,
-                            metric.label === "Deleted"
-                              ? allRecords
-                              : data.total,
-                          )}
+                        : percent(metric.value, metric.percentTotal)}
                       %
                     </span>
                   </div>
-                  <div className="mt-5 text-3xl font-semibold tracking-normal text-slate-950">
-                    {formatNumber(metric.value)}
+                  <div className="mt-5 text-3xl font-semibold tracking-normal text-primary">
+                    {formatNumber(metric.value, locale)}
                   </div>
-                  <div className="mt-1 text-sm font-semibold text-slate-700">
+                  <div className="mt-1 text-sm font-semibold text-secondary">
                     {metric.label}
                   </div>
-                  <div className="mt-2 min-h-5 text-sm text-slate-500">
+                  <div className="mt-2 min-h-5 text-sm text-muted">
                     {metric.detail}
                   </div>
                 </div>
@@ -340,27 +346,33 @@ export function DashboardPage() {
         <div className="surface p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="m-0 text-lg font-semibold tracking-normal text-slate-950">
-                Library distribution
+              <h3 className="m-0 text-lg font-semibold tracking-normal text-primary">
+                {t("dashboard.distributionTitle")}
               </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Public, restricted, and deleted records
+              <p className="mt-1 text-sm text-muted">
+                {t("dashboard.distributionSubtitle")}
               </p>
             </div>
             {isLoading ? (
-              <div className="h-9 w-36 animate-pulse rounded-md bg-slate-100" />
+              <div className="skeleton-muted h-9 w-36 animate-pulse rounded-md" />
             ) : (
-              <div className="rounded-md bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800 ring-1 ring-teal-100">
-                {formatNumber(attentionCount)} need attention
+              <div className="attention-chip rounded-md px-3 py-2 text-sm font-semibold ring-1">
+                {t("dashboard.needAttention", { count: formatNumber(attentionCount, locale) })}
               </div>
             )}
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-center">
             {isLoading ? (
-              <div className="mx-auto h-56 w-56 animate-pulse rounded-full bg-slate-100" />
+              <div className="skeleton-muted mx-auto h-56 w-56 animate-pulse rounded-full" />
             ) : (
-              <DonutChart segments={distribution} total={allRecords} />
+              <DonutChart
+                segments={distribution}
+                total={allRecords}
+                totalLabel={t("dashboard.allRecords")}
+                ariaLabel={t("dashboard.chartAria")}
+                locale={locale}
+              />
             )}
 
             {isLoading ? (
@@ -370,7 +382,7 @@ export function DashboardPage() {
                 {distribution.map((segment) => (
                   <div
                     key={segment.label}
-                    className="rounded-lg border border-slate-200 bg-white p-3"
+                    className="panel-row rounded-lg border p-3"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
@@ -379,23 +391,23 @@ export function DashboardPage() {
                           style={{ backgroundColor: segment.color }}
                         />
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-slate-800">
+                          <div className="truncate text-sm font-semibold text-secondary">
                             {segment.label}
                           </div>
-                          <div className="mt-0.5 text-xs text-slate-500">
+                          <div className="mt-0.5 text-xs text-muted">
                             {segment.description}
                           </div>
                         </div>
                       </div>
-                      <div className="text-right text-lg font-semibold tracking-normal text-slate-950">
-                        {formatNumber(segment.value)}
+                      <div className="text-right text-lg font-semibold tracking-normal text-primary">
+                        {formatNumber(segment.value, locale)}
                       </div>
                     </div>
                   </div>
                 ))}
                 {allRecords === 0 && (
-                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm font-medium text-slate-500">
-                    Upload files to populate the dashboard charts.
+                  <div className="empty-state rounded-lg border border-dashed p-4 text-sm font-medium">
+                    {t("dashboard.noRecords")}
                   </div>
                 )}
               </div>
@@ -406,14 +418,14 @@ export function DashboardPage() {
         <div className="surface p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="m-0 text-lg font-semibold tracking-normal text-slate-950">
-                Operational signals
+              <h3 className="m-0 text-lg font-semibold tracking-normal text-primary">
+                {t("dashboard.signalsTitle")}
               </h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Current exposure and retention workload
+              <p className="mt-1 text-sm text-muted">
+                {t("dashboard.signalsSubtitle")}
               </p>
             </div>
-            <div className="grid h-10 w-10 place-items-center rounded-md bg-slate-100 text-slate-600 ring-1 ring-slate-200">
+            <div className="quiet-icon grid h-10 w-10 place-items-center rounded-md ring-1">
               <LockKeyhole className="h-5 w-5" aria-hidden />
             </div>
           </div>
@@ -427,21 +439,21 @@ export function DashboardPage() {
                   <div key={signal.label}>
                     <div className="mb-2 flex items-end justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-800">
+                        <div className="truncate text-sm font-semibold text-secondary">
                           {signal.label}
                         </div>
-                        <div className="mt-0.5 text-xs text-slate-500">
+                        <div className="mt-0.5 text-xs text-muted">
                           {signal.description}
                         </div>
                       </div>
-                      <div className="text-right text-sm font-semibold text-slate-700">
-                        {formatNumber(signal.value)}
-                        <span className="ml-1 text-xs font-medium text-slate-400">
+                      <div className="text-right text-sm font-semibold text-secondary">
+                        {formatNumber(signal.value, locale)}
+                        <span className="ml-1 text-xs font-medium text-subtle">
                           ({percent(signal.value, signal.total)}%)
                         </span>
                       </div>
                     </div>
-                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                    <div className="progress-track h-3 overflow-hidden rounded-full">
                       <div
                         className="h-full rounded-full transition-[width]"
                         style={{
