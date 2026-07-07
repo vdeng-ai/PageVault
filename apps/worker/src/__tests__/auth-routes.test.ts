@@ -64,7 +64,13 @@ class MemoryRepository implements MetadataRepository {
     );
   }
   async listItems(input: ListItemsInput): Promise<ListItemsResult> {
-    return { items: [], page: input.page, pageSize: input.pageSize, total: 0 };
+    return {
+      items: [],
+      page: input.page,
+      pageSize: input.pageSize,
+      total: input.includeTotal ? 0 : null,
+      hasNextPage: false,
+    };
   }
   async getDashboardStats(
     _now: string,
@@ -218,6 +224,44 @@ describe("admin auth routes", () => {
       env,
     );
     expect(items.status).toBe(200);
+  });
+
+  it("uses lightweight list pagination unless exact totals are requested", async () => {
+    const { env, handle } = await createFixture();
+    const login = await handle(
+      new Request("https://admin.test/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "admin@example.com",
+          password: "secret",
+        }),
+      }),
+      env,
+    );
+    const cookie = login.headers.get("Set-Cookie") ?? "";
+
+    const lightweight = await handle(
+      new Request("https://admin.test/api/admin/items", {
+        headers: { Cookie: cookie },
+      }),
+      env,
+    );
+    await expect(lightweight.json()).resolves.toMatchObject({
+      total: null,
+      hasNextPage: false,
+    });
+
+    const exact = await handle(
+      new Request("https://admin.test/api/admin/items?includeTotal=true", {
+        headers: { Cookie: cookie },
+      }),
+      env,
+    );
+    await expect(exact.json()).resolves.toMatchObject({
+      total: 0,
+      hasNextPage: false,
+    });
   });
 
   it("returns 401 for incorrect credentials", async () => {

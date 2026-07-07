@@ -20,7 +20,10 @@
 
 All write requests require `X-CSRF-Token`.
 
-`GET /api/admin/items?page=1&pageSize=20&q=&status=&visibility=`
+`GET /api/admin/items?page=1&pageSize=20&q=&status=&visibility=&includeTotal=`
+
+By default the list response uses lightweight pagination and returns `total: null`
+with `hasNextPage`. Pass `includeTotal=true` when a precise `total` is needed.
 
 `POST /api/admin/items` as `multipart/form-data`:
 

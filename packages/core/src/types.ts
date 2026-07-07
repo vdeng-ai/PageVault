@@ -50,13 +50,15 @@ export interface ListItemsInput {
   status?: ItemStatus | DerivedStatus | "";
   visibility?: Visibility | "";
   includeDeleted?: boolean;
+  includeTotal?: boolean;
 }
 
 export interface ListItemsResult {
   items: HtmlItem[];
   page: number;
   pageSize: number;
-  total: number;
+  total: number | null;
+  hasNextPage: boolean;
 }
 
 export interface AuditLogInput {

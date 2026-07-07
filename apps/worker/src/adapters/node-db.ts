@@ -11,14 +11,14 @@ import type {
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
-  UpdateItemInput
+  UpdateItemInput,
 } from "@htmlbed/core";
 import {
   buildListWhere,
   insertItemSql,
   itemToRowValues,
   mapItemRow,
-  type HtmlItemRow
+  type HtmlItemRow,
 } from "./item-row.js";
 
 type BindValue = string | number | null;
@@ -35,29 +35,50 @@ interface DashboardStatsRow {
   deleted: number;
 }
 
-function stringField(row: Record<string, SQLOutputValue>, key: keyof HtmlItemRow): string {
+function stringField(
+  row: Record<string, SQLOutputValue>,
+  key: keyof HtmlItemRow,
+): string {
   const value = row[key];
   if (typeof value !== "string") {
-    throw new AppError(`Invalid SQLite row field: ${String(key)}`, 500, "invalid_sqlite_row");
+    throw new AppError(
+      `Invalid SQLite row field: ${String(key)}`,
+      500,
+      "invalid_sqlite_row",
+    );
   }
   return value;
 }
 
-function nullableStringField(row: Record<string, SQLOutputValue>, key: keyof HtmlItemRow): string | null {
+function nullableStringField(
+  row: Record<string, SQLOutputValue>,
+  key: keyof HtmlItemRow,
+): string | null {
   const value = row[key];
   if (value === null || value === undefined) {
     return null;
   }
   if (typeof value !== "string") {
-    throw new AppError(`Invalid SQLite row field: ${String(key)}`, 500, "invalid_sqlite_row");
+    throw new AppError(
+      `Invalid SQLite row field: ${String(key)}`,
+      500,
+      "invalid_sqlite_row",
+    );
   }
   return value;
 }
 
-function numberField(row: Record<string, SQLOutputValue>, key: keyof HtmlItemRow): number {
+function numberField(
+  row: Record<string, SQLOutputValue>,
+  key: keyof HtmlItemRow,
+): number {
   const value = row[key];
   if (typeof value !== "number") {
-    throw new AppError(`Invalid SQLite row field: ${String(key)}`, 500, "invalid_sqlite_row");
+    throw new AppError(
+      `Invalid SQLite row field: ${String(key)}`,
+      500,
+      "invalid_sqlite_row",
+    );
   }
   return value;
 }
@@ -72,19 +93,27 @@ function htmlItemRow(row: Record<string, SQLOutputValue>): HtmlItemRow {
     content_type: stringField(row, "content_type"),
     size_bytes: numberField(row, "size_bytes"),
     sha256: stringField(row, "sha256"),
-    visibility: stringField(row, "visibility") === "private" ? "private" : "public",
-    status: stringField(row, "status") === "deleted" ? "deleted" : stringField(row, "status") === "disabled" ? "disabled" : "active",
+    visibility:
+      stringField(row, "visibility") === "private" ? "private" : "public",
+    status:
+      stringField(row, "status") === "deleted"
+        ? "deleted"
+        : stringField(row, "status") === "disabled"
+          ? "disabled"
+          : "active",
     url_expires_at: stringField(row, "url_expires_at"),
     file_expires_at: stringField(row, "file_expires_at"),
     access_count: numberField(row, "access_count"),
     last_accessed_at: nullableStringField(row, "last_accessed_at"),
     created_at: stringField(row, "created_at"),
     updated_at: stringField(row, "updated_at"),
-    deleted_at: nullableStringField(row, "deleted_at")
+    deleted_at: nullableStringField(row, "deleted_at"),
   };
 }
 
-function countRow(row: Record<string, SQLOutputValue> | undefined): CountRow | undefined {
+function countRow(
+  row: Record<string, SQLOutputValue> | undefined,
+): CountRow | undefined {
   if (!row) {
     return undefined;
   }
@@ -92,7 +121,7 @@ function countRow(row: Record<string, SQLOutputValue> | undefined): CountRow | u
 }
 
 function dashboardStatsRow(
-  row: Record<string, SQLOutputValue> | undefined
+  row: Record<string, SQLOutputValue> | undefined,
 ): DashboardStatsRow | undefined {
   if (!row) {
     return undefined;
@@ -101,8 +130,11 @@ function dashboardStatsRow(
     total: numberField(row, "total" as keyof HtmlItemRow),
     public_count: numberField(row, "public_count" as keyof HtmlItemRow),
     url_expired: numberField(row, "url_expired" as keyof HtmlItemRow),
-    file_deleting_soon: numberField(row, "file_deleting_soon" as keyof HtmlItemRow),
-    deleted: numberField(row, "deleted" as keyof HtmlItemRow)
+    file_deleting_soon: numberField(
+      row,
+      "file_deleting_soon" as keyof HtmlItemRow,
+    ),
+    deleted: numberField(row, "deleted" as keyof HtmlItemRow),
   };
 }
 
@@ -146,20 +178,29 @@ export class NodeSqliteRepository implements MetadataRepository {
     const pageSize = Math.min(Math.max(1, input.pageSize), 100);
     const offset = (page - 1) * pageSize;
     const { whereSql, values } = buildListWhere(input);
-    const totalRow = countRow(
-      this.db
-      .prepare(`SELECT COUNT(*) AS total FROM html_items ${whereSql}`)
-        .get(...values)
-    );
+    const includeTotal = input.includeTotal === true;
+    const totalRow = includeTotal
+      ? countRow(
+          this.db
+            .prepare(`SELECT COUNT(*) AS total FROM html_items ${whereSql}`)
+            .get(...values),
+        )
+      : undefined;
     const rows = this.db
-      .prepare(`SELECT * FROM html_items ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
-      .all(...values, pageSize, offset);
+      .prepare(
+        `SELECT * FROM html_items ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      )
+      .all(...values, includeTotal ? pageSize : pageSize + 1, offset);
+    const hasNextPage = includeTotal
+      ? page * pageSize < (totalRow?.total ?? 0)
+      : rows.length > pageSize;
 
     return {
-      items: rows.map((row) => mapItemRow(htmlItemRow(row))),
+      items: rows.slice(0, pageSize).map((row) => mapItemRow(htmlItemRow(row))),
       page,
       pageSize,
-      total: totalRow?.total ?? 0
+      total: includeTotal ? (totalRow?.total ?? 0) : null,
+      hasNextPage,
     };
   }
 
@@ -175,9 +216,9 @@ export class NodeSqliteRepository implements MetadataRepository {
               COALESCE(SUM(CASE WHEN status != 'deleted' AND file_expires_at > ? AND file_expires_at <= ? THEN 1 ELSE 0 END), 0) AS file_deleting_soon,
               COALESCE(SUM(CASE WHEN status = 'deleted' THEN 1 ELSE 0 END), 0) AS deleted
             FROM html_items
-          `
+          `,
         )
-        .get(now, now, soon)
+        .get(now, now, soon),
     );
 
     return {
@@ -185,7 +226,7 @@ export class NodeSqliteRepository implements MetadataRepository {
       publicCount: row?.public_count ?? 0,
       urlExpired: row?.url_expired ?? 0,
       fileDeletingSoon: row?.file_deleting_soon ?? 0,
-      deleted: row?.deleted ?? 0
+      deleted: row?.deleted ?? 0,
     };
   }
 
@@ -200,8 +241,10 @@ export class NodeSqliteRepository implements MetadataRepository {
     if (patch.title !== undefined) append("title", patch.title);
     if (patch.visibility !== undefined) append("visibility", patch.visibility);
     if (patch.status !== undefined) append("status", patch.status);
-    if (patch.urlExpiresAt !== undefined) append("url_expires_at", patch.urlExpiresAt);
-    if (patch.fileExpiresAt !== undefined) append("file_expires_at", patch.fileExpiresAt);
+    if (patch.urlExpiresAt !== undefined)
+      append("url_expires_at", patch.urlExpiresAt);
+    if (patch.fileExpiresAt !== undefined)
+      append("file_expires_at", patch.fileExpiresAt);
     if (patch.updatedAt !== undefined) append("updated_at", patch.updatedAt);
 
     if (assignments.length > 0) {
@@ -219,7 +262,9 @@ export class NodeSqliteRepository implements MetadataRepository {
 
   async markDeleted(id: string, deletedAt: string): Promise<void> {
     this.db
-      .prepare("UPDATE html_items SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE id = ?")
+      .prepare(
+        "UPDATE html_items SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE id = ?",
+      )
       .run(deletedAt, deletedAt, id);
   }
 
@@ -232,7 +277,7 @@ export class NodeSqliteRepository implements MetadataRepository {
       return;
     }
     const statement = this.db.prepare(
-      "UPDATE html_items SET access_count = access_count + ?, last_accessed_at = ? WHERE id = ?"
+      "UPDATE html_items SET access_count = access_count + ?, last_accessed_at = ? WHERE id = ?",
     );
     this.db.exec("BEGIN IMMEDIATE TRANSACTION");
     try {
@@ -249,7 +294,7 @@ export class NodeSqliteRepository implements MetadataRepository {
   async findExpiredFiles(now: string, limit: number): Promise<HtmlItem[]> {
     const rows = this.db
       .prepare(
-        "SELECT * FROM html_items WHERE file_expires_at <= ? AND status != 'deleted' ORDER BY file_expires_at ASC LIMIT ?"
+        "SELECT * FROM html_items WHERE file_expires_at <= ? AND status != 'deleted' ORDER BY file_expires_at ASC LIMIT ?",
       )
       .all(now, limit);
     return rows.map((row) => mapItemRow(htmlItemRow(row)));
@@ -257,7 +302,15 @@ export class NodeSqliteRepository implements MetadataRepository {
 
   async writeAuditLog(input: AuditLogInput): Promise<void> {
     this.db
-      .prepare("INSERT INTO audit_logs (id, item_id, action, detail, created_at) VALUES (?, ?, ?, ?, ?)")
-      .run(input.id, input.itemId ?? null, input.action, input.detail ?? null, input.createdAt);
+      .prepare(
+        "INSERT INTO audit_logs (id, item_id, action, detail, created_at) VALUES (?, ?, ?, ?, ?)",
+      )
+      .run(
+        input.id,
+        input.itemId ?? null,
+        input.action,
+        input.detail ?? null,
+        input.createdAt,
+      );
   }
 }

@@ -20,10 +20,6 @@
       "binding": "HTML_BUCKET",
       "bucket_name": "htmlbed-files",
     },
-    {
-      "bucket_name": "htmlbed-files",
-      "binding": "htmlbed_files",
-    },
   ],
   "d1_databases": [
     {
@@ -52,7 +48,7 @@
   "observability": {
     "enabled": true,
     "logs": {
-      "head_sampling_rate": 1,
+      "head_sampling_rate": 0.1,
     },
   },
 }

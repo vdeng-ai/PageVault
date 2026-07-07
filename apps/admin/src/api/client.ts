@@ -34,7 +34,8 @@ export interface ListItemsResult {
   items: HtmlItem[];
   page: number;
   pageSize: number;
-  total: number;
+  total: number | null;
+  hasNextPage: boolean;
 }
 
 export interface DashboardStats {
@@ -68,7 +69,10 @@ async function parseResponse<T>(response: Response): Promise<T> {
   const data = (await response.json().catch(() => ({}))) as unknown;
   if (!response.ok) {
     const message =
-      typeof data === "object" && data && "error" in data && typeof data.error === "string"
+      typeof data === "object" &&
+      data &&
+      "error" in data &&
+      typeof data.error === "string"
         ? data.error
         : "Request failed";
     throw new Error(message);
@@ -86,7 +90,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   const response = await fetch(path, {
     ...init,
-    headers
+    headers,
   });
   return parseResponse<T>(response);
 }
@@ -94,7 +98,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export async function login(email: string, password: string): Promise<void> {
   await request<{ ok: boolean }>("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password }),
   });
   await me();
 }
@@ -120,6 +124,7 @@ export function listItems(params: {
   q?: string;
   status?: string;
   visibility?: string;
+  includeTotal?: boolean;
 }): Promise<ListItemsResult> {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -139,7 +144,14 @@ export function uploadHtml(input: {
   urlExpireDays: number;
   fileExpireDays: number;
   visibility: Visibility;
-}): Promise<{ id: string; title: string; slug: string; publicUrl: string; urlExpiresAt: string; fileExpiresAt: string }> {
+}): Promise<{
+  id: string;
+  title: string;
+  slug: string;
+  publicUrl: string;
+  urlExpiresAt: string;
+  fileExpiresAt: string;
+}> {
   const body = new FormData();
   body.set("file", input.file);
   body.set("urlExpireDays", String(input.urlExpireDays));
@@ -147,23 +159,28 @@ export function uploadHtml(input: {
   body.set("visibility", input.visibility);
   return request("/api/admin/items", {
     method: "POST",
-    body
+    body,
   });
 }
 
 export function updateItem(
   id: string,
-  patch: Partial<Pick<HtmlItem, "title" | "visibility" | "status" | "urlExpiresAt" | "fileExpiresAt">>
+  patch: Partial<
+    Pick<
+      HtmlItem,
+      "title" | "visibility" | "status" | "urlExpiresAt" | "fileExpiresAt"
+    >
+  >,
 ): Promise<HtmlItem> {
   return request<HtmlItem>(`/api/admin/items/${id}`, {
     method: "PATCH",
-    body: JSON.stringify(patch)
+    body: JSON.stringify(patch),
   });
 }
 
 export function deleteItem(id: string): Promise<{ ok: true }> {
   return request<{ ok: true }>(`/api/admin/items/${id}`, {
-    method: "DELETE"
+    method: "DELETE",
   });
 }
 
@@ -176,6 +193,6 @@ export function batchItems(input: {
 }): Promise<{ ok: number; failed: Array<{ id: string; error: string }> }> {
   return request("/api/admin/items/batch", {
     method: "POST",
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
   });
 }

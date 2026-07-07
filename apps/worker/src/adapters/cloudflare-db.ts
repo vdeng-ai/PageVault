@@ -7,14 +7,14 @@ import type {
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
-  UpdateItemInput
+  UpdateItemInput,
 } from "@htmlbed/core";
 import {
   buildListWhere,
   insertItemSql,
   itemToRowValues,
   mapItemRow,
-  type HtmlItemRow
+  type HtmlItemRow,
 } from "./item-row.js";
 
 type BindValue = string | number | null;
@@ -31,7 +31,10 @@ export class CloudflareD1Repository implements MetadataRepository {
   constructor(private readonly db: D1Database) {}
 
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
-    await this.db.prepare(insertItemSql).bind(...itemToRowValues(input.item)).run();
+    await this.db
+      .prepare(insertItemSql)
+      .bind(...itemToRowValues(input.item))
+      .run();
     return input.item;
   }
 
@@ -56,20 +59,29 @@ export class CloudflareD1Repository implements MetadataRepository {
     const pageSize = Math.min(Math.max(1, input.pageSize), 100);
     const offset = (page - 1) * pageSize;
     const { whereSql, values } = buildListWhere(input);
-    const countRow = await this.db
-      .prepare(`SELECT COUNT(*) AS total FROM html_items ${whereSql}`)
-      .bind(...values)
-      .first<{ total: number }>();
+    const includeTotal = input.includeTotal === true;
+    const countRow = includeTotal
+      ? await this.db
+          .prepare(`SELECT COUNT(*) AS total FROM html_items ${whereSql}`)
+          .bind(...values)
+          .first<{ total: number }>()
+      : null;
     const rows = await this.db
-      .prepare(`SELECT * FROM html_items ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
-      .bind(...values, pageSize, offset)
+      .prepare(
+        `SELECT * FROM html_items ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      )
+      .bind(...values, includeTotal ? pageSize : pageSize + 1, offset)
       .all<HtmlItemRow>();
+    const hasNextPage = includeTotal
+      ? page * pageSize < (countRow?.total ?? 0)
+      : rows.results.length > pageSize;
 
     return {
-      items: rows.results.map(mapItemRow),
+      items: rows.results.slice(0, pageSize).map(mapItemRow),
       page,
       pageSize,
-      total: countRow?.total ?? 0
+      total: includeTotal ? (countRow?.total ?? 0) : null,
+      hasNextPage,
     };
   }
 
@@ -84,7 +96,7 @@ export class CloudflareD1Repository implements MetadataRepository {
             COALESCE(SUM(CASE WHEN status != 'deleted' AND file_expires_at > ? AND file_expires_at <= ? THEN 1 ELSE 0 END), 0) AS file_deleting_soon,
             COALESCE(SUM(CASE WHEN status = 'deleted' THEN 1 ELSE 0 END), 0) AS deleted
           FROM html_items
-        `
+        `,
       )
       .bind(now, now, soon)
       .first<DashboardStatsRow>();
@@ -94,7 +106,7 @@ export class CloudflareD1Repository implements MetadataRepository {
       publicCount: row?.public_count ?? 0,
       urlExpired: row?.url_expired ?? 0,
       fileDeletingSoon: row?.file_deleting_soon ?? 0,
-      deleted: row?.deleted ?? 0
+      deleted: row?.deleted ?? 0,
     };
   }
 
@@ -109,8 +121,10 @@ export class CloudflareD1Repository implements MetadataRepository {
     if (patch.title !== undefined) append("title", patch.title);
     if (patch.visibility !== undefined) append("visibility", patch.visibility);
     if (patch.status !== undefined) append("status", patch.status);
-    if (patch.urlExpiresAt !== undefined) append("url_expires_at", patch.urlExpiresAt);
-    if (patch.fileExpiresAt !== undefined) append("file_expires_at", patch.fileExpiresAt);
+    if (patch.urlExpiresAt !== undefined)
+      append("url_expires_at", patch.urlExpiresAt);
+    if (patch.fileExpiresAt !== undefined)
+      append("file_expires_at", patch.fileExpiresAt);
     if (patch.updatedAt !== undefined) append("updated_at", patch.updatedAt);
 
     if (assignments.length === 0) {
@@ -136,7 +150,7 @@ export class CloudflareD1Repository implements MetadataRepository {
   async markDeleted(id: string, deletedAt: string): Promise<void> {
     await this.db
       .prepare(
-        "UPDATE html_items SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE id = ?"
+        "UPDATE html_items SET status = 'deleted', deleted_at = ?, updated_at = ? WHERE id = ?",
       )
       .bind(deletedAt, deletedAt, id)
       .run();
@@ -154,17 +168,17 @@ export class CloudflareD1Repository implements MetadataRepository {
       input.map((entry) =>
         this.db
           .prepare(
-            "UPDATE html_items SET access_count = access_count + ?, last_accessed_at = ? WHERE id = ?"
+            "UPDATE html_items SET access_count = access_count + ?, last_accessed_at = ? WHERE id = ?",
           )
-          .bind(entry.count, entry.accessedAt, entry.id)
-      )
+          .bind(entry.count, entry.accessedAt, entry.id),
+      ),
     );
   }
 
   async findExpiredFiles(now: string, limit: number): Promise<HtmlItem[]> {
     const rows = await this.db
       .prepare(
-        "SELECT * FROM html_items WHERE file_expires_at <= ? AND status != 'deleted' ORDER BY file_expires_at ASC LIMIT ?"
+        "SELECT * FROM html_items WHERE file_expires_at <= ? AND status != 'deleted' ORDER BY file_expires_at ASC LIMIT ?",
       )
       .bind(now, limit)
       .all<HtmlItemRow>();
@@ -174,9 +188,15 @@ export class CloudflareD1Repository implements MetadataRepository {
   async writeAuditLog(input: AuditLogInput): Promise<void> {
     await this.db
       .prepare(
-        "INSERT INTO audit_logs (id, item_id, action, detail, created_at) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO audit_logs (id, item_id, action, detail, created_at) VALUES (?, ?, ?, ?, ?)",
       )
-      .bind(input.id, input.itemId ?? null, input.action, input.detail ?? null, input.createdAt)
+      .bind(
+        input.id,
+        input.itemId ?? null,
+        input.action,
+        input.detail ?? null,
+        input.createdAt,
+      )
       .run();
   }
 }

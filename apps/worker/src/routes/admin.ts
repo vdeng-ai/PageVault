@@ -1,4 +1,10 @@
-import type { HtmlBedService, HtmlItem, ListItemsInput, UpdateItemInput, Visibility } from "@htmlbed/core";
+import type {
+  HtmlBedService,
+  HtmlItem,
+  ListItemsInput,
+  UpdateItemInput,
+  Visibility,
+} from "@htmlbed/core";
 import { getDerivedStatus } from "@htmlbed/core";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
@@ -6,14 +12,16 @@ import type { HonoRuntime, ServiceFactory } from "../bindings.js";
 import { requireAdmin, requireAdminWrite } from "../middleware/admin-auth.js";
 import { purgePublicHtmlCache } from "../public-cache.js";
 
-const isoDate = z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Invalid ISO date");
+const isoDate = z
+  .string()
+  .refine((value) => !Number.isNaN(Date.parse(value)), "Invalid ISO date");
 
 const updateSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   visibility: z.enum(["public", "private"]).optional(),
   status: z.enum(["active", "disabled"]).optional(),
   urlExpiresAt: isoDate.optional(),
-  fileExpiresAt: isoDate.optional()
+  fileExpiresAt: isoDate.optional(),
 });
 
 const batchSchema = z.object({
@@ -27,14 +35,17 @@ const batchSchema = z.object({
     "set_private",
     "disable",
     "restore",
-    "delete"
+    "delete",
   ]),
   days: z.number().positive().optional(),
   urlExpiresAt: isoDate.optional(),
-  fileExpiresAt: isoDate.optional()
+  fileExpiresAt: isoDate.optional(),
 });
 
-function service(c: Context<HonoRuntime>, createService: ServiceFactory): HtmlBedService {
+function service(
+  c: Context<HonoRuntime>,
+  createService: ServiceFactory,
+): HtmlBedService {
   return createService(c.env);
 }
 
@@ -58,11 +69,14 @@ function itemDto(api: HtmlBedService, item: HtmlItem) {
   return {
     ...item,
     publicUrl: api.publicUrl(item.slug),
-    derivedStatus: getDerivedStatus(item)
+    derivedStatus: getDerivedStatus(item),
   };
 }
 
-async function existingItemSlugs(api: HtmlBedService, ids: string[]): Promise<string[]> {
+async function existingItemSlugs(
+  api: HtmlBedService,
+  ids: string[],
+): Promise<string[]> {
   const slugs = new Set<string>();
   for (const id of ids) {
     try {
@@ -81,7 +95,10 @@ function purgeSlugs(c: Context<HonoRuntime>, slugs: string[]): void {
 }
 
 function listInput(c: Context<HonoRuntime>): ListItemsInput {
-  const status = (c.req.query("status") ?? "") as Exclude<ListItemsInput["status"], undefined>;
+  const status = (c.req.query("status") ?? "") as Exclude<
+    ListItemsInput["status"],
+    undefined
+  >;
   const visibility = (c.req.query("visibility") ?? "") as Visibility | "";
   return {
     page: numberFromQuery(c.req.query("page"), 1),
@@ -89,7 +106,8 @@ function listInput(c: Context<HonoRuntime>): ListItemsInput {
     q: c.req.query("q") ?? "",
     status,
     visibility,
-    includeDeleted: status === "deleted"
+    includeDeleted: status === "deleted",
+    includeTotal: c.req.query("includeTotal") === "true",
   };
 }
 
@@ -101,7 +119,9 @@ function formNumber(value: FormDataEntryValue | null): number | undefined {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-function formVisibility(value: FormDataEntryValue | null): Visibility | undefined {
+function formVisibility(
+  value: FormDataEntryValue | null,
+): Visibility | undefined {
   return value === "public" || value === "private" ? value : undefined;
 }
 
@@ -111,7 +131,10 @@ function maxUploadBytes(c: Context<HonoRuntime>): number {
   return mb * 1024 * 1024;
 }
 
-export function registerAdminRoutes(app: Hono<HonoRuntime>, createService: ServiceFactory): void {
+export function registerAdminRoutes(
+  app: Hono<HonoRuntime>,
+  createService: ServiceFactory,
+): void {
   app.get("/api/admin/dashboard", requireAdmin, async (c) => {
     return c.json(await service(c, createService).getDashboardStats());
   });
@@ -121,7 +144,7 @@ export function registerAdminRoutes(app: Hono<HonoRuntime>, createService: Servi
     const result = await api.listItems(listInput(c));
     return c.json({
       ...result,
-      items: result.items.map((item) => itemDto(api, item))
+      items: result.items.map((item) => itemDto(api, item)),
     });
   });
 
@@ -144,7 +167,7 @@ export function registerAdminRoutes(app: Hono<HonoRuntime>, createService: Servi
       body: await file.arrayBuffer(),
       ...(urlExpireDays === undefined ? {} : { urlExpireDays }),
       ...(fileExpireDays === undefined ? {} : { fileExpireDays }),
-      ...(nextVisibility === undefined ? {} : { visibility: nextVisibility })
+      ...(nextVisibility === undefined ? {} : { visibility: nextVisibility }),
     });
 
     return c.json({
@@ -153,7 +176,7 @@ export function registerAdminRoutes(app: Hono<HonoRuntime>, createService: Servi
       slug: result.item.slug,
       publicUrl: result.publicUrl,
       urlExpiresAt: result.item.urlExpiresAt,
-      fileExpiresAt: result.item.fileExpiresAt
+      fileExpiresAt: result.item.fileExpiresAt,
     });
   });
 
@@ -170,10 +193,13 @@ export function registerAdminRoutes(app: Hono<HonoRuntime>, createService: Servi
     const api = service(c, createService);
     const patch: UpdateItemInput = {};
     if (parsed.data.title !== undefined) patch.title = parsed.data.title;
-    if (parsed.data.visibility !== undefined) patch.visibility = parsed.data.visibility;
+    if (parsed.data.visibility !== undefined)
+      patch.visibility = parsed.data.visibility;
     if (parsed.data.status !== undefined) patch.status = parsed.data.status;
-    if (parsed.data.urlExpiresAt !== undefined) patch.urlExpiresAt = parsed.data.urlExpiresAt;
-    if (parsed.data.fileExpiresAt !== undefined) patch.fileExpiresAt = parsed.data.fileExpiresAt;
+    if (parsed.data.urlExpiresAt !== undefined)
+      patch.urlExpiresAt = parsed.data.urlExpiresAt;
+    if (parsed.data.fileExpiresAt !== undefined)
+      patch.fileExpiresAt = parsed.data.fileExpiresAt;
     const updated = await api.updateItem(c.req.param("id"), patch);
     purgeSlugs(c, [updated.slug]);
     return c.json(itemDto(api, updated));
@@ -195,12 +221,16 @@ export function registerAdminRoutes(app: Hono<HonoRuntime>, createService: Servi
     const api = service(c, createService);
     const slugs = await existingItemSlugs(api, parsed.data.ids);
     const result = await api.batchUpdate({
-        ids: parsed.data.ids,
-        action: parsed.data.action,
-        ...(parsed.data.days === undefined ? {} : { days: parsed.data.days }),
-        ...(parsed.data.urlExpiresAt === undefined ? {} : { urlExpiresAt: parsed.data.urlExpiresAt }),
-        ...(parsed.data.fileExpiresAt === undefined ? {} : { fileExpiresAt: parsed.data.fileExpiresAt })
-      });
+      ids: parsed.data.ids,
+      action: parsed.data.action,
+      ...(parsed.data.days === undefined ? {} : { days: parsed.data.days }),
+      ...(parsed.data.urlExpiresAt === undefined
+        ? {}
+        : { urlExpiresAt: parsed.data.urlExpiresAt }),
+      ...(parsed.data.fileExpiresAt === undefined
+        ? {}
+        : { fileExpiresAt: parsed.data.fileExpiresAt }),
+    });
     purgeSlugs(c, slugs);
     return c.json(result);
   });

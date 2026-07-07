@@ -64,11 +64,16 @@ class MemoryRepository implements MetadataRepository {
     const items = Array.from(this.items.values()).filter(
       (item) => input.includeDeleted || item.status !== "deleted",
     );
+    const page = Math.max(1, input.page);
+    const pageSize = Math.max(1, input.pageSize);
+    const offset = (page - 1) * pageSize;
+    const pageItems = items.slice(offset, offset + pageSize);
     return {
-      items,
-      page: input.page,
-      pageSize: input.pageSize,
-      total: items.length,
+      items: pageItems,
+      page,
+      pageSize,
+      total: input.includeTotal ? items.length : null,
+      hasNextPage: offset + pageSize < items.length,
     };
   }
 
