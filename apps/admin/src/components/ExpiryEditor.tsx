@@ -21,19 +21,19 @@ export function ExpiryEditor({
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <label className="grid gap-1 text-sm font-medium text-zinc-700">
+      <label className="field-label">
         URL expiry
         <input
-          className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="control px-3"
           type="datetime-local"
           value={toLocalDateTime(urlExpiresAt)}
           onChange={(event) => onUrlChange(fromLocalDateTime(event.target.value))}
         />
       </label>
-      <label className="grid gap-1 text-sm font-medium text-zinc-700">
+      <label className="field-label">
         File expiry
         <input
-          className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="control px-3"
           type="datetime-local"
           value={toLocalDateTime(fileExpiresAt)}
           onChange={(event) => onFileChange(fromLocalDateTime(event.target.value))}

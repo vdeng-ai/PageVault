@@ -1,4 +1,4 @@
-import { Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { deleteItem, getItem, updateItem, type HtmlItem, type Visibility } from "../api/client.js";
 import { ExpiryEditor } from "../components/ExpiryEditor.js";
@@ -27,52 +27,55 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
 
   if (!item) {
     return (
-      <section className="grid gap-4">
-        <button className="w-fit text-sm font-medium text-blue-700" type="button" onClick={onBack}>
+      <section className="page-stack">
+        <button className="btn btn-secondary btn-sm w-fit" type="button" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" aria-hidden />
           Back
         </button>
-        <div className="rounded-md bg-white p-5 text-sm text-zinc-500">{error ?? "Loading"}</div>
+        <div className="surface p-5 text-sm text-slate-500">{error ?? "Loading"}</div>
       </section>
     );
   }
 
   return (
-    <section className="grid max-w-4xl gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="page-stack max-w-4xl">
+      <div className="page-header">
         <div>
-          <button className="mb-2 text-sm font-medium text-blue-700" type="button" onClick={onBack}>
+          <button className="btn btn-secondary btn-sm mb-3" type="button" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" aria-hidden />
             Back
           </button>
-          <h2 className="text-2xl font-semibold text-zinc-950">{item.title}</h2>
+          <h2 className="page-title">{item.title}</h2>
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={item.derivedStatus} />
-            <span className="font-mono text-xs text-zinc-500">{item.slug}</span>
+            <span className="rounded-md bg-slate-100 px-2 py-1 font-mono text-xs text-slate-600">{item.slug}</span>
           </div>
         </div>
         <a
-          className="inline-flex h-10 items-center rounded-md border border-zinc-300 px-4 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+          className="btn btn-secondary"
           href={item.publicUrl}
           target="_blank"
           rel="noreferrer"
         >
+          <ExternalLink className="h-4 w-4" aria-hidden />
           Preview
         </a>
       </div>
 
-      <div className="rounded-lg border border-zinc-200 bg-white p-5">
+      <div className="surface p-5">
         <div className="grid gap-4">
-          <label className="grid gap-1 text-sm font-medium text-zinc-700">
+          <label className="field-label">
             Title
             <input
-              className="h-10 rounded-md border border-zinc-300 px-3"
+              className="control px-3"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
             />
           </label>
-          <label className="grid gap-1 text-sm font-medium text-zinc-700 sm:max-w-xs">
+          <label className="field-label sm:max-w-xs">
             Visibility
             <select
-              className="h-10 rounded-md border border-zinc-300 bg-white px-3"
+              className="control px-3"
               value={visibility}
               onChange={(event) => setVisibility(event.target.value as Visibility)}
             >
@@ -86,10 +89,10 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
             onUrlChange={setUrlExpiresAt}
             onFileChange={setFileExpiresAt}
           />
-          {error && <div className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
+          {error && <div className="alert-error">{error}</div>}
           <div className="flex flex-wrap gap-3">
             <button
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"
+              className="btn btn-primary"
               type="button"
               disabled={busy}
               onClick={() => {
@@ -105,7 +108,7 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
               Save
             </button>
             <button
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-rose-300 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+              className="btn btn-danger"
               type="button"
               disabled={busy}
               onClick={() => {
@@ -122,14 +125,14 @@ export function ItemDetailPage({ id, onBack }: { id: string; onBack: () => void 
           </div>
         </div>
       </div>
-      <dl className="grid gap-3 rounded-lg border border-zinc-200 bg-white p-5 text-sm sm:grid-cols-2">
+      <dl className="surface grid gap-3 p-5 text-sm sm:grid-cols-2">
         <div>
-          <dt className="font-medium text-zinc-500">SHA-256</dt>
-          <dd className="break-all font-mono text-zinc-800">{item.sha256}</dd>
+          <dt className="font-semibold text-slate-500">SHA-256</dt>
+          <dd className="break-all font-mono text-slate-800">{item.sha256}</dd>
         </div>
         <div>
-          <dt className="font-medium text-zinc-500">Object key</dt>
-          <dd className="break-all font-mono text-zinc-800">{item.objectKey}</dd>
+          <dt className="font-semibold text-slate-500">Object key</dt>
+          <dd className="break-all font-mono text-slate-800">{item.objectKey}</dd>
         </div>
       </dl>
     </section>

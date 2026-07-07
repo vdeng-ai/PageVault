@@ -3,6 +3,13 @@ import { useEffect, useState } from "react";
 import { dashboard, type DashboardStats } from "../api/client.js";
 
 const metricIcons = [FileText, Globe2, Eye, FileClock, Trash2];
+const metricStyles = [
+  "bg-teal-50 text-teal-700 ring-teal-100",
+  "bg-sky-50 text-sky-700 ring-sky-100",
+  "bg-indigo-50 text-indigo-700 ring-indigo-100",
+  "bg-amber-50 text-amber-700 ring-amber-100",
+  "bg-rose-50 text-rose-700 ring-rose-100"
+];
 
 export function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -23,22 +30,24 @@ export function DashboardPage() {
   ] as const;
 
   return (
-    <section className="grid gap-5">
-      <div>
-        <h2 className="text-2xl font-semibold text-zinc-950">Dashboard</h2>
-        <p className="text-sm text-zinc-500">{new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(new Date())}</p>
+    <section className="page-stack">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Dashboard</h2>
+          <p className="page-subtitle">{new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(new Date())}</p>
+        </div>
       </div>
-      {error && <div className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
+      {error && <div className="alert-error">{error}</div>}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {values.map(([label, value], index) => {
           const Icon = metricIcons[index] ?? FileText;
           return (
-            <div key={label} className="rounded-lg border border-zinc-200 bg-white p-4">
-              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-md bg-zinc-100 text-zinc-700">
+            <div key={label} className="surface p-4">
+              <div className={`mb-4 flex h-10 w-10 items-center justify-center rounded-md ring-1 ${metricStyles[index] ?? metricStyles[0]}`}>
                 <Icon className="h-5 w-5" aria-hidden />
               </div>
-              <div className="text-3xl font-semibold text-zinc-950">{value}</div>
-              <div className="mt-1 text-sm text-zinc-500">{label}</div>
+              <div className="text-3xl font-semibold tracking-normal text-slate-950">{value}</div>
+              <div className="mt-1 text-sm font-medium text-slate-500">{label}</div>
             </div>
           );
         })}

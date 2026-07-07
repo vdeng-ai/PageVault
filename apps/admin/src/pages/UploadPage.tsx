@@ -14,18 +14,20 @@ export function UploadPage() {
   const [busy, setBusy] = useState(false);
 
   return (
-    <section className="grid max-w-3xl gap-5">
-      <div>
-        <h2 className="text-2xl font-semibold text-zinc-950">Upload</h2>
-        <p className="text-sm text-zinc-500">Single file object</p>
+    <section className="page-stack max-w-3xl">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Upload</h2>
+          <p className="page-subtitle">Ready for a new object</p>
+        </div>
       </div>
-      <div className="rounded-lg border border-zinc-200 bg-white p-5">
+      <div className="surface p-5">
         <UploadDropzone file={file} onFile={setFile} />
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <label className="grid gap-1 text-sm font-medium text-zinc-700">
+          <label className="field-label">
             URL days
             <input
-              className="h-10 rounded-md border border-zinc-300 px-3"
+              className="control px-3"
               type="number"
               min={1}
               value={urlExpireDays}
@@ -34,10 +36,10 @@ export function UploadPage() {
               }
             />
           </label>
-          <label className="grid gap-1 text-sm font-medium text-zinc-700">
+          <label className="field-label">
             File days
             <input
-              className="h-10 rounded-md border border-zinc-300 px-3"
+              className="control px-3"
               type="number"
               min={1}
               value={fileExpireDays}
@@ -46,10 +48,10 @@ export function UploadPage() {
               }
             />
           </label>
-          <label className="grid gap-1 text-sm font-medium text-zinc-700">
+          <label className="field-label">
             Visibility
             <select
-              className="h-10 rounded-md border border-zinc-300 bg-white px-3"
+              className="control px-3"
               value={visibility}
               onChange={(event) =>
                 setVisibility(event.target.value as Visibility)
@@ -61,13 +63,13 @@ export function UploadPage() {
           </label>
         </div>
         {error && (
-          <div className="mt-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <div className="alert-error mt-4">
             {error}
           </div>
         )}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
-            className="inline-flex h-10 items-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"
+            className="btn btn-primary"
             type="button"
             disabled={!file || busy}
             onClick={() => {
@@ -99,7 +101,7 @@ export function UploadPage() {
           </button>
           {result && (
             <button
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-300 px-4 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+              className="btn btn-secondary"
               type="button"
               onClick={() => {
                 void navigator.clipboard.writeText(result).then(() => {
@@ -118,7 +120,7 @@ export function UploadPage() {
           )}
         </div>
         {result && (
-          <div className="mt-4 break-all rounded-md bg-emerald-50 px-3 py-2 font-mono text-sm text-emerald-800">
+          <div className="mt-4 break-all rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 font-mono text-sm text-emerald-800">
             {result}
           </div>
         )}

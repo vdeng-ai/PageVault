@@ -105,14 +105,14 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
   }
 
   return (
-    <section className="grid gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="page-stack">
+      <div className="page-header">
         <div>
-          <h2 className="text-2xl font-semibold text-zinc-950">Files</h2>
-          <p className="text-sm text-zinc-500">{recordSummary}</p>
+          <h2 className="page-title">Files</h2>
+          <p className="page-subtitle">{recordSummary}</p>
         </div>
         <button
-          className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-300 px-4 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+          className="btn btn-secondary"
           type="button"
           onClick={() => load()}
         >
@@ -121,14 +121,14 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-3 rounded-lg border border-zinc-200 bg-white p-3">
+      <div className="surface flex flex-wrap gap-3 p-3">
         <label className="relative min-w-64 flex-1">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
             aria-hidden
           />
           <input
-            className="h-10 w-full rounded-md border border-zinc-300 pl-9 pr-3 text-sm"
+            className="control w-full pl-9 pr-3"
             value={q}
             placeholder="Search"
             onChange={(event) => {
@@ -138,7 +138,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
           />
         </label>
         <select
-          className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="control min-w-40 px-3"
           value={status}
           onChange={(event) => {
             setPage(1);
@@ -154,7 +154,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
           <option value="deleted">Deleted</option>
         </select>
         <select
-          className="h-10 rounded-md border border-zinc-300 bg-white px-3 text-sm"
+          className="control min-w-40 px-3"
           value={visibility}
           onChange={(event) => {
             setPage(1);
@@ -173,7 +173,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
         onAction={runBatch}
       />
       {error && (
-        <div className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div className="alert-error">
           {error}
         </div>
       )}
@@ -213,20 +213,20 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
           void deleteItem(item.id).then(() => load());
         }}
       />
-      <div className="flex items-center justify-between text-sm text-zinc-600">
+      <div className="flex items-center justify-between text-sm text-slate-600">
         <button
-          className="h-9 rounded-md border border-zinc-300 px-3 font-medium disabled:opacity-40"
+          className="btn btn-secondary btn-sm disabled:opacity-40"
           type="button"
           disabled={page <= 1}
           onClick={() => setPage((value) => Math.max(1, value - 1))}
         >
           Previous
         </button>
-        <span>
+        <span className="font-medium">
           {totalPages === null ? `Page ${page}` : `${page} / ${totalPages}`}
         </span>
         <button
-          className="h-9 rounded-md border border-zinc-300 px-3 font-medium disabled:opacity-40"
+          className="btn btn-secondary btn-sm disabled:opacity-40"
           type="button"
           disabled={!hasNextPage}
           onClick={() => setPage((value) => value + 1)}

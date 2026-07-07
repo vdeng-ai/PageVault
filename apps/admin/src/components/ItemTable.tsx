@@ -58,13 +58,14 @@ export function ItemTable({
     items.length > 0 && items.every((item) => selectedIds.has(item.id));
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
+    <div className="surface overflow-x-auto">
       <table className="min-w-[1180px] text-left text-sm">
-        <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500">
+        <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
           <tr>
             <th className="w-10 px-3 py-3">
               <input
                 aria-label="Select all"
+                className="accent-teal-700"
                 type="checkbox"
                 checked={allSelected}
                 onChange={(event) => onSelectAll(event.target.checked)}
@@ -82,12 +83,13 @@ export function ItemTable({
             <th className="px-3 py-3">Created</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-100">
+        <tbody className="divide-y divide-slate-100 bg-white">
           {items.map((item) => (
-            <tr key={item.id} className="align-top hover:bg-zinc-50">
+            <tr key={item.id} className="align-top transition hover:bg-slate-50">
               <td className="px-3 py-3">
                 <input
                   aria-label={`Select ${item.title}`}
+                  className="accent-teal-700"
                   type="checkbox"
                   checked={selectedIds.has(item.id)}
                   onChange={(event) => onSelect(item.id, event.target.checked)}
@@ -96,7 +98,7 @@ export function ItemTable({
               <td className="px-3 py-3">
                 <div className="flex items-center gap-1">
                   <button
-                    className="icon-button hover:bg-zinc-100"
+                    className="icon-button"
                     title="Copy URL"
                     type="button"
                     onClick={() => onCopy(item.publicUrl)}
@@ -104,7 +106,7 @@ export function ItemTable({
                     <Copy className="h-4 w-4" aria-hidden />
                   </button>
                   <a
-                    className="icon-button hover:bg-zinc-100"
+                    className="icon-button"
                     title="Open preview"
                     href={item.publicUrl}
                     target="_blank"
@@ -113,7 +115,7 @@ export function ItemTable({
                     <ExternalLink className="h-4 w-4" aria-hidden />
                   </a>
                   <button
-                    className="icon-button hover:bg-zinc-100"
+                    className="icon-button"
                     title="Edit"
                     type="button"
                     onClick={() => onEdit(item.id)}
@@ -121,7 +123,7 @@ export function ItemTable({
                     <Pencil className="h-4 w-4" aria-hidden />
                   </button>
                   <button
-                    className="icon-button hover:bg-zinc-100"
+                    className="icon-button"
                     title={
                       item.visibility === "public"
                         ? "Set private"
@@ -138,7 +140,7 @@ export function ItemTable({
                   </button>
                   {item.status === "disabled" ? (
                     <button
-                      className="icon-button hover:bg-zinc-100"
+                      className="icon-button"
                       title="Restore"
                       type="button"
                       onClick={() => onRestore(item)}
@@ -147,7 +149,7 @@ export function ItemTable({
                     </button>
                   ) : (
                     <button
-                      className="icon-button hover:bg-zinc-100"
+                      className="icon-button"
                       title="Disable"
                       type="button"
                       onClick={() => onDisable(item)}
@@ -156,7 +158,7 @@ export function ItemTable({
                     </button>
                   )}
                   <button
-                    className="icon-button text-rose-700 hover:bg-rose-50"
+                    className="icon-button text-rose-700 hover:bg-rose-50 hover:text-rose-800"
                     title="Delete"
                     type="button"
                     onClick={() => onDelete(item)}
@@ -165,37 +167,37 @@ export function ItemTable({
                   </button>
                 </div>
               </td>
-              <td className="max-w-48 px-3 py-3 font-medium text-zinc-950">
+              <td className="max-w-48 px-3 py-3 font-semibold text-slate-950">
                 <button
-                  className="text-left hover:text-blue-700"
+                  className="text-left hover:text-teal-700"
                   type="button"
                   onClick={() => onEdit(item.id)}
                 >
                   {item.title}
                 </button>
               </td>
-              <td className="max-w-52 px-3 py-3 text-zinc-600">
+              <td className="max-w-52 px-3 py-3 text-slate-600">
                 {item.originalFilename}
               </td>
               <td className="w-56 max-w-56 px-3 py-3">
-                <div className="whitespace-normal break-all font-mono text-xs leading-5 text-zinc-600">
+                <div className="whitespace-normal break-all rounded-md bg-slate-50 px-2 py-1 font-mono text-xs leading-5 text-slate-600">
                   {item.publicUrl}
                 </div>
               </td>
               <td className="px-3 py-3">
                 <StatusBadge status={item.derivedStatus} />
               </td>
-              <td className="px-3 py-3 text-zinc-600">
+              <td className="px-3 py-3 text-slate-600">
                 {formatDate(item.urlExpiresAt)}
               </td>
-              <td className="px-3 py-3 text-zinc-600">
+              <td className="px-3 py-3 text-slate-600">
                 {formatDate(item.fileExpiresAt)}
               </td>
-              <td className="px-3 py-3 text-zinc-600">
+              <td className="px-3 py-3 text-slate-600">
                 {formatSize(item.sizeBytes)}
               </td>
-              <td className="px-3 py-3 text-zinc-600">{item.accessCount}</td>
-              <td className="px-3 py-3 text-zinc-600">
+              <td className="px-3 py-3 text-slate-600">{item.accessCount}</td>
+              <td className="px-3 py-3 text-slate-600">
                 {formatDate(item.createdAt)}
               </td>
             </tr>

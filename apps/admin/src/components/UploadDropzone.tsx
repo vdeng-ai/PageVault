@@ -13,8 +13,8 @@ export function UploadDropzone({
 
   return (
     <div
-      className={`flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-5 py-8 text-center transition ${
-        dragging ? "border-blue-500 bg-blue-50" : "border-zinc-300 bg-white"
+      className={`flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-5 py-8 text-center transition ${
+        dragging ? "border-teal-500 bg-teal-50" : "border-slate-300 bg-slate-50"
       }`}
       role="button"
       tabIndex={0}
@@ -38,11 +38,13 @@ export function UploadDropzone({
         }
       }}
     >
-      <FileUp className="mb-3 h-8 w-8 text-blue-600" aria-hidden />
-      <div className="text-sm font-semibold text-zinc-900">
+      <div className="mb-3 grid h-11 w-11 place-items-center rounded-md bg-white text-teal-700 ring-1 ring-slate-200">
+        <FileUp className="h-6 w-6" aria-hidden />
+      </div>
+      <div className="max-w-full truncate text-sm font-semibold text-slate-950">
         {file ? file.name : "File"}
       </div>
-      <div className="mt-1 text-xs text-zinc-500">
+      <div className="mt-1 text-xs font-medium text-slate-500">
         {file
           ? `${(file.size / 1024).toFixed(1)} KB`
           : ".html / .htm / .md / .jpg / .png / .webp"}

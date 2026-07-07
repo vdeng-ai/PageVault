@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  color: #18212f;
-  background: #f6f7f9;
+  color: #17202c;
+  background: #f4f6f8;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
 }
 
 * {
@@ -15,12 +17,22 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(244, 246, 248, 0) 17rem),
+    #f4f6f8;
 }
 
 button,
 input,
 select {
   font: inherit;
+}
+
+button,
+input,
+select,
+a {
+  outline-color: #0f766e;
 }
 
 button:disabled {
@@ -35,4 +47,157 @@ button:disabled {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
+  color: #596579;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.icon-button:hover {
+  background: #eef2f4;
+  color: #17202c;
+}
+
+.icon-button:focus-visible {
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+}
+
+.page-stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.page-title {
+  margin: 0;
+  color: #101828;
+  font-size: 1.5rem;
+  font-weight: 650;
+  line-height: 1.22;
+}
+
+.page-subtitle {
+  margin-top: 0.25rem;
+  color: #667085;
+  font-size: 0.875rem;
+}
+
+.surface {
+  border: 1px solid #dfe5ea;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.surface-muted {
+  border: 1px solid #dfe5ea;
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.control {
+  height: 2.5rem;
+  border: 1px solid #ccd5df;
+  border-radius: 6px;
+  background: #fff;
+  color: #17202c;
+  font-size: 0.875rem;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.control:hover {
+  border-color: #aeb9c7;
+}
+
+.control:focus,
+.control:focus-visible {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+}
+
+.btn {
+  display: inline-flex;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 6px;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.btn-sm {
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+}
+
+.btn-primary {
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  border-color: #115e59;
+  background: #115e59;
+}
+
+.btn-secondary {
+  border: 1px solid #ccd5df;
+  background: #fff;
+  color: #27364a;
+}
+
+.btn-secondary:hover {
+  border-color: #aeb9c7;
+  background: #f8fafb;
+}
+
+.btn-danger {
+  border: 1px solid #fecdd3;
+  background: #fff;
+  color: #be123c;
+}
+
+.btn-danger:hover {
+  background: #fff1f2;
+}
+
+.field-label {
+  display: grid;
+  gap: 0.375rem;
+  color: #344054;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.alert-error {
+  border: 1px solid #fecdd3;
+  border-radius: 6px;
+  background: #fff1f2;
+  padding: 0.625rem 0.75rem;
+  color: #be123c;
+  font-size: 0.875rem;
 }
