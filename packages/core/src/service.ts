@@ -19,7 +19,7 @@ import {
 import { randomHex, sha256Hex } from "./hash.js";
 import type { MetadataRepository } from "./repository.js";
 import { buildPublicSlug } from "./slug.js";
-import type { StorageProvider } from "./storage.js";
+import type { StorageProvider, StoredObject } from "./storage.js";
 import type {
   BatchInput,
   BatchResult,
@@ -31,6 +31,7 @@ import type {
   ListItemsInput,
   ListItemsResult,
   PublicHtmlResult,
+  PublicItemResult,
   UpdateItemInput,
   UploadHtmlInput,
   UploadResult,
@@ -176,6 +177,39 @@ export class HtmlBedService {
     slug: string,
     now = new Date(),
   ): Promise<PublicHtmlResult> {
+    const itemResult = await this.publicItemForSlug(slug, now);
+    if (itemResult.kind !== "ok") {
+      return itemResult;
+    }
+    const { item } = itemResult;
+    const object = await this.getPublicObject(item, now);
+    if (!object) return { kind: "not_found" };
+    return { kind: "ok", item, object };
+  }
+
+  async getPublicObject(
+    item: HtmlItem,
+    now = new Date(),
+  ): Promise<StoredObject | null> {
+    const object = await this.storage.getObject(item.objectKey);
+    if (!object) {
+      await this.audit(item.id, "public_object_missing", item.objectKey, now);
+      return null;
+    }
+    return object;
+  }
+
+  async getPublicItem(
+    slug: string,
+    now = new Date(),
+  ): Promise<PublicItemResult> {
+    return this.publicItemForSlug(slug, now);
+  }
+
+  private async publicItemForSlug(
+    slug: string,
+    now: Date,
+  ): Promise<PublicItemResult> {
     const item = await this.repository.getItemBySlug(slug);
     if (!item) {
       return { kind: "not_found" };
@@ -192,12 +226,7 @@ export class HtmlBedService {
     if (isFileExpired(item, now) || isUrlExpired(item, now)) {
       return { kind: "gone" };
     }
-    const object = await this.storage.getObject(item.objectKey);
-    if (!object) {
-      await this.audit(item.id, "public_object_missing", item.objectKey, now);
-      return { kind: "not_found" };
-    }
-    return { kind: "ok", item, object };
+    return { kind: "ok", item };
   }
 
   async recordAccess(id: string, now = new Date()): Promise<void> {
@@ -227,6 +256,16 @@ export class HtmlBedService {
       throw new AppError("Item not found", 404, "item_not_found");
     }
     return item;
+  }
+
+  async getItems(ids: string[]): Promise<HtmlItem[]> {
+    const uniqueIds = Array.from(
+      new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0)),
+    );
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+    return this.repository.getItemsByIds(uniqueIds);
   }
 
   async updateItem(

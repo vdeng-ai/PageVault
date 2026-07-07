@@ -31,6 +31,7 @@ import type { AppBindings } from "../bindings.js";
 
 class MemoryStorage implements StorageProvider {
   readonly objects = new Map<string, StoredObject>();
+  getReads = 0;
 
   async putObject(
     key: string,
@@ -40,6 +41,7 @@ class MemoryStorage implements StorageProvider {
     this.objects.set(key, { body, contentType, size: body.byteLength });
   }
   async getObject(key: string): Promise<StoredObject | null> {
+    this.getReads += 1;
     return this.objects.get(key) ?? null;
   }
   async deleteObject(key: string): Promise<void> {
@@ -57,6 +59,12 @@ class MemoryRepository implements MetadataRepository {
   }
   async getItemById(id: string): Promise<HtmlItem | null> {
     return this.items.get(id) ?? null;
+  }
+  async getItemsByIds(ids: string[]): Promise<HtmlItem[]> {
+    const requested = new Set(ids);
+    return Array.from(this.items.values()).filter((item) =>
+      requested.has(item.id),
+    );
   }
   async getItemBySlug(slug: string): Promise<HtmlItem | null> {
     return (
@@ -397,8 +405,10 @@ describe("public routes", () => {
     );
     expect(plain.status).toBe(200);
     expect(plain.headers.get("Cache-Control")).toBe(
-      "public, max-age=0, s-maxage=300",
+      "public, max-age=0, s-maxage=3600",
     );
+    expect(plain.headers.get("ETag")).toBeTruthy();
+    expect(plain.headers.get("Last-Modified")).toBeTruthy();
     await expect(plain.text()).resolves.toBe("<h1>ok</h1>");
 
     const withSlash = await handle(
@@ -413,12 +423,44 @@ describe("public routes", () => {
     );
     expect(withHtml.status).toBe(200);
 
+    const readsBeforeHead = storage.getReads;
     const head = await handle(
       new Request("https://public.test/p/product-a1b2c3d4", { method: "HEAD" }),
       env,
     );
     expect(head.status).toBe(200);
+    expect(storage.getReads).toBe(readsBeforeHead);
     await expect(head.text()).resolves.toBe("");
+  });
+
+  it("returns 304 for matching public validators without reading the object", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const active = item();
+    await repo.createItem({ item: active });
+    await storage.putObject(
+      active.objectKey,
+      new TextEncoder().encode("<h1>ok</h1>").buffer,
+      HTML_CONTENT_TYPE,
+    );
+
+    const head = await handle(
+      new Request("https://public.test/p/product-a1b2c3d4", { method: "HEAD" }),
+      env,
+    );
+    const etag = head.headers.get("ETag");
+    expect(etag).toBeTruthy();
+    const readsBeforeConditional = storage.getReads;
+
+    const response = await handle(
+      new Request("https://public.test/p/product-a1b2c3d4", {
+        headers: { "If-None-Match": etag ?? "" },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(304);
+    expect(storage.getReads).toBe(readsBeforeConditional);
+    await expect(response.text()).resolves.toBe("");
   });
 
   it("renders Markdown documents as public HTML", async () => {

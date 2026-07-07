@@ -11,7 +11,7 @@
     "run_worker_first": ["/*", "!/assets/*"],
   },
   "vars": {
-    "PUBLIC_HTML_CACHE_SECONDS": "300",
+    "PUBLIC_HTML_CACHE_SECONDS": "3600",
     "ACCESS_COUNT_FLUSH_SECONDS": "300",
     "ACCESS_COUNT_MODE": "windowed",
   },

@@ -1,5 +1,5 @@
 import { RefreshCcw, Search } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   batchItems,
   deleteItem,
@@ -10,6 +10,12 @@ import {
 } from "../api/client.js";
 import { BatchToolbar } from "../components/BatchToolbar.js";
 import { ItemTable } from "../components/ItemTable.js";
+
+const SEARCH_DEBOUNCE_MS = 400;
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
 
 export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
   const [items, setItems] = useState<HtmlItem[]>([]);
@@ -23,27 +29,54 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const pageSize = 20;
+  const requestSeq = useRef(0);
+  const firstLoad = useRef(true);
 
-  const load = useCallback(() => {
-    setBusy(true);
-    setError(null);
-    void listItems({ page, pageSize, q, status, visibility })
-      .then((result) => {
-        setItems(result.items);
-        setTotal(result.total);
-        setHasNextPage(result.hasNextPage);
-        setSelectedIds(new Set());
-      })
-      .catch((nextError: unknown) =>
-        setError(
-          nextError instanceof Error ? nextError.message : "Load failed",
-        ),
-      )
-      .finally(() => setBusy(false));
-  }, [page, q, status, visibility]);
+  const load = useCallback(
+    (signal?: AbortSignal) => {
+      const requestId = requestSeq.current + 1;
+      requestSeq.current = requestId;
+      setBusy(true);
+      setError(null);
+      const init = signal ? { signal } : {};
+      void listItems({ page, pageSize, q, status, visibility }, init)
+        .then((result) => {
+          if (requestId !== requestSeq.current) {
+            return;
+          }
+          setItems(result.items);
+          setTotal(result.total);
+          setHasNextPage(result.hasNextPage);
+          setSelectedIds(new Set());
+        })
+        .catch((nextError: unknown) => {
+          if (requestId !== requestSeq.current || isAbortError(nextError)) {
+            return;
+          }
+          setError(
+            nextError instanceof Error ? nextError.message : "Load failed",
+          );
+        })
+        .finally(() => {
+          if (requestId === requestSeq.current) {
+            setBusy(false);
+          }
+        });
+    },
+    [page, q, status, visibility],
+  );
 
   useEffect(() => {
-    load();
+    const controller = new AbortController();
+    const delay = firstLoad.current ? 0 : SEARCH_DEBOUNCE_MS;
+    firstLoad.current = false;
+    const timeoutId = window.setTimeout(() => {
+      load(controller.signal);
+    }, delay);
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [load]);
 
   const totalPages =
@@ -62,13 +95,13 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
       action,
       ...(days === undefined ? {} : { days }),
     })
-      .then(load)
-      .catch((nextError: unknown) =>
+      .then(() => load())
+      .catch((nextError: unknown) => {
         setError(
           nextError instanceof Error ? nextError.message : "Batch failed",
-        ),
-      )
-      .finally(() => setBusy(false));
+        );
+        setBusy(false);
+      });
   }
 
   return (
@@ -81,7 +114,7 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
         <button
           className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-300 px-4 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
           type="button"
-          onClick={load}
+          onClick={() => load()}
         >
           <RefreshCcw className="h-4 w-4" aria-hidden />
           Refresh
@@ -168,16 +201,16 @@ export function ItemListPage({ onEdit }: { onEdit: (id: string) => void }) {
         onVisibility={(item) => {
           void updateItem(item.id, {
             visibility: item.visibility === "public" ? "private" : "public",
-          }).then(load);
+          }).then(() => load());
         }}
         onDisable={(item) => {
-          void updateItem(item.id, { status: "disabled" }).then(load);
+          void updateItem(item.id, { status: "disabled" }).then(() => load());
         }}
         onRestore={(item) => {
-          void updateItem(item.id, { status: "active" }).then(load);
+          void updateItem(item.id, { status: "active" }).then(() => load());
         }}
         onDelete={(item) => {
-          void deleteItem(item.id).then(load);
+          void deleteItem(item.id).then(() => load());
         }}
       />
       <div className="flex items-center justify-between text-sm text-zinc-600">

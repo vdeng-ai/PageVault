@@ -54,6 +54,13 @@ class MemoryRepository implements MetadataRepository {
     return this.items.get(id) ?? null;
   }
 
+  async getItemsByIds(ids: string[]): Promise<HtmlItem[]> {
+    const requested = new Set(ids);
+    return Array.from(this.items.values()).filter((item) =>
+      requested.has(item.id),
+    );
+  }
+
   async getItemBySlug(slug: string): Promise<HtmlItem | null> {
     return (
       Array.from(this.items.values()).find((item) => item.slug === slug) ?? null

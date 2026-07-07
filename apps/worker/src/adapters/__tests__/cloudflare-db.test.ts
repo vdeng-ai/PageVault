@@ -99,3 +99,17 @@ describe("CloudflareD1Repository listItems", () => {
     expect(result.hasNextPage).toBe(true);
   });
 });
+
+describe("CloudflareD1Repository getItemsByIds", () => {
+  it("loads multiple ids with one IN query per chunk", async () => {
+    const db = new FakeD1Database([row("a"), row("b")], 0);
+    const repository = new CloudflareD1Repository(db.asD1());
+
+    const result = await repository.getItemsByIds(["a", "b", "a"]);
+
+    expect(db.allSqls).toHaveLength(1);
+    expect(db.allSqls[0]).toContain("WHERE id IN (?, ?)");
+    expect(db.allValues[0]).toEqual(["a", "b"]);
+    expect(result.map((item) => item.id)).toEqual(["a", "b"]);
+  });
+});

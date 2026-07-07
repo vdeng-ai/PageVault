@@ -118,21 +118,24 @@ export function dashboard(): Promise<DashboardStats> {
   return request<DashboardStats>("/api/admin/dashboard");
 }
 
-export function listItems(params: {
-  page?: number;
-  pageSize?: number;
-  q?: string;
-  status?: string;
-  visibility?: string;
-  includeTotal?: boolean;
-}): Promise<ListItemsResult> {
+export function listItems(
+  params: {
+    page?: number;
+    pageSize?: number;
+    q?: string;
+    status?: string;
+    visibility?: string;
+    includeTotal?: boolean;
+  },
+  init: Pick<RequestInit, "signal"> = {},
+): Promise<ListItemsResult> {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && String(value).length > 0) {
       query.set(key, String(value));
     }
   }
-  return request<ListItemsResult>(`/api/admin/items?${query.toString()}`);
+  return request<ListItemsResult>(`/api/admin/items?${query.toString()}`, init);
 }
 
 export function getItem(id: string): Promise<HtmlItem> {

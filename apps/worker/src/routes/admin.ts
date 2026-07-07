@@ -77,15 +77,9 @@ async function existingItemSlugs(
   api: HtmlBedService,
   ids: string[],
 ): Promise<string[]> {
-  const slugs = new Set<string>();
-  for (const id of ids) {
-    try {
-      slugs.add((await api.getItem(id)).slug);
-    } catch {
-      // Keep mutations best-effort for batch requests. The service reports per-id failures.
-    }
-  }
-  return Array.from(slugs);
+  return Array.from(
+    new Set((await api.getItems(ids)).map((item) => item.slug)),
+  );
 }
 
 function purgeSlugs(c: Context<HonoRuntime>, slugs: string[]): void {

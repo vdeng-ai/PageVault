@@ -6,12 +6,13 @@ import type {
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
-  UpdateItemInput
+  UpdateItemInput,
 } from "./types.js";
 
 export interface MetadataRepository {
   createItem(input: CreateItemInput): Promise<HtmlItem>;
   getItemById(id: string): Promise<HtmlItem | null>;
+  getItemsByIds(ids: string[]): Promise<HtmlItem[]>;
   getItemBySlug(slug: string): Promise<HtmlItem | null>;
   listItems(input: ListItemsInput): Promise<ListItemsResult>;
   getDashboardStats(now: string, soon: string): Promise<DashboardStats>;

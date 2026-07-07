@@ -1,6 +1,6 @@
 import type { AppBindings, WaitUntilContext } from "./bindings.js";
 
-const DEFAULT_PUBLIC_HTML_CACHE_SECONDS = 300;
+const DEFAULT_PUBLIC_HTML_CACHE_SECONDS = 3600;
 const CACHE_ITEM_ID_HEADER = "X-HTMLBed-Cache-Item-Id";
 
 export interface CachedPublicHtml {
@@ -20,7 +20,7 @@ export function effectivePublicHtmlCacheSeconds(
   env: AppBindings,
   urlExpiresAt: string,
   fileExpiresAt: string,
-  now = new Date()
+  now = new Date(),
 ): number {
   const configuredSeconds = publicHtmlCacheSeconds(env);
   if (configuredSeconds <= 0) {
@@ -29,9 +29,11 @@ export function effectivePublicHtmlCacheSeconds(
 
   const nowMs = now.getTime();
   const expirySeconds = [urlExpiresAt, fileExpiresAt].map((value) =>
-    Math.floor((Date.parse(value) - nowMs) / 1000)
+    Math.floor((Date.parse(value) - nowMs) / 1000),
   );
-  if (expirySeconds.some((seconds) => !Number.isFinite(seconds) || seconds <= 0)) {
+  if (
+    expirySeconds.some((seconds) => !Number.isFinite(seconds) || seconds <= 0)
+  ) {
     return 0;
   }
   return Math.min(configuredSeconds, ...expirySeconds);
@@ -46,7 +48,9 @@ function defaultCache(): Cache | null {
 
 function publicHtmlCacheRequest(env: AppBindings, slug: string): Request {
   const baseUrl = env.PUBLIC_BASE_URL.replace(/\/+$/g, "");
-  return new Request(`${baseUrl}/p/${encodeURIComponent(slug)}`, { method: "GET" });
+  return new Request(`${baseUrl}/p/${encodeURIComponent(slug)}`, {
+    method: "GET",
+  });
 }
 
 function logCacheFailure(error: unknown, action: string, slug: string): void {
@@ -55,12 +59,15 @@ function logCacheFailure(error: unknown, action: string, slug: string): void {
       message: "public html cache failed",
       action,
       slug,
-      error: error instanceof Error ? error.message : String(error)
-    })
+      error: error instanceof Error ? error.message : String(error),
+    }),
   );
 }
 
-function scheduleCacheWork(promise: Promise<void>, ctx: WaitUntilContext | undefined): void {
+function scheduleCacheWork(
+  promise: Promise<void>,
+  ctx: WaitUntilContext | undefined,
+): void {
   if (ctx) {
     ctx.waitUntil(promise);
   } else {
@@ -71,7 +78,7 @@ function scheduleCacheWork(promise: Promise<void>, ctx: WaitUntilContext | undef
 export async function matchPublicHtmlCache(
   env: AppBindings,
   slug: string,
-  method: string
+  method: string,
 ): Promise<CachedPublicHtml | null> {
   if (publicHtmlCacheSeconds(env) <= 0) {
     return null;
@@ -94,8 +101,8 @@ export async function matchPublicHtmlCache(
     response: new Response(method === "HEAD" ? null : cached.body, {
       status: cached.status,
       statusText: cached.statusText,
-      headers
-    })
+      headers,
+    }),
   };
 }
 
@@ -105,7 +112,7 @@ export function cachePublicHtmlResponse(
   slug: string,
   itemId: string,
   response: Response,
-  ttlSeconds = publicHtmlCacheSeconds(env)
+  ttlSeconds = publicHtmlCacheSeconds(env),
 ): void {
   if (ttlSeconds <= 0 || response.status !== 200) {
     return;
@@ -120,17 +127,22 @@ export function cachePublicHtmlResponse(
   const cacheResponse = new Response(response.clone().body, {
     status: response.status,
     statusText: response.statusText,
-    headers
+    headers,
   });
   scheduleCacheWork(
-    cache.put(publicHtmlCacheRequest(env, slug), cacheResponse).catch((error: unknown) => {
-      logCacheFailure(error, "put", slug);
-    }),
-    ctx
+    cache
+      .put(publicHtmlCacheRequest(env, slug), cacheResponse)
+      .catch((error: unknown) => {
+        logCacheFailure(error, "put", slug);
+      }),
+    ctx,
   );
 }
 
-export async function deletePublicHtmlCache(env: AppBindings, slug: string): Promise<void> {
+export async function deletePublicHtmlCache(
+  env: AppBindings,
+  slug: string,
+): Promise<void> {
   const cache = defaultCache();
   if (!cache) {
     return;
@@ -141,12 +153,12 @@ export async function deletePublicHtmlCache(env: AppBindings, slug: string): Pro
 export function purgePublicHtmlCache(
   env: AppBindings,
   ctx: WaitUntilContext | undefined,
-  slug: string
+  slug: string,
 ): void {
   scheduleCacheWork(
     deletePublicHtmlCache(env, slug).catch((error: unknown) => {
       logCacheFailure(error, "delete", slug);
     }),
-    ctx
+    ctx,
   );
 }

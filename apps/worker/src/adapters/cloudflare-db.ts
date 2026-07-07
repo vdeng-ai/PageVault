@@ -46,6 +46,26 @@ export class CloudflareD1Repository implements MetadataRepository {
     return row ? mapItemRow(row) : null;
   }
 
+  async getItemsByIds(ids: string[]): Promise<HtmlItem[]> {
+    const uniqueIds = Array.from(new Set(ids)).filter((id) => id.length > 0);
+    if (uniqueIds.length === 0) {
+      return [];
+    }
+
+    const items: HtmlItem[] = [];
+    const chunkSize = 50;
+    for (let offset = 0; offset < uniqueIds.length; offset += chunkSize) {
+      const chunk = uniqueIds.slice(offset, offset + chunkSize);
+      const placeholders = chunk.map(() => "?").join(", ");
+      const rows = await this.db
+        .prepare(`SELECT * FROM html_items WHERE id IN (${placeholders})`)
+        .bind(...chunk)
+        .all<HtmlItemRow>();
+      items.push(...rows.results.map(mapItemRow));
+    }
+    return items;
+  }
+
   async getItemBySlug(slug: string): Promise<HtmlItem | null> {
     const row = await this.db
       .prepare("SELECT * FROM html_items WHERE slug = ? LIMIT 1")

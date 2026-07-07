@@ -95,6 +95,12 @@ export type PublicHtmlResult =
   | { kind: "disabled" }
   | { kind: "gone" };
 
+export type PublicItemResult =
+  | { kind: "ok"; item: HtmlItem }
+  | { kind: "not_found" }
+  | { kind: "disabled" }
+  | { kind: "gone" };
+
 export type BatchAction =
   | "extend_url"
   | "extend_file"
