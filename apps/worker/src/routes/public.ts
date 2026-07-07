@@ -1,8 +1,12 @@
 import type { HtmlBedService } from "@htmlbed/core";
 import { HTML_CONTENT_TYPE, normalizePublicSlug } from "@htmlbed/core";
 import type { AppBindings, WaitUntilContext } from "../bindings.js";
-import { publicErrorPage, publicSecurityHeaders } from "../middleware/security-headers.js";
+import {
+  publicErrorPage,
+  publicSecurityHeaders,
+} from "../middleware/security-headers.js";
 import { recordPublicAccess } from "../access-counter.js";
+import { decoratePublicHtmlForShare } from "../public-share-meta.js";
 import {
   cachePublicHtmlResponse,
   effectivePublicHtmlCacheSeconds,
@@ -18,13 +22,16 @@ export function publicSlugFromPath(pathname: string): string | null {
   return slug && slug.length > 0 ? slug : null;
 }
 
-function publicHtmlHeaders(contentType: string, ttlSeconds: number): HeadersInit {
+function publicHtmlHeaders(
+  contentType: string,
+  ttlSeconds: number,
+): HeadersInit {
   const headers = { ...publicSecurityHeaders };
   delete headers["Cache-Control"];
   return {
     ...headers,
     "Cache-Control": `public, max-age=0, s-maxage=${ttlSeconds}`,
-    "Content-Type": contentType
+    "Content-Type": contentType,
   };
 }
 
@@ -32,7 +39,7 @@ export async function handlePublicRequest(
   request: Request,
   env: AppBindings,
   ctx: WaitUntilContext | undefined,
-  service: HtmlBedService
+  service: HtmlBedService,
 ): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return publicErrorPage(404);
@@ -69,15 +76,32 @@ export async function handlePublicRequest(
     env,
     result.item.urlExpiresAt,
     result.item.fileExpiresAt,
-    now
+    now,
   );
+  const contentType = result.object.contentType ?? HTML_CONTENT_TYPE;
+  const body =
+    request.method === "HEAD"
+      ? null
+      : await decoratePublicHtmlForShare({
+          item: result.item,
+          object: result.object,
+          contentType,
+          publicUrl: service.publicUrl(result.item.slug),
+        });
 
-  const response = new Response(request.method === "HEAD" ? null : result.object.body, {
+  const response = new Response(body, {
     status: 200,
-    headers: publicHtmlHeaders(result.object.contentType ?? HTML_CONTENT_TYPE, ttlSeconds)
+    headers: publicHtmlHeaders(contentType, ttlSeconds),
   });
   if (request.method === "GET") {
-    cachePublicHtmlResponse(env, ctx, slug, result.item.id, response, ttlSeconds);
+    cachePublicHtmlResponse(
+      env,
+      ctx,
+      slug,
+      result.item.id,
+      response,
+      ttlSeconds,
+    );
   }
   return response;
 }

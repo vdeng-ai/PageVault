@@ -349,6 +349,106 @@ describe("public routes", () => {
     await expect(head.text()).resolves.toBe("");
   });
 
+  it("injects share metadata into public HTML documents", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const active = item({
+      title: "Stored fallback",
+      slug: "report-a1b2c3d4",
+      objectKey: "objects/report/index.html",
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(
+      active.objectKey,
+      new TextEncoder().encode(`<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>中国可投资内存报告</title>
+</head>
+<body>
+  <h1>中国可投资内存报告</h1>
+  <p>围绕 &quot;HBM&quot; &amp; LPDDR，映射 &lt;关键&gt; 产业链节点。</p>
+  <img src="https://cdn.test/report-card.png" alt="">
+</body>
+</html>`).buffer,
+      HTML_CONTENT_TYPE,
+    );
+
+    const response = await handle(
+      new Request("https://public.test/p/report-a1b2c3d4.html"),
+      env,
+    );
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain(
+      '<meta name="description" content="围绕 &quot;HBM&quot; &amp; LPDDR，映射 &lt;关键&gt; 产业链节点。">',
+    );
+    expect(html).toContain(
+      '<meta property="og:title" content="中国可投资内存报告">',
+    );
+    expect(html).toContain(
+      '<meta property="og:url" content="https://public.test/p/report-a1b2c3d4">',
+    );
+    expect(html).toContain(
+      '<link rel="canonical" href="https://public.test/p/report-a1b2c3d4">',
+    );
+    expect(html).toContain(
+      '<meta name="twitter:card" content="summary_large_image">',
+    );
+    expect(html).toContain(
+      '<meta property="og:image" content="https://cdn.test/report-card.png">',
+    );
+  });
+
+  it("preserves existing share metadata", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const active = item({
+      slug: "existing-meta-a1b2c3d4",
+      objectKey: "objects/existing-meta/index.html",
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(
+      active.objectKey,
+      new TextEncoder().encode(`<!doctype html>
+<html>
+<head>
+  <title>Document title</title>
+  <meta name="description" content="Pinned description">
+  <meta property="og:title" content="Pinned OG title">
+  <meta property="og:description" content="Pinned OG description">
+  <meta property="og:url" content="https://example.com/pinned">
+  <link rel="canonical" href="https://example.com/pinned">
+</head>
+<body>
+  <p>Body text that should not replace pinned metadata.</p>
+</body>
+</html>`).buffer,
+      HTML_CONTENT_TYPE,
+    );
+
+    const response = await handle(
+      new Request("https://public.test/p/existing-meta-a1b2c3d4"),
+      env,
+    );
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain(
+      '<meta name="description" content="Pinned description">',
+    );
+    expect(html).toContain(
+      '<meta property="og:title" content="Pinned OG title">',
+    );
+    expect(html).toContain(
+      '<meta property="og:description" content="Pinned OG description">',
+    );
+    expect(html.match(/name="description"/g) ?? []).toHaveLength(1);
+    expect(html.match(/property="og:title"/g) ?? []).toHaveLength(1);
+    expect(html.match(/property="og:description"/g) ?? []).toHaveLength(1);
+    expect(html.match(/rel="canonical"/g) ?? []).toHaveLength(1);
+  });
+
   it("serves production public URLs without admin credentials", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const productionEnv = {
