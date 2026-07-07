@@ -2,7 +2,7 @@
 
 Language: English | [简体中文](./README.zh-CN.md)
 
-HTMLBed is a lightweight HTML publishing and lifecycle management system. It stores original HTML files privately, exposes only valid public URLs through an application gateway, and gives a single administrator a web UI for upload, expiry, status, and deletion workflows.
+HTMLBed is a lightweight publishing and lifecycle management system for HTML, Markdown, and image files. It stores original uploads privately, exposes only valid public URLs through an application gateway, and gives a single administrator a web UI for upload, expiry, status, and deletion workflows.
 
 ## Architecture
 
@@ -41,7 +41,7 @@ HTMLBed is a lightweight HTML publishing and lifecycle management system. It sto
 
 ## Cloudflare Deployment
 
-Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare serverless application that runs HTMLBed: it serves the admin SPA from Workers Static Assets, stores metadata in D1, stores original HTML files in a private R2 bucket, and runs the configured Cron Trigger for cleanup.
+Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare serverless application that runs HTMLBed: it serves the admin SPA from Workers Static Assets, stores metadata in D1, stores original files in a private R2 bucket, and runs the configured Cron Trigger for cleanup.
 
 1. Log in to Cloudflare through Wrangler.
 
@@ -71,7 +71,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    pnpm wrangler r2 bucket create htmlbed-files
    ```
 
-   R2 is Cloudflare's object storage. HTMLBed uses this bucket for the original uploaded HTML files. Do not make this bucket public. Public R2 access would bypass HTMLBed's expiry, status, deletion, audit, and access-count checks.
+   R2 is Cloudflare's object storage. HTMLBed uses this bucket for the original uploaded files. Do not make this bucket public. Public R2 access would bypass HTMLBed's expiry, status, deletion, audit, and access-count checks.
 
 4. Create the D1 database.
 
@@ -139,7 +139,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
 9. Verify the deployment.
 
    - Open `ADMIN_BASE_URL` and sign in with `ADMIN_EMAIL` and the original admin password.
-   - Upload a small HTML file from the admin UI.
+   - Upload a small supported file from the admin UI.
    - Open the generated public URL under `PUBLIC_BASE_URL`.
    - Confirm public roots, admin paths on the public hostname, and API paths on the public hostname are not exposed.
    - Use `pnpm wrangler tail` if you need live Worker logs while testing.
@@ -240,7 +240,7 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
    docker compose -f /opt/htmlbed/docker-compose.yml up -d --build
    ```
 
-   The container entrypoint runs the SQLite migration before starting the server. Metadata and uploaded HTML objects are stored under `/data/htmlbed` by default, so that directory must be persistent and included in backups.
+   The container entrypoint runs the SQLite migration before starting the server. Metadata and uploaded objects are stored under `/data/htmlbed` by default, so that directory must be persistent and included in backups.
 
 4. Configure TLS and reverse proxy.
 
@@ -262,7 +262,7 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
    docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed
    ```
 
-   Then sign in on the admin hostname, upload a small HTML file, and open the generated public URL on the public hostname.
+   Then sign in on the admin hostname, upload a small supported file, and open the generated public URL on the public hostname.
 
 6. Upgrade safely.
 
@@ -296,13 +296,13 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
 
 ## Security Model
 
-Public users can only request a single HTML file through `/p/:slug`, `/p/:slug/`, or `/p/:slug.html`. The gateway checks metadata, visibility, status, URL expiry, and file expiry before reading storage. Public roots, lists, sitemap paths, admin routes, and APIs return `404`.
+Public users can only request a single published file through `/p/:slug`, `/p/:slug/`, or `/p/:slug.html`. The gateway checks metadata, visibility, status, URL expiry, and file expiry before reading storage. Public roots, lists, sitemap paths, admin routes, and APIs return `404`.
 
 The R2 bucket must not be public. A public R2 bucket would bypass URL expiry, status checks, deletion state, audit logging, and access counting. All object reads must go through the Worker or Docker server gateway.
 
 The admin and public surfaces should use different hostnames. The `htmlbed_session` cookie is scoped to the admin host only; it must not be set on a parent domain such as `.example.com`.
 
-HTMLBed intentionally does not sanitize, rewrite, inject scripts into, or otherwise alter uploaded HTML. Only authenticated administrators can upload files, and the system stores and returns the original bytes.
+HTMLBed intentionally does not sanitize, rewrite, inject scripts into, or otherwise alter uploaded HTML. Markdown is stored as original bytes and rendered with raw HTML disabled; images are returned as uploaded bytes. Only authenticated administrators can upload files.
 
 ## Migrations and Maintenance
 
@@ -311,7 +311,3 @@ HTMLBed intentionally does not sanitize, rewrite, inject scripts into, or otherw
 - Cloudflare logs: use `pnpm wrangler tail`.
 - Docker logs: use `docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed`.
 - Rotate admin credentials by generating a new password hash and updating `ADMIN_PASSWORD_HASH`; existing sessions can be invalidated by rotating `SESSION_SECRET`.
-
-## Future Plans
-
-Planned extensions include image uploads, Markdown publishing, stronger access analytics, and tags.

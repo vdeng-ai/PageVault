@@ -29,6 +29,8 @@ All write requests require `X-CSRF-Token`.
 - `fileExpireDays`
 - `visibility`
 
+Supported file extensions: `.html`, `.htm`, `.md`, `.markdown`, `.jpg`, `.jpeg`, `.png`, and `.webp`.
+
 `GET /api/admin/items/:id`
 
 `PATCH /api/admin/items/:id`
@@ -61,4 +63,4 @@ Supported actions: `extend_url`, `extend_file`, `set_url_expires_at`, `set_file_
 
 ## Public
 
-`GET /p/:slug`, `GET /p/:slug/`, `GET /p/:slug.html`, and matching `HEAD` routes return HTML only when the item is public, active, not deleted, URL-valid, and file-valid.
+`GET /p/:slug`, `GET /p/:slug/`, `GET /p/:slug.html`, and matching `HEAD` routes return the published file only when the item is public, active, not deleted, URL-valid, and file-valid. HTML is returned as HTML, Markdown is rendered to HTML, and JPEG/PNG/WebP images are returned with their image content type.

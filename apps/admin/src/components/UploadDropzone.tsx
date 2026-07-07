@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 
 export function UploadDropzone({
   file,
-  onFile
+  onFile,
 }: {
   file: File | null;
   onFile: (file: File) => void;
@@ -39,15 +39,19 @@ export function UploadDropzone({
       }}
     >
       <FileUp className="mb-3 h-8 w-8 text-blue-600" aria-hidden />
-      <div className="text-sm font-semibold text-zinc-900">{file ? file.name : "HTML file"}</div>
+      <div className="text-sm font-semibold text-zinc-900">
+        {file ? file.name : "File"}
+      </div>
       <div className="mt-1 text-xs text-zinc-500">
-        {file ? `${(file.size / 1024).toFixed(1)} KB` : ".html / .htm"}
+        {file
+          ? `${(file.size / 1024).toFixed(1)} KB`
+          : ".html / .htm / .md / .jpg / .png / .webp"}
       </div>
       <input
         ref={inputRef}
         className="hidden"
         type="file"
-        accept=".html,.htm,text/html"
+        accept=".html,.htm,.md,.markdown,.jpg,.jpeg,.png,.webp,text/html,text/markdown,image/jpeg,image/png,image/webp"
         onChange={(event) => {
           const nextFile = event.target.files?.item(0);
           if (nextFile) {

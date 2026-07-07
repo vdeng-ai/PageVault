@@ -51,7 +51,7 @@ HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and t
    pnpm wrangler r2 bucket create htmlbed-files
    ```
 
-   R2 is Cloudflare's object storage. HTMLBed uses this bucket for uploaded HTML files, and the bucket must stay private.
+   R2 is Cloudflare's object storage. HTMLBed uses this bucket for uploaded files, and the bucket must stay private.
 
 4. Create the D1 database:
 
@@ -118,7 +118,7 @@ HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and t
 
 9. Verify the deployment:
    - Sign in on the admin hostname.
-   - Upload a small HTML file.
+   - Upload a small supported file.
    - Open the generated public URL on the public hostname from an unauthenticated browser, private window, or different device.
    - Confirm public roots, API paths, and admin paths on the public hostname are not exposed.
    - Confirm `https://admin-html.vdengai.com/` still requires the admin account.

@@ -17,7 +17,7 @@ export function UploadPage() {
     <section className="grid max-w-3xl gap-5">
       <div>
         <h2 className="text-2xl font-semibold text-zinc-950">Upload</h2>
-        <p className="text-sm text-zinc-500">Single HTML object</p>
+        <p className="text-sm text-zinc-500">Single file object</p>
       </div>
       <div className="rounded-lg border border-zinc-200 bg-white p-5">
         <UploadDropzone file={file} onFile={setFile} />
@@ -29,7 +29,9 @@ export function UploadPage() {
               type="number"
               min={1}
               value={urlExpireDays}
-              onChange={(event) => setUrlExpireDays(Number.parseInt(event.target.value, 10))}
+              onChange={(event) =>
+                setUrlExpireDays(Number.parseInt(event.target.value, 10))
+              }
             />
           </label>
           <label className="grid gap-1 text-sm font-medium text-zinc-700">
@@ -39,7 +41,9 @@ export function UploadPage() {
               type="number"
               min={1}
               value={fileExpireDays}
-              onChange={(event) => setFileExpireDays(Number.parseInt(event.target.value, 10))}
+              onChange={(event) =>
+                setFileExpireDays(Number.parseInt(event.target.value, 10))
+              }
             />
           </label>
           <label className="grid gap-1 text-sm font-medium text-zinc-700">
@@ -47,14 +51,20 @@ export function UploadPage() {
             <select
               className="h-10 rounded-md border border-zinc-300 bg-white px-3"
               value={visibility}
-              onChange={(event) => setVisibility(event.target.value as Visibility)}
+              onChange={(event) =>
+                setVisibility(event.target.value as Visibility)
+              }
             >
               <option value="public">Public</option>
               <option value="private">Private</option>
             </select>
           </label>
         </div>
-        {error && <div className="mt-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
+        {error && (
+          <div className="mt-4 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
             className="inline-flex h-10 items-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"
@@ -67,9 +77,20 @@ export function UploadPage() {
               setBusy(true);
               setError(null);
               setResult(null);
-              void uploadHtml({ file, urlExpireDays, fileExpireDays, visibility })
+              void uploadHtml({
+                file,
+                urlExpireDays,
+                fileExpireDays,
+                visibility,
+              })
                 .then((response) => setResult(response.publicUrl))
-                .catch((nextError: unknown) => setError(nextError instanceof Error ? nextError.message : "Upload failed"))
+                .catch((nextError: unknown) =>
+                  setError(
+                    nextError instanceof Error
+                      ? nextError.message
+                      : "Upload failed",
+                  ),
+                )
                 .finally(() => setBusy(false));
             }}
           >
@@ -87,12 +108,20 @@ export function UploadPage() {
                 });
               }}
             >
-              {copied ? <Check className="h-4 w-4" aria-hidden /> : <Clipboard className="h-4 w-4" aria-hidden />}
+              {copied ? (
+                <Check className="h-4 w-4" aria-hidden />
+              ) : (
+                <Clipboard className="h-4 w-4" aria-hidden />
+              )}
               Copy URL
             </button>
           )}
         </div>
-        {result && <div className="mt-4 break-all rounded-md bg-emerald-50 px-3 py-2 font-mono text-sm text-emerald-800">{result}</div>}
+        {result && (
+          <div className="mt-4 break-all rounded-md bg-emerald-50 px-3 py-2 font-mono text-sm text-emerald-800">
+            {result}
+          </div>
+        )}
       </div>
     </section>
   );

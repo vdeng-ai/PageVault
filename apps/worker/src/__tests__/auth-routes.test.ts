@@ -2,6 +2,8 @@ import {
   createHtmlBedConfig,
   HtmlBedService,
   HTML_CONTENT_TYPE,
+  MARKDOWN_CONTENT_TYPE,
+  PNG_CONTENT_TYPE,
   pbkdf2Sha256,
 } from "@htmlbed/core";
 import { addDays } from "@htmlbed/core";
@@ -309,6 +311,32 @@ describe("admin auth routes", () => {
 });
 
 describe("public routes", () => {
+  it("serves percent-encoded Chinese public slugs", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const active = item({
+      title: "产品介绍",
+      originalFilename: "产品介绍.html",
+      slug: "产品介绍-a1b2c3d4",
+      objectKey: "objects/chinese/index.html",
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(
+      active.objectKey,
+      new TextEncoder().encode("<h1>中文</h1>").buffer,
+      HTML_CONTENT_TYPE,
+    );
+
+    const response = await handle(
+      new Request(
+        `https://public.test/p/${encodeURIComponent("产品介绍-a1b2c3d4")}`,
+      ),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).resolves.toBe("<h1>中文</h1>");
+  });
+
   it("serves active HTML on public slug variants", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const active = item();
@@ -347,6 +375,64 @@ describe("public routes", () => {
     );
     expect(head.status).toBe(200);
     await expect(head.text()).resolves.toBe("");
+  });
+
+  it("renders Markdown documents as public HTML", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const active = item({
+      title: "Release Notes",
+      originalFilename: "release-notes.md",
+      slug: "release-notes-a1b2c3d4",
+      objectKey: "objects/release-notes/index.md",
+      contentType: MARKDOWN_CONTENT_TYPE,
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(
+      active.objectKey,
+      new TextEncoder().encode(
+        "# Release Notes\n\n**Shipped**\n\n<script>alert(1)</script>",
+      ).buffer,
+      MARKDOWN_CONTENT_TYPE,
+    );
+
+    const response = await handle(
+      new Request("https://public.test/p/release-notes-a1b2c3d4"),
+      env,
+    );
+    const html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
+    expect(html).toContain("<h1>Release Notes</h1>");
+    expect(html).toContain("<strong>Shipped</strong>");
+    expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(html).not.toContain("<script>alert(1)</script>");
+    expect(html).toContain(
+      '<meta property="og:url" content="https://public.test/p/release-notes-a1b2c3d4">',
+    );
+  });
+
+  it("serves images without HTML decoration", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    const active = item({
+      title: "Diagram",
+      originalFilename: "diagram.png",
+      slug: "diagram-a1b2c3d4",
+      objectKey: "objects/diagram/index.png",
+      contentType: PNG_CONTENT_TYPE,
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(active.objectKey, bytes.buffer, PNG_CONTENT_TYPE);
+
+    const response = await handle(
+      new Request("https://public.test/p/diagram-a1b2c3d4"),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe(PNG_CONTENT_TYPE);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
   });
 
   it("injects share metadata into public HTML documents", async () => {

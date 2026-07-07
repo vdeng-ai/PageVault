@@ -2,10 +2,20 @@ import {
   DEFAULT_FILE_EXPIRE_DAYS,
   DEFAULT_MAX_UPLOAD_SIZE_MB,
   DEFAULT_URL_EXPIRE_DAYS,
-  HTML_CONTENT_TYPE
 } from "./constants.js";
 import { AppError } from "./errors.js";
-import { addDays, getDerivedStatus, isFileExpired, isUrlExpired } from "./expiry.js";
+import {
+  addDays,
+  getDerivedStatus,
+  isFileExpired,
+  isUrlExpired,
+} from "./expiry.js";
+import {
+  stripSupportedFileExtension,
+  SUPPORTED_UPLOAD_EXTENSIONS,
+  type SupportedUploadFileType,
+  uploadFileTypeForFilename,
+} from "./file-types.js";
 import { randomHex, sha256Hex } from "./hash.js";
 import type { MetadataRepository } from "./repository.js";
 import { buildPublicSlug } from "./slug.js";
@@ -24,7 +34,7 @@ import type {
   UpdateItemInput,
   UploadHtmlInput,
   UploadResult,
-  Visibility
+  Visibility,
 } from "./types.js";
 
 const ID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -50,7 +60,10 @@ function createId(now: Date): string {
   return `${encodeTimePart(now.getTime())}${randomPart}`;
 }
 
-function parsePositiveNumber(value: number | undefined, fallback: number): number {
+function parsePositiveNumber(
+  value: number | undefined,
+  fallback: number,
+): number {
   if (value === undefined) {
     return fallback;
   }
@@ -62,14 +75,20 @@ function parsePositiveNumber(value: number | undefined, fallback: number): numbe
 
 function titleFromFilename(filename: string): string {
   const leaf = filename.split(/[\\/]/).pop() ?? filename;
-  const title = leaf.replace(/\.(html|htm)$/i, "").trim();
+  const title = stripSupportedFileExtension(leaf).trim();
   return title.length > 0 ? title : "HTML";
 }
 
-function assertHtmlFilename(filename: string): void {
-  if (!/\.(html|htm)$/i.test(filename)) {
-    throw new AppError("Only .html and .htm files are allowed", 400, "invalid_file_type");
+function assertSupportedFilename(filename: string): SupportedUploadFileType {
+  const type = uploadFileTypeForFilename(filename);
+  if (!type) {
+    throw new AppError(
+      `Only ${SUPPORTED_UPLOAD_EXTENSIONS.join(", ")} files are allowed`,
+      400,
+      "invalid_file_type",
+    );
   }
+  return type;
 }
 
 function assertVisibility(value: Visibility): void {
@@ -82,14 +101,18 @@ export class HtmlBedService {
   constructor(
     private readonly repository: MetadataRepository,
     private readonly storage: StorageProvider,
-    private readonly config: HtmlBedConfig
+    private readonly config: HtmlBedConfig,
   ) {}
 
   async uploadHtml(input: UploadHtmlInput): Promise<UploadResult> {
-    assertHtmlFilename(input.filename);
+    const fileType = assertSupportedFilename(input.filename);
     const maxBytes = this.config.maxUploadSizeMb * 1024 * 1024;
     if (input.body.byteLength > maxBytes) {
-      throw new AppError("Uploaded file is too large", 413, "payload_too_large");
+      throw new AppError(
+        "Uploaded file is too large",
+        413,
+        "payload_too_large",
+      );
     }
 
     const now = input.now ?? new Date();
@@ -99,7 +122,7 @@ export class HtmlBedService {
     if (await this.repository.getItemBySlug(slug)) {
       slug = buildPublicSlug(input.filename, randomHex(4));
     }
-    const objectKey = `objects/${id}/index.html`;
+    const objectKey = `objects/${id}/index${fileType.storageExtension}`;
     const visibility = input.visibility ?? "public";
     assertVisibility(visibility);
     const item: HtmlItem = {
@@ -108,37 +131,51 @@ export class HtmlBedService {
       originalFilename: input.filename,
       slug,
       objectKey,
-      contentType: HTML_CONTENT_TYPE,
+      contentType: fileType.contentType,
       sizeBytes: input.body.byteLength,
       sha256: await sha256Hex(input.body),
       visibility,
       status: "active",
       urlExpiresAt: addDays(
         now,
-        parsePositiveNumber(input.urlExpireDays, this.config.defaultUrlExpireDays)
+        parsePositiveNumber(
+          input.urlExpireDays,
+          this.config.defaultUrlExpireDays,
+        ),
       ).toISOString(),
       fileExpiresAt: addDays(
         now,
-        parsePositiveNumber(input.fileExpireDays, this.config.defaultFileExpireDays)
+        parsePositiveNumber(
+          input.fileExpireDays,
+          this.config.defaultFileExpireDays,
+        ),
       ).toISOString(),
       accessCount: 0,
       lastAccessedAt: null,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
-      deletedAt: null
+      deletedAt: null,
     };
 
-    await this.storage.putObject(objectKey, input.body, HTML_CONTENT_TYPE);
+    await this.storage.putObject(objectKey, input.body, fileType.contentType);
     const created = await this.repository.createItem({ item });
-    await this.audit(created.id, "upload", `Uploaded ${created.originalFilename}`, now);
+    await this.audit(
+      created.id,
+      "upload",
+      `Uploaded ${created.originalFilename}`,
+      now,
+    );
 
     return {
       item: created,
-      publicUrl: this.publicUrl(created.slug)
+      publicUrl: this.publicUrl(created.slug),
     };
   }
 
-  async getPublicHtml(slug: string, now = new Date()): Promise<PublicHtmlResult> {
+  async getPublicHtml(
+    slug: string,
+    now = new Date(),
+  ): Promise<PublicHtmlResult> {
     const item = await this.repository.getItemBySlug(slug);
     if (!item) {
       return { kind: "not_found" };
@@ -164,12 +201,15 @@ export class HtmlBedService {
   }
 
   async recordAccess(id: string, now = new Date()): Promise<void> {
-    await this.recordAccessBatch([{ id, count: 1, accessedAt: now.toISOString() }]);
+    await this.recordAccessBatch([
+      { id, count: 1, accessedAt: now.toISOString() },
+    ]);
   }
 
   async recordAccessBatch(input: AccessCountInput[]): Promise<void> {
     const entries = input.filter(
-      (entry) => entry.id.length > 0 && Number.isInteger(entry.count) && entry.count > 0
+      (entry) =>
+        entry.id.length > 0 && Number.isInteger(entry.count) && entry.count > 0,
     );
     if (entries.length === 0) {
       return;
@@ -189,13 +229,17 @@ export class HtmlBedService {
     return item;
   }
 
-  async updateItem(id: string, patch: UpdateItemInput, now = new Date()): Promise<HtmlItem> {
+  async updateItem(
+    id: string,
+    patch: UpdateItemInput,
+    now = new Date(),
+  ): Promise<HtmlItem> {
     if (patch.visibility) {
       assertVisibility(patch.visibility);
     }
     const item = await this.repository.updateItem(id, {
       ...patch,
-      updatedAt: now.toISOString()
+      updatedAt: now.toISOString(),
     });
     await this.audit(id, "update", JSON.stringify(patch), now);
     return item;
@@ -204,12 +248,16 @@ export class HtmlBedService {
   async updateExpiry(
     id: string,
     input: Pick<UpdateItemInput, "urlExpiresAt" | "fileExpiresAt">,
-    now = new Date()
+    now = new Date(),
   ): Promise<HtmlItem> {
     return this.updateItem(id, input, now);
   }
 
-  async updateVisibility(id: string, visibility: Visibility, now = new Date()): Promise<HtmlItem> {
+  async updateVisibility(
+    id: string,
+    visibility: Visibility,
+    now = new Date(),
+  ): Promise<HtmlItem> {
     return this.updateItem(id, { visibility }, now);
   }
 
@@ -239,15 +287,21 @@ export class HtmlBedService {
       } catch (error) {
         failed.push({
           id,
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
     return { ok, failed };
   }
 
-  async garbageCollectExpiredFiles(now = new Date(), limit = 100): Promise<GcResult> {
-    const expired = await this.repository.findExpiredFiles(now.toISOString(), limit);
+  async garbageCollectExpiredFiles(
+    now = new Date(),
+    limit = 100,
+  ): Promise<GcResult> {
+    const expired = await this.repository.findExpiredFiles(
+      now.toISOString(),
+      limit,
+    );
     const failed: Array<{ id: string; error: string }> = [];
     const deletedSlugs: string[] = [];
     let deleted = 0;
@@ -262,7 +316,7 @@ export class HtmlBedService {
       } catch (error) {
         failed.push({
           id: item.id,
-          error: error instanceof Error ? error.message : "Unknown error"
+          error: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
@@ -271,12 +325,15 @@ export class HtmlBedService {
       scanned: expired.length,
       deleted,
       deletedSlugs,
-      failed
+      failed,
     };
   }
 
   async getDashboardStats(now = new Date()): Promise<DashboardStats> {
-    return this.repository.getDashboardStats(now.toISOString(), addDays(now, 7).toISOString());
+    return this.repository.getDashboardStats(
+      now.toISOString(),
+      addDays(now, 7).toISOString(),
+    );
   }
 
   publicUrl(slug: string): string {
@@ -287,20 +344,37 @@ export class HtmlBedService {
     return getDerivedStatus(item, now);
   }
 
-  private async applyBatchAction(id: string, input: BatchInput, now: Date): Promise<void> {
+  private async applyBatchAction(
+    id: string,
+    input: BatchInput,
+    now: Date,
+  ): Promise<void> {
     const item = await this.getItem(id);
     switch (input.action) {
       case "extend_url": {
         const days = parsePositiveNumber(input.days, DEFAULT_URL_EXPIRE_DAYS);
-        const base = Date.parse(item.urlExpiresAt) > now.getTime() ? new Date(item.urlExpiresAt) : now;
-        await this.updateItem(id, { urlExpiresAt: addDays(base, days).toISOString() }, now);
+        const base =
+          Date.parse(item.urlExpiresAt) > now.getTime()
+            ? new Date(item.urlExpiresAt)
+            : now;
+        await this.updateItem(
+          id,
+          { urlExpiresAt: addDays(base, days).toISOString() },
+          now,
+        );
         return;
       }
       case "extend_file": {
         const days = parsePositiveNumber(input.days, DEFAULT_FILE_EXPIRE_DAYS);
         const base =
-          Date.parse(item.fileExpiresAt) > now.getTime() ? new Date(item.fileExpiresAt) : now;
-        await this.updateItem(id, { fileExpiresAt: addDays(base, days).toISOString() }, now);
+          Date.parse(item.fileExpiresAt) > now.getTime()
+            ? new Date(item.fileExpiresAt)
+            : now;
+        await this.updateItem(
+          id,
+          { fileExpiresAt: addDays(base, days).toISOString() },
+          now,
+        );
         return;
       }
       case "set_url_expires_at":
@@ -326,7 +400,11 @@ export class HtmlBedService {
         return;
       case "restore":
         if (item.status === "deleted") {
-          throw new AppError("Deleted items cannot be restored", 400, "cannot_restore_deleted");
+          throw new AppError(
+            "Deleted items cannot be restored",
+            400,
+            "cannot_restore_deleted",
+          );
         }
         await this.updateItem(id, { status: "active" }, now);
         return;
@@ -334,7 +412,11 @@ export class HtmlBedService {
         await this.deleteItem(id, now);
         return;
       default:
-        throw new AppError("Unsupported batch action", 400, "unsupported_batch_action");
+        throw new AppError(
+          "Unsupported batch action",
+          400,
+          "unsupported_batch_action",
+        );
     }
   }
 
@@ -342,23 +424,26 @@ export class HtmlBedService {
     itemId: string | null,
     action: string,
     detail: string | null,
-    now: Date
+    now: Date,
   ): Promise<void> {
     await this.repository.writeAuditLog({
       id: createId(now),
       itemId,
       action,
       detail,
-      createdAt: now.toISOString()
+      createdAt: now.toISOString(),
     });
   }
 }
 
-export function createHtmlBedConfig(input: Partial<HtmlBedConfig> & { publicBaseUrl: string }): HtmlBedConfig {
+export function createHtmlBedConfig(
+  input: Partial<HtmlBedConfig> & { publicBaseUrl: string },
+): HtmlBedConfig {
   return {
     publicBaseUrl: input.publicBaseUrl,
     defaultUrlExpireDays: input.defaultUrlExpireDays ?? DEFAULT_URL_EXPIRE_DAYS,
-    defaultFileExpireDays: input.defaultFileExpireDays ?? DEFAULT_FILE_EXPIRE_DAYS,
-    maxUploadSizeMb: input.maxUploadSizeMb ?? DEFAULT_MAX_UPLOAD_SIZE_MB
+    defaultFileExpireDays:
+      input.defaultFileExpireDays ?? DEFAULT_FILE_EXPIRE_DAYS,
+    maxUploadSizeMb: input.maxUploadSizeMb ?? DEFAULT_MAX_UPLOAD_SIZE_MB,
   };
 }

@@ -8,6 +8,10 @@ import {
 import { recordPublicAccess } from "../access-counter.js";
 import { decoratePublicHtmlForShare } from "../public-share-meta.js";
 import {
+  isMarkdownContentType,
+  renderPublicMarkdownDocument,
+} from "../public-markdown.js";
+import {
   cachePublicHtmlResponse,
   effectivePublicHtmlCacheSeconds,
   matchPublicHtmlCache,
@@ -79,19 +83,34 @@ export async function handlePublicRequest(
     now,
   );
   const contentType = result.object.contentType ?? HTML_CONTENT_TYPE;
+  const isMarkdown = isMarkdownContentType(contentType);
+  const responseContentType = isMarkdown ? HTML_CONTENT_TYPE : contentType;
+  const object = isMarkdown
+    ? {
+        ...result.object,
+        body:
+          request.method === "HEAD"
+            ? new ArrayBuffer(0)
+            : await renderPublicMarkdownDocument({
+                item: result.item,
+                object: result.object,
+              }),
+        contentType: HTML_CONTENT_TYPE,
+      }
+    : result.object;
   const body =
     request.method === "HEAD"
       ? null
       : await decoratePublicHtmlForShare({
           item: result.item,
-          object: result.object,
-          contentType,
+          object,
+          contentType: responseContentType,
           publicUrl: service.publicUrl(result.item.slug),
         });
 
   const response = new Response(body, {
     status: 200,
-    headers: publicHtmlHeaders(contentType, ttlSeconds),
+    headers: publicHtmlHeaders(responseContentType, ttlSeconds),
   });
   if (request.method === "GET") {
     cachePublicHtmlResponse(

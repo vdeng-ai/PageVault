@@ -2,7 +2,7 @@
 
 语言：[English](./README.md) | 简体中文
 
-HTMLBed 是一个轻量级 HTML 发布与生命周期管理系统。它私有存储原始 HTML 文件，只通过应用网关暴露有效的公开 URL，并为单个管理员提供用于上传、过期时间、状态和删除流程的 Web 管理界面。
+HTMLBed 是一个面向 HTML、Markdown 和图片文件的轻量级发布与生命周期管理系统。它私有存储原始上传文件，只通过应用网关暴露有效的公开 URL，并为单个管理员提供用于上传、过期时间、状态和删除流程的 Web 管理界面。
 
 ## 架构
 
@@ -41,7 +41,7 @@ HTMLBed 是一个轻量级 HTML 发布与生命周期管理系统。它私有存
 
 ## Cloudflare 部署
 
-Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运行 HTMLBed 的 Cloudflare serverless 应用：它通过 Workers Static Assets 提供管理端 SPA，用 D1 存储元数据，用私有 R2 bucket 存储原始 HTML 文件，并通过配置的 Cron Trigger 执行清理。
+Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运行 HTMLBed 的 Cloudflare serverless 应用：它通过 Workers Static Assets 提供管理端 SPA，用 D1 存储元数据，用私有 R2 bucket 存储原始文件，并通过配置的 Cron Trigger 执行清理。
 
 1. 通过 Wrangler 登录 Cloudflare。
 
@@ -71,7 +71,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
    pnpm wrangler r2 bucket create htmlbed-files
    ```
 
-   R2 是 Cloudflare 的对象存储。HTMLBed 用这个 bucket 保存上传的原始 HTML 文件。不要把这个 bucket 设为公开。公开 R2 访问会绕过 HTMLBed 的过期时间、状态、删除、审计和访问次数检查。
+   R2 是 Cloudflare 的对象存储。HTMLBed 用这个 bucket 保存上传的原始文件。不要把这个 bucket 设为公开。公开 R2 访问会绕过 HTMLBed 的过期时间、状态、删除、审计和访问次数检查。
 
 4. 创建 D1 数据库。
 
@@ -139,7 +139,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
 9. 验证部署。
 
    - 打开 `ADMIN_BASE_URL`，使用 `ADMIN_EMAIL` 和原始管理员密码登录。
-   - 在管理端上传一个小的 HTML 文件。
+   - 在管理端上传一个小的受支持文件。
    - 打开 `PUBLIC_BASE_URL` 下生成的公开 URL。
    - 确认公开根路径、公开主机名上的管理路径、公开主机名上的 API 路径没有被暴露。
    - 测试时如需查看实时 Worker 日志，可使用 `pnpm wrangler tail`。
@@ -240,7 +240,7 @@ Docker 是不使用 Cloudflare 托管运行时的部署方式。它不用 D1 和
    docker compose -f /opt/htmlbed/docker-compose.yml up -d --build
    ```
 
-   容器 entrypoint 会在启动服务前执行 SQLite 迁移。元数据和上传的 HTML 对象默认存储在 `/data/htmlbed` 下，因此该目录必须持久化并纳入备份。
+   容器 entrypoint 会在启动服务前执行 SQLite 迁移。元数据和上传的对象默认存储在 `/data/htmlbed` 下，因此该目录必须持久化并纳入备份。
 
 4. 配置 TLS 和反向代理。
 
@@ -262,7 +262,7 @@ Docker 是不使用 Cloudflare 托管运行时的部署方式。它不用 D1 和
    docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed
    ```
 
-   然后在管理端主机名登录、上传一个小的 HTML 文件，并在公开访问主机名打开生成的公开 URL。
+   然后在管理端主机名登录、上传一个小的受支持文件，并在公开访问主机名打开生成的公开 URL。
 
 6. 安全升级。
 
@@ -296,13 +296,13 @@ Docker 是不使用 Cloudflare 托管运行时的部署方式。它不用 D1 和
 
 ## 安全模型
 
-公开用户只能通过 `/p/:slug`、`/p/:slug/` 或 `/p/:slug.html` 请求单个 HTML 文件。网关会在读取存储前检查元数据、可见性、状态、URL 过期时间和文件过期时间。公开根路径、列表、sitemap 路径、管理路由和 API 都返回 `404`。
+公开用户只能通过 `/p/:slug`、`/p/:slug/` 或 `/p/:slug.html` 请求单个已发布文件。网关会在读取存储前检查元数据、可见性、状态、URL 过期时间和文件过期时间。公开根路径、列表、sitemap 路径、管理路由和 API 都返回 `404`。
 
 R2 bucket 不能公开。公开的 R2 bucket 会绕过 URL 过期时间、状态检查、删除状态、审计日志和访问计数。所有对象读取都必须通过 Worker 或 Docker server 网关。
 
 管理端和公开访问端应使用不同主机名。`htmlbed_session` cookie 只作用于管理端主机；它不能设置到父域名，例如 `.example.com`。
 
-HTMLBed 有意不对上传的 HTML 进行清理、重写、脚本注入或任何其他修改。只有经过身份验证的管理员可以上传文件，系统会存储并返回原始字节。
+HTMLBed 有意不对上传的 HTML 进行清理、重写、脚本注入或任何其他修改。Markdown 会以原始字节存储，并在公开访问时禁用原始 HTML 后渲染；图片会按上传字节返回。只有经过身份验证的管理员可以上传文件。
 
 ## 迁移与维护
 
@@ -311,7 +311,3 @@ HTMLBed 有意不对上传的 HTML 进行清理、重写、脚本注入或任何
 - Cloudflare 日志：使用 `pnpm wrangler tail`。
 - Docker 日志：使用 `docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed`。
 - 轮换管理员凭据时，先生成新的密码哈希并更新 `ADMIN_PASSWORD_HASH`；如需让现有 session 失效，可同时轮换 `SESSION_SECRET`。
-
-## 未来计划
-
-计划扩展包括图片上传、Markdown 发布、更强的访问分析和标签。

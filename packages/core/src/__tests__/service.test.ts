@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { HTML_CONTENT_TYPE } from "../constants.js";
+import {
+  HTML_CONTENT_TYPE,
+  JPEG_CONTENT_TYPE,
+  MARKDOWN_CONTENT_TYPE,
+  PNG_CONTENT_TYPE,
+  WEBP_CONTENT_TYPE,
+} from "../constants.js";
 import { addDays } from "../expiry.js";
 import type { MetadataRepository } from "../repository.js";
 import { HtmlBedService, createHtmlBedConfig } from "../service.js";
@@ -12,13 +18,17 @@ import type {
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
-  UpdateItemInput
+  UpdateItemInput,
 } from "../types.js";
 
 class MemoryStorage implements StorageProvider {
   readonly objects = new Map<string, StoredObject>();
 
-  async putObject(key: string, body: ArrayBuffer, contentType: string): Promise<void> {
+  async putObject(
+    key: string,
+    body: ArrayBuffer,
+    contentType: string,
+  ): Promise<void> {
     this.objects.set(key, { body, contentType, size: body.byteLength });
   }
 
@@ -45,12 +55,21 @@ class MemoryRepository implements MetadataRepository {
   }
 
   async getItemBySlug(slug: string): Promise<HtmlItem | null> {
-    return Array.from(this.items.values()).find((item) => item.slug === slug) ?? null;
+    return (
+      Array.from(this.items.values()).find((item) => item.slug === slug) ?? null
+    );
   }
 
   async listItems(input: ListItemsInput): Promise<ListItemsResult> {
-    const items = Array.from(this.items.values()).filter((item) => input.includeDeleted || item.status !== "deleted");
-    return { items, page: input.page, pageSize: input.pageSize, total: items.length };
+    const items = Array.from(this.items.values()).filter(
+      (item) => input.includeDeleted || item.status !== "deleted",
+    );
+    return {
+      items,
+      page: input.page,
+      pageSize: input.pageSize,
+      total: items.length,
+    };
   }
 
   async getDashboardStats(now: string, soon: string): Promise<DashboardStats> {
@@ -58,18 +77,20 @@ class MemoryRepository implements MetadataRepository {
     return {
       total: items.filter((nextItem) => nextItem.status !== "deleted").length,
       publicCount: items.filter(
-        (nextItem) => nextItem.status === "active" && nextItem.visibility === "public"
+        (nextItem) =>
+          nextItem.status === "active" && nextItem.visibility === "public",
       ).length,
       urlExpired: items.filter(
-        (nextItem) => nextItem.status !== "deleted" && nextItem.urlExpiresAt <= now
+        (nextItem) =>
+          nextItem.status !== "deleted" && nextItem.urlExpiresAt <= now,
       ).length,
       fileDeletingSoon: items.filter(
         (nextItem) =>
           nextItem.status !== "deleted" &&
           nextItem.fileExpiresAt > now &&
-          nextItem.fileExpiresAt <= soon
+          nextItem.fileExpiresAt <= soon,
       ).length,
-      deleted: items.filter((nextItem) => nextItem.status === "deleted").length
+      deleted: items.filter((nextItem) => nextItem.status === "deleted").length,
     };
   }
 
@@ -86,7 +107,12 @@ class MemoryRepository implements MetadataRepository {
   async markDeleted(id: string, deletedAt: string): Promise<void> {
     const item = this.items.get(id);
     if (item) {
-      this.items.set(id, { ...item, status: "deleted", deletedAt, updatedAt: deletedAt });
+      this.items.set(id, {
+        ...item,
+        status: "deleted",
+        deletedAt,
+        updatedAt: deletedAt,
+      });
     }
   }
 
@@ -101,7 +127,7 @@ class MemoryRepository implements MetadataRepository {
         this.items.set(entry.id, {
           ...item,
           accessCount: item.accessCount + entry.count,
-          lastAccessedAt: entry.accessedAt
+          lastAccessedAt: entry.accessedAt,
         });
       }
     }
@@ -125,8 +151,8 @@ function createService() {
     repo,
     storage,
     createHtmlBedConfig({
-      publicBaseUrl: "https://h.example.com"
-    })
+      publicBaseUrl: "https://h.example.com",
+    }),
   );
   return { service, repo, storage };
 }
@@ -151,7 +177,7 @@ function item(overrides: Partial<HtmlItem> = {}): HtmlItem {
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
     deletedAt: null,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -164,12 +190,83 @@ describe("access counting", () => {
     await service.recordAccessBatch([
       { id: "a", count: 4, accessedAt: "2026-07-05T00:01:00.000Z" },
       { id: "b", count: 2, accessedAt: "2026-07-05T00:02:00.000Z" },
-      { id: "b", count: 0, accessedAt: "2026-07-05T00:03:00.000Z" }
+      { id: "b", count: 0, accessedAt: "2026-07-05T00:03:00.000Z" },
     ]);
 
     expect((await repo.getItemById("a"))?.accessCount).toBe(4);
-    expect((await repo.getItemById("a"))?.lastAccessedAt).toBe("2026-07-05T00:01:00.000Z");
+    expect((await repo.getItemById("a"))?.lastAccessedAt).toBe(
+      "2026-07-05T00:01:00.000Z",
+    );
     expect((await repo.getItemById("b"))?.accessCount).toBe(2);
+  });
+});
+
+describe("upload", () => {
+  it("stores supported file types with derived metadata", async () => {
+    const { service, storage } = createService();
+    const now = new Date("2026-07-05T00:00:00.000Z");
+    const uploads = [
+      {
+        filename: "产品介绍.html",
+        contentType: HTML_CONTENT_TYPE,
+        storageExtension: ".html",
+        slugPattern: /^产品介绍-[0-9a-f]{8}$/,
+      },
+      {
+        filename: "notes.md",
+        contentType: MARKDOWN_CONTENT_TYPE,
+        storageExtension: ".md",
+        slugPattern: /^notes-[0-9a-f]{8}$/,
+      },
+      {
+        filename: "photo.jpeg",
+        contentType: JPEG_CONTENT_TYPE,
+        storageExtension: ".jpg",
+        slugPattern: /^photo-[0-9a-f]{8}$/,
+      },
+      {
+        filename: "diagram.png",
+        contentType: PNG_CONTENT_TYPE,
+        storageExtension: ".png",
+        slugPattern: /^diagram-[0-9a-f]{8}$/,
+      },
+      {
+        filename: "cover.webp",
+        contentType: WEBP_CONTENT_TYPE,
+        storageExtension: ".webp",
+        slugPattern: /^cover-[0-9a-f]{8}$/,
+      },
+    ];
+
+    for (const [index, upload] of uploads.entries()) {
+      const result = await service.uploadHtml({
+        filename: upload.filename,
+        body: new Uint8Array([index]).buffer,
+        now,
+      });
+
+      expect(result.item.slug).toMatch(upload.slugPattern);
+      expect(result.item.contentType).toBe(upload.contentType);
+      expect(result.item.objectKey).toMatch(
+        new RegExp(`/index\\${upload.storageExtension}$`),
+      );
+      expect(storage.objects.get(result.item.objectKey)?.contentType).toBe(
+        upload.contentType,
+      );
+    }
+  });
+
+  it("rejects unsupported file types", async () => {
+    const { service } = createService();
+    await expect(
+      service.uploadHtml({
+        filename: "notes.txt",
+        body: new ArrayBuffer(1),
+      }),
+    ).rejects.toMatchObject({
+      code: "invalid_file_type",
+      status: 400,
+    });
   });
 });
 
@@ -178,38 +275,54 @@ describe("public access", () => {
 
   it("returns 404 for missing slug", async () => {
     const { service } = createService();
-    await expect(service.getPublicHtml("missing", now)).resolves.toEqual({ kind: "not_found" });
+    await expect(service.getPublicHtml("missing", now)).resolves.toEqual({
+      kind: "not_found",
+    });
   });
 
   it("returns 404 for private items", async () => {
     const { service, repo } = createService();
     await repo.createItem({ item: item({ visibility: "private" }) });
-    await expect(service.getPublicHtml("product-a1b2c3d4", now)).resolves.toEqual({ kind: "not_found" });
+    await expect(
+      service.getPublicHtml("product-a1b2c3d4", now),
+    ).resolves.toEqual({ kind: "not_found" });
   });
 
   it("returns 403 for disabled items", async () => {
     const { service, repo } = createService();
     await repo.createItem({ item: item({ status: "disabled" }) });
-    await expect(service.getPublicHtml("product-a1b2c3d4", now)).resolves.toEqual({ kind: "disabled" });
+    await expect(
+      service.getPublicHtml("product-a1b2c3d4", now),
+    ).resolves.toEqual({ kind: "disabled" });
   });
 
   it("returns 410 for URL expiry", async () => {
     const { service, repo } = createService();
-    await repo.createItem({ item: item({ urlExpiresAt: addDays(now, -1).toISOString() }) });
-    await expect(service.getPublicHtml("product-a1b2c3d4", now)).resolves.toEqual({ kind: "gone" });
+    await repo.createItem({
+      item: item({ urlExpiresAt: addDays(now, -1).toISOString() }),
+    });
+    await expect(
+      service.getPublicHtml("product-a1b2c3d4", now),
+    ).resolves.toEqual({ kind: "gone" });
   });
 
   it("returns 410 for file expiry", async () => {
     const { service, repo } = createService();
     await repo.createItem({ item: item({ fileExpiresAt: now.toISOString() }) });
-    await expect(service.getPublicHtml("product-a1b2c3d4", now)).resolves.toEqual({ kind: "gone" });
+    await expect(
+      service.getPublicHtml("product-a1b2c3d4", now),
+    ).resolves.toEqual({ kind: "gone" });
   });
 
   it("returns 200-equivalent result for active public items", async () => {
     const { service, repo, storage } = createService();
     const active = item();
     await repo.createItem({ item: active });
-    await storage.putObject(active.objectKey, new TextEncoder().encode("<h1>ok</h1>").buffer, HTML_CONTENT_TYPE);
+    await storage.putObject(
+      active.objectKey,
+      new TextEncoder().encode("<h1>ok</h1>").buffer,
+      HTML_CONTENT_TYPE,
+    );
     const result = await service.getPublicHtml(active.slug, now);
     expect(result.kind).toBe("ok");
   });
@@ -220,20 +333,50 @@ describe("batch", () => {
     const { service, repo } = createService();
     await repo.createItem({ item: item({ id: "a", slug: "a-a1b2c3d4" }) });
     await repo.createItem({ item: item({ id: "b", slug: "b-a1b2c3d4" }) });
-    await service.batchUpdate({ ids: ["a", "b"], action: "extend_url", days: 7, now: new Date("2026-07-05T00:00:00.000Z") });
-    await service.batchUpdate({ ids: ["a", "b"], action: "extend_file", days: 180, now: new Date("2026-07-05T00:00:00.000Z") });
-    expect((await repo.getItemById("a"))?.urlExpiresAt).toBe("2026-07-19T00:00:00.000Z");
-    expect((await repo.getItemById("b"))?.fileExpiresAt).toBe("2027-06-30T00:00:00.000Z");
+    await service.batchUpdate({
+      ids: ["a", "b"],
+      action: "extend_url",
+      days: 7,
+      now: new Date("2026-07-05T00:00:00.000Z"),
+    });
+    await service.batchUpdate({
+      ids: ["a", "b"],
+      action: "extend_file",
+      days: 180,
+      now: new Date("2026-07-05T00:00:00.000Z"),
+    });
+    expect((await repo.getItemById("a"))?.urlExpiresAt).toBe(
+      "2026-07-19T00:00:00.000Z",
+    );
+    expect((await repo.getItemById("b"))?.fileExpiresAt).toBe(
+      "2027-06-30T00:00:00.000Z",
+    );
   });
 
   it("disables and deletes items", async () => {
     const { service, repo, storage } = createService();
-    const first = item({ id: "a", slug: "a-a1b2c3d4", objectKey: "objects/a/index.html" });
-    const second = item({ id: "b", slug: "b-a1b2c3d4", objectKey: "objects/b/index.html" });
+    const first = item({
+      id: "a",
+      slug: "a-a1b2c3d4",
+      objectKey: "objects/a/index.html",
+    });
+    const second = item({
+      id: "b",
+      slug: "b-a1b2c3d4",
+      objectKey: "objects/b/index.html",
+    });
     await repo.createItem({ item: first });
     await repo.createItem({ item: second });
-    await storage.putObject(first.objectKey, new ArrayBuffer(1), HTML_CONTENT_TYPE);
-    await storage.putObject(second.objectKey, new ArrayBuffer(1), HTML_CONTENT_TYPE);
+    await storage.putObject(
+      first.objectKey,
+      new ArrayBuffer(1),
+      HTML_CONTENT_TYPE,
+    );
+    await storage.putObject(
+      second.objectKey,
+      new ArrayBuffer(1),
+      HTML_CONTENT_TYPE,
+    );
 
     await service.batchUpdate({ ids: ["a"], action: "disable" });
     await service.batchUpdate({ ids: ["b"], action: "delete" });
@@ -252,14 +395,23 @@ describe("garbage collection", () => {
       id: "expired",
       slug: "expired-a1b2c3d4",
       objectKey: "objects/expired/index.html",
-      fileExpiresAt: now.toISOString()
+      fileExpiresAt: now.toISOString(),
     });
     await repo.createItem({ item: expired });
-    await storage.putObject(expired.objectKey, new ArrayBuffer(1), HTML_CONTENT_TYPE);
+    await storage.putObject(
+      expired.objectKey,
+      new ArrayBuffer(1),
+      HTML_CONTENT_TYPE,
+    );
 
     const result = await service.garbageCollectExpiredFiles(now);
 
-    expect(result).toMatchObject({ scanned: 1, deleted: 1, deletedSlugs: [expired.slug], failed: [] });
+    expect(result).toMatchObject({
+      scanned: 1,
+      deleted: 1,
+      deletedSlugs: [expired.slug],
+      failed: [],
+    });
     expect((await repo.getItemById("expired"))?.status).toBe("deleted");
     expect(await storage.getObject(expired.objectKey)).toBeNull();
   });
@@ -275,8 +427,8 @@ describe("dashboard stats", () => {
         item: item({
           id: `active-${index}`,
           slug: `active-${index}-a1b2c3d4`,
-          objectKey: `objects/active-${index}/index.html`
-        })
+          objectKey: `objects/active-${index}/index.html`,
+        }),
       });
     }
     await repo.createItem({
@@ -284,24 +436,24 @@ describe("dashboard stats", () => {
         id: "expired",
         slug: "expired-a1b2c3d4",
         objectKey: "objects/expired/index.html",
-        urlExpiresAt: addDays(now, -1).toISOString()
-      })
+        urlExpiresAt: addDays(now, -1).toISOString(),
+      }),
     });
     await repo.createItem({
       item: item({
         id: "soon",
         slug: "soon-a1b2c3d4",
         objectKey: "objects/soon/index.html",
-        fileExpiresAt: addDays(now, 3).toISOString()
-      })
+        fileExpiresAt: addDays(now, 3).toISOString(),
+      }),
     });
     await repo.createItem({
       item: item({
         id: "deleted",
         slug: "deleted-a1b2c3d4",
         objectKey: "objects/deleted/index.html",
-        status: "deleted"
-      })
+        status: "deleted",
+      }),
     });
 
     await expect(service.getDashboardStats(now)).resolves.toEqual({
@@ -309,7 +461,7 @@ describe("dashboard stats", () => {
       publicCount: 127,
       urlExpired: 1,
       fileDeletingSoon: 1,
-      deleted: 1
+      deleted: 1,
     });
   });
 });
