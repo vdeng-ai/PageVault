@@ -1,8 +1,10 @@
-# HTMLBed
+# PageVault
 
 Language: English | [简体中文](./README.zh-CN.md)
 
-HTMLBed is a lightweight publishing and lifecycle management system for HTML, Markdown, and image files. It stores original uploads privately, exposes only valid public URLs through an application gateway, and gives a single administrator a web UI for upload, expiry, status, and deletion workflows.
+PageVault is a lightweight publishing and lifecycle management system for HTML, Markdown, and image files. It stores original uploads privately, exposes only valid public URLs through an application gateway, and gives a single administrator a web UI for upload, expiry, status, and deletion workflows.
+
+PageVault is the product display name. Existing deployment identifiers intentionally remain `htmlbed` for Worker, R2, D1, Docker paths, package scopes, and GitHub Actions compatibility.
 
 ## Architecture
 
@@ -41,7 +43,7 @@ HTMLBed is a lightweight publishing and lifecycle management system for HTML, Ma
 
 ## Cloudflare Deployment
 
-Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare serverless application that runs HTMLBed: it serves the admin SPA from Workers Static Assets, stores metadata in D1, stores original files in a private R2 bucket, and runs the configured Cron Trigger for cleanup.
+Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare serverless application that runs PageVault: it serves the admin SPA from Workers Static Assets, stores metadata in D1, stores original files in a private R2 bucket, and runs the configured Cron Trigger for cleanup.
 
 1. Log in to Cloudflare through Wrangler.
 
@@ -71,7 +73,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    pnpm wrangler r2 bucket create htmlbed-files
    ```
 
-   R2 is Cloudflare's object storage. HTMLBed uses this bucket for the original uploaded files. Do not make this bucket public. Public R2 access would bypass HTMLBed's expiry, status, deletion, audit, and access-count checks.
+   R2 is Cloudflare's object storage. PageVault uses this bucket for the original uploaded files. Do not make this bucket public. Public R2 access would bypass PageVault's expiry, status, deletion, audit, and access-count checks.
 
 4. Create the D1 database.
 
@@ -79,7 +81,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    pnpm wrangler d1 create htmlbed-db
    ```
 
-   D1 is Cloudflare's SQLite-compatible database. HTMLBed uses it for metadata such as slug, status, expiry, and counters. Wrangler prints a `database_id`; copy that value into the `d1_databases` entry in `apps/worker/wrangler.jsonc`. The `database_name` can stay as `htmlbed-db` unless you intentionally chose another name.
+   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Wrangler prints a `database_id`; copy that value into the `d1_databases` entry in `apps/worker/wrangler.jsonc`. The `database_name` can stay as `htmlbed-db` unless you intentionally chose another name.
 
 5. Apply D1 migrations to the remote database.
 
@@ -87,7 +89,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    pnpm wrangler d1 migrations apply htmlbed-db --remote
    ```
 
-   This creates the tables HTMLBed needs. Use `--remote` because this database is the production Cloudflare D1 database, not Wrangler's local development database.
+   This creates the tables PageVault needs. Use `--remote` because this database is the production Cloudflare D1 database, not Wrangler's local development database.
 
 6. Prepare the Worker runtime secrets file.
 
@@ -127,7 +129,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
 
    Choose the Cloudflare zone that owns the root domain, for example `example.com`. Cloudflare will manage the Worker routing and certificate for the custom domain. If a hostname already has a conflicting DNS record, remove or change that record first.
 
-   A custom domain sends a hostname directly to the Worker, which is the recommended setup for HTMLBed on Cloudflare. Use Workers routes only if you intentionally want route patterns on existing Cloudflare-proxied DNS records. Routes are useful when a Worker sits in front of another origin server; HTMLBed's Cloudflare mode normally does not need that extra origin. Route patterns look like this:
+   A custom domain sends a hostname directly to the Worker, which is the recommended setup for PageVault on Cloudflare. Use Workers routes only if you intentionally want route patterns on existing Cloudflare-proxied DNS records. Routes are useful when a Worker sits in front of another origin server; PageVault's Cloudflare mode normally does not need that extra origin. Route patterns look like this:
 
    ```text
    admin-html.example.com/* -> htmlbed
@@ -208,7 +210,7 @@ The deploy workflow does not apply D1 migrations automatically. When schema migr
 
 Docker mode runs the same service layer with Node.js 22, SQLite, and local object storage.
 
-Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores metadata in SQLite and files on disk. You still need two hostnames, because HTMLBed uses the incoming `Host` header to decide whether a request belongs to the admin UI or the public gateway.
+Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores metadata in SQLite and files on disk. You still need two hostnames, because PageVault uses the incoming `Host` header to decide whether a request belongs to the admin UI or the public gateway.
 
 1. Prepare a host-specific compose file.
 
@@ -253,7 +255,7 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
 
    Terminate HTTPS at the reverse proxy. Do not serve `/data/htmlbed` directly from the proxy.
 
-   Preserving `Host` is required. If the reverse proxy rewrites every request to `127.0.0.1`, HTMLBed can no longer tell whether the request came from the admin hostname or the public hostname.
+   Preserving `Host` is required. If the reverse proxy rewrites every request to `127.0.0.1`, PageVault can no longer tell whether the request came from the admin hostname or the public hostname.
 
 5. Verify Docker deployment:
 
@@ -302,7 +304,7 @@ The R2 bucket must not be public. A public R2 bucket would bypass URL expiry, st
 
 The admin and public surfaces should use different hostnames. The `htmlbed_session` cookie is scoped to the admin host only; it must not be set on a parent domain such as `.example.com`.
 
-HTMLBed intentionally does not sanitize, rewrite, inject scripts into, or otherwise alter uploaded HTML. Markdown is stored as original bytes and rendered with raw HTML disabled; images are returned as uploaded bytes. Only authenticated administrators can upload files.
+PageVault intentionally does not sanitize, rewrite, inject scripts into, or otherwise alter uploaded HTML. Markdown is stored as original bytes and rendered with raw HTML disabled; images are returned as uploaded bytes. Only authenticated administrators can upload files.
 
 ## Migrations and Maintenance
 

@@ -77,7 +77,7 @@ export function App() {
               <FileText className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0">
-              <div className="text-base font-semibold text-slate-950">HTMLBed</div>
+              <div className="text-base font-semibold text-slate-950">PageVault</div>
               <div className="truncate text-xs text-slate-500">{user.email}</div>
             </div>
           </div>

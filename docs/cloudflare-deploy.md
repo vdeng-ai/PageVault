@@ -1,6 +1,8 @@
 # Cloudflare Deploy
 
-HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and the public hostname. The Worker is the Cloudflare serverless application that runs HTMLBed. It serves the admin SPA through Workers Static Assets, stores original HTML in a private R2 bucket, stores metadata in D1, and runs a daily Cron Trigger for retention cleanup.
+PageVault deploys one Cloudflare Worker to two hostnames: the admin hostname and the public hostname. The Worker is the Cloudflare serverless application that runs PageVault. It serves the admin SPA through Workers Static Assets, stores original HTML in a private R2 bucket, stores metadata in D1, and runs a daily Cron Trigger for retention cleanup.
+
+PageVault is the product display name. Keep the existing `htmlbed` Worker, R2 bucket, D1 database, package scope, and GitHub Actions deployment identifiers unless you are intentionally migrating production resources.
 
 ## Prerequisites
 
@@ -51,7 +53,7 @@ HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and t
    pnpm wrangler r2 bucket create htmlbed-files
    ```
 
-   R2 is Cloudflare's object storage. HTMLBed uses this bucket for uploaded files, and the bucket must stay private.
+   R2 is Cloudflare's object storage. PageVault uses this bucket for uploaded files, and the bucket must stay private.
 
 4. Create the D1 database:
 
@@ -59,7 +61,7 @@ HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and t
    pnpm wrangler d1 create htmlbed-db
    ```
 
-   D1 is Cloudflare's SQLite-compatible database. HTMLBed uses it for metadata such as slug, status, expiry, and counters. Copy the returned `database_id` into the `d1_databases` entry in `apps/worker/wrangler.jsonc`.
+   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Copy the returned `database_id` into the `d1_databases` entry in `apps/worker/wrangler.jsonc`.
 
 5. Apply migrations to the remote D1 database:
 
@@ -112,7 +114,7 @@ HTMLBed deploys one Cloudflare Worker to two hostnames: the admin hostname and t
 
    Choose the Cloudflare zone that owns the root domain. Cloudflare will manage the Worker routing and certificate for the custom domain. If either hostname already has a conflicting DNS record, remove or adjust that record before adding the custom domain.
 
-   Prefer Worker custom domains for this project. Worker routes are useful for matching requests on existing Cloudflare-proxied DNS records, but HTMLBed in Cloudflare mode is the application origin itself.
+   Prefer Worker custom domains for this project. Worker routes are useful for matching requests on existing Cloudflare-proxied DNS records, but PageVault in Cloudflare mode is the application origin itself.
 
    If you add Cloudflare Access, Zero Trust, Basic Auth, firewall challenges, or similar upstream authentication, apply those rules only to the admin hostname. Do not apply them to the public hostname or to a wildcard pattern such as `*.example.com`; generated public URLs like `https://h.vdengai.com/p/html-ed559a5f` must load without an admin login.
 

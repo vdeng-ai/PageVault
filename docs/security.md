@@ -41,4 +41,4 @@ External access controls may be added in front of the admin hostname, but they m
 
 ## HTML Content
 
-Uploaded HTML is stored and returned as original bytes. HTMLBed does not sanitize, rewrite, inject, remove scripts, rewrite links, or add analytics snippets.
+Uploaded HTML is stored and returned as original bytes. PageVault does not sanitize, rewrite, inject, remove scripts, rewrite links, or add analytics snippets.

@@ -2,7 +2,7 @@ import type { HtmlItem, StoredObject } from "@htmlbed/core";
 
 const SHARE_META_MAX_BYTES = 10 * 1024 * 1024;
 const DESCRIPTION_MAX_CHARS = 180;
-const SITE_NAME = "HTMLBed";
+const SITE_NAME = "PageVault";
 
 type PublicResponseBody = ArrayBuffer | ReadableStream | string;
 

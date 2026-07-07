@@ -29,7 +29,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             <LockKeyhole className="h-5 w-5" aria-hidden />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-slate-950">HTMLBed</h1>
+            <h1 className="text-xl font-semibold text-slate-950">PageVault</h1>
             <p className="text-sm font-medium text-slate-500">Admin</p>
           </div>
         </div>

@@ -1,8 +1,10 @@
-# HTMLBed
+# PageVault
 
 语言：[English](./README.md) | 简体中文
 
-HTMLBed 是一个面向 HTML、Markdown 和图片文件的轻量级发布与生命周期管理系统。它私有存储原始上传文件，只通过应用网关暴露有效的公开 URL，并为单个管理员提供用于上传、过期时间、状态和删除流程的 Web 管理界面。
+PageVault 是一个面向 HTML、Markdown 和图片文件的轻量级发布与生命周期管理系统。它私有存储原始上传文件，只通过应用网关暴露有效的公开 URL，并为单个管理员提供用于上传、过期时间、状态和删除流程的 Web 管理界面。
+
+PageVault 是产品展示名。为兼容现有线上环境和 GitHub Actions 自动部署，Worker、R2、D1、Docker 路径和包作用域等部署标识仍保留 `htmlbed`。
 
 ## 架构
 
@@ -41,7 +43,7 @@ HTMLBed 是一个面向 HTML、Markdown 和图片文件的轻量级发布与生�
 
 ## Cloudflare 部署
 
-Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运行 HTMLBed 的 Cloudflare serverless 应用：它通过 Workers Static Assets 提供管理端 SPA，用 D1 存储元数据，用私有 R2 bucket 存储原始文件，并通过配置的 Cron Trigger 执行清理。
+Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运行 PageVault 的 Cloudflare serverless 应用：它通过 Workers Static Assets 提供管理端 SPA，用 D1 存储元数据，用私有 R2 bucket 存储原始文件，并通过配置的 Cron Trigger 执行清理。
 
 1. 通过 Wrangler 登录 Cloudflare。
 
@@ -71,7 +73,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
    pnpm wrangler r2 bucket create htmlbed-files
    ```
 
-   R2 是 Cloudflare 的对象存储。HTMLBed 用这个 bucket 保存上传的原始文件。不要把这个 bucket 设为公开。公开 R2 访问会绕过 HTMLBed 的过期时间、状态、删除、审计和访问次数检查。
+   R2 是 Cloudflare 的对象存储。PageVault 用这个 bucket 保存上传的原始文件。不要把这个 bucket 设为公开。公开 R2 访问会绕过 PageVault 的过期时间、状态、删除、审计和访问次数检查。
 
 4. 创建 D1 数据库。
 
@@ -79,7 +81,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
    pnpm wrangler d1 create htmlbed-db
    ```
 
-   D1 是 Cloudflare 的 SQLite 兼容数据库。HTMLBed 用它保存 slug、状态、过期时间、访问计数等元数据。Wrangler 会输出一个 `database_id`；将这个值复制到 `apps/worker/wrangler.jsonc` 的 `d1_databases` 配置中。除非你有意改名，否则 `database_name` 可以继续使用 `htmlbed-db`。
+   D1 是 Cloudflare 的 SQLite 兼容数据库。PageVault 用它保存 slug、状态、过期时间、访问计数等元数据。Wrangler 会输出一个 `database_id`；将这个值复制到 `apps/worker/wrangler.jsonc` 的 `d1_databases` 配置中。除非你有意改名，否则 `database_name` 可以继续使用 `htmlbed-db`。
 
 5. 将 D1 迁移应用到远端数据库。
 
@@ -87,7 +89,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
    pnpm wrangler d1 migrations apply htmlbed-db --remote
    ```
 
-   这一步会创建 HTMLBed 需要的数据表。这里要使用 `--remote`，因为目标是生产环境的 Cloudflare D1 数据库，不是 Wrangler 本地开发数据库。
+   这一步会创建 PageVault 需要的数据表。这里要使用 `--remote`，因为目标是生产环境的 Cloudflare D1 数据库，不是 Wrangler 本地开发数据库。
 
 6. 准备 Worker 运行时 secrets 文件。
 
@@ -127,7 +129,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
 
    选择拥有根域名的 Cloudflare zone，例如 `example.com`。Cloudflare 会为 custom domain 管理 Worker 路由和证书。如果某个 hostname 已经有冲突的 DNS 记录，需要先删除或调整那条记录。
 
-   Custom Domain 会把一个主机名直接指向 Worker，这是本项目在 Cloudflare 上推荐的方式。只有当你明确想在已有 Cloudflare 代理 DNS 记录上使用 route pattern 时，才使用 Workers routes。Route 更适合 Worker 放在已有源站前面的场景；HTMLBed 的 Cloudflare 模式通常没有单独源站。Route pattern 例如：
+   Custom Domain 会把一个主机名直接指向 Worker，这是本项目在 Cloudflare 上推荐的方式。只有当你明确想在已有 Cloudflare 代理 DNS 记录上使用 route pattern 时，才使用 Workers routes。Route 更适合 Worker 放在已有源站前面的场景；PageVault 的 Cloudflare 模式通常没有单独源站。Route pattern 例如：
 
    ```text
    admin-html.example.com/* -> htmlbed
@@ -208,7 +210,7 @@ SESSION_SECRET
 
 Docker 模式使用同一套服务层，运行在 Node.js 22、SQLite 和本地对象存储之上。
 
-Docker 是不使用 Cloudflare 托管运行时的部署方式。它不用 D1 和 R2，而是把元数据存到 SQLite，把文件存到本地磁盘。你仍然需要两个主机名，因为 HTMLBed 会根据请求的 `Host` header 判断请求属于管理端还是公开访问端。
+Docker 是不使用 Cloudflare 托管运行时的部署方式。它不用 D1 和 R2，而是把元数据存到 SQLite，把文件存到本地磁盘。你仍然需要两个主机名，因为 PageVault 会根据请求的 `Host` header 判断请求属于管理端还是公开访问端。
 
 1. 准备主机专用的 compose 文件。
 
@@ -253,7 +255,7 @@ Docker 是不使用 Cloudflare 托管运行时的部署方式。它不用 D1 和
 
    HTTPS 应在反向代理层终止。不要让反向代理直接暴露 `/data/htmlbed`。
 
-   保留 `Host` 是必需的。如果反向代理把所有请求都改写成 `127.0.0.1`，HTMLBed 就无法判断请求来自管理端主机名还是公开访问主机名。
+   保留 `Host` 是必需的。如果反向代理把所有请求都改写成 `127.0.0.1`，PageVault 就无法判断请求来自管理端主机名还是公开访问主机名。
 
 5. 验证 Docker 部署：
 
@@ -302,7 +304,7 @@ R2 bucket 不能公开。公开的 R2 bucket 会绕过 URL 过期时间、状态
 
 管理端和公开访问端应使用不同主机名。`htmlbed_session` cookie 只作用于管理端主机；它不能设置到父域名，例如 `.example.com`。
 
-HTMLBed 有意不对上传的 HTML 进行清理、重写、脚本注入或任何其他修改。Markdown 会以原始字节存储，并在公开访问时禁用原始 HTML 后渲染；图片会按上传字节返回。只有经过身份验证的管理员可以上传文件。
+PageVault 有意不对上传的 HTML 进行清理、重写、脚本注入或任何其他修改。Markdown 会以原始字节存储，并在公开访问时禁用原始 HTML 后渲染；图片会按上传字节返回。只有经过身份验证的管理员可以上传文件。
 
 ## 迁移与维护
 
