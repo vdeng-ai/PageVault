@@ -48,17 +48,12 @@
   --info-surface: #eef6ff;
   --info-border: #bad8ff;
   --info-text: #245ea9;
-  --sidebar: #071b2b;
-  --sidebar-deep: #061522;
-  --sidebar-surface: #0d2a3d;
-  --sidebar-border: #1b3a4d;
-  --sidebar-text: #ecf8fb;
-  --sidebar-muted: #8fb0bf;
   --shadow-xs: 0 1px 2px rgba(8, 30, 47, 0.05);
   --shadow-sm: 0 8px 24px rgba(8, 30, 47, 0.07);
   --shadow-lg: 0 24px 60px rgba(4, 20, 34, 0.22);
   --focus-ring: rgba(20, 184, 166, 0.24);
   --chart-track: #e3ebef;
+  --app-header-height: 4rem;
 }
 
 :root[data-theme="dark"] {
@@ -99,12 +94,6 @@
   --info-surface: #142c46;
   --info-border: #315d8c;
   --info-text: #93c5fd;
-  --sidebar: #06131f;
-  --sidebar-deep: #040e17;
-  --sidebar-surface: #0d2636;
-  --sidebar-border: #18384b;
-  --sidebar-text: #eef9fb;
-  --sidebar-muted: #82a5b5;
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.22);
   --shadow-sm: 0 12px 30px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.42);
@@ -152,29 +141,179 @@ button:disabled {
 }
 
 .app-shell {
+  min-width: 0;
   color: var(--text-primary);
 }
 
-.app-sidebar {
-  border-right: 1px solid var(--sidebar-border);
-  background:
-    linear-gradient(165deg, rgba(20, 184, 166, 0.1), transparent 28%),
-    linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar-deep) 100%);
-  color: var(--sidebar-text);
-  box-shadow: 8px 0 28px rgba(3, 17, 28, 0.12);
+.app-header {
+  position: sticky;
+  z-index: 30;
+  top: 0;
+  height: var(--app-header-height);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: var(--shadow-xs);
+  backdrop-filter: blur(16px);
 }
 
-.app-sidebar-header,
-.sidebar-footer {
-  border-color: var(--sidebar-border);
+.app-header-inner {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 clamp(1rem, 2vw, 2.5rem);
 }
 
-.app-sidebar-header {
-  border-bottom: 1px solid var(--sidebar-border);
+.app-brand {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.65rem;
 }
 
-.sidebar-footer {
-  border-top: 1px solid var(--sidebar-border);
+.app-brand-mark {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.app-brand-copy {
+  min-width: 0;
+}
+
+.app-brand-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-brand-subtitle {
+  max-width: 9rem;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-brand-tagline {
+  display: none;
+}
+
+.app-brand-email {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.desktop-top-nav {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.top-nav-button {
+  position: relative;
+  display: inline-flex;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  white-space: nowrap;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.top-nav-button:hover {
+  border-color: var(--border);
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.top-nav-button-active {
+  border-color: var(--accent-soft);
+  background: var(--accent-surface);
+  color: var(--accent-text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.app-header-actions {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.header-account {
+  display: none;
+  min-width: 0;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.header-account-avatar {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--accent-soft);
+  border-radius: 7px;
+  background: var(--accent-surface);
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.header-account-copy {
+  display: none;
+  min-width: 0;
+  max-width: 12rem;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.header-account-copy strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 0.1rem;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-sign-out {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.app-main {
+  width: 100%;
+  min-height: calc(100vh - var(--app-header-height));
+  padding: 1.25rem clamp(1rem, 2vw, 2.5rem)
+    calc(6rem + env(safe-area-inset-bottom));
 }
 
 .brand-mark {
@@ -196,119 +335,6 @@ button:disabled {
 .brand-mark-xl {
   width: 4rem;
   height: 4rem;
-}
-
-.brand-name {
-  color: var(--sidebar-text);
-  font-size: 1.05rem;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.brand-tagline {
-  margin-top: 0.2rem;
-  color: var(--sidebar-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.nav-eyebrow {
-  padding: 0 0.75rem;
-  color: var(--sidebar-muted);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.nav-button {
-  display: flex;
-  width: 100%;
-  min-height: 2.75rem;
-  align-items: center;
-  gap: 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  padding: 0 0.75rem;
-  color: var(--sidebar-muted);
-  font-size: 0.875rem;
-  font-weight: 700;
-  text-align: left;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.nav-button:hover {
-  border-color: var(--sidebar-border);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--sidebar-text);
-}
-
-.nav-button-active {
-  border-color: rgba(45, 212, 191, 0.24);
-  background: linear-gradient(
-    100deg,
-    rgba(20, 184, 166, 0.2),
-    rgba(37, 99, 235, 0.14)
-  );
-  color: #fff;
-  box-shadow: inset 3px 0 0 #2dd4bf;
-}
-
-.nav-icon {
-  display: grid;
-  width: 1.75rem;
-  height: 1.75rem;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.nav-button-active .nav-icon {
-  background: rgba(45, 212, 191, 0.16);
-  color: #5eead4;
-}
-
-.account-card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  border: 1px solid var(--sidebar-border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.035);
-  padding: 0.75rem;
-}
-
-.account-avatar {
-  display: grid;
-  width: 2.25rem;
-  height: 2.25rem;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 7px;
-  background: rgba(45, 212, 191, 0.14);
-  color: #7cebdd;
-  font-size: 0.875rem;
-  font-weight: 800;
-}
-
-.text-sidebar {
-  color: var(--sidebar-text);
-}
-
-.text-sidebar-muted {
-  color: var(--sidebar-muted);
-}
-
-.app-mobile-header {
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  box-shadow: var(--shadow-xs);
-  backdrop-filter: blur(16px);
 }
 
 .mobile-bottom-nav {
@@ -394,11 +420,6 @@ button:disabled {
   padding: 2px;
 }
 
-.app-sidebar .segmented-control {
-  border-color: var(--sidebar-border);
-  background: rgba(255, 255, 255, 0.035);
-}
-
 .segment-button {
   display: inline-flex;
   min-width: 2rem;
@@ -418,27 +439,14 @@ button:disabled {
     box-shadow 150ms ease;
 }
 
-.app-sidebar .segment-button {
-  color: var(--sidebar-muted);
-}
-
 .segment-button:hover {
   color: var(--text-primary);
-}
-
-.app-sidebar .segment-button:hover {
-  color: var(--sidebar-text);
 }
 
 .segment-button-active {
   background: var(--surface-raised);
   color: var(--accent-text);
   box-shadow: var(--shadow-xs);
-}
-
-.app-sidebar .segment-button-active {
-  background: var(--sidebar-surface);
-  color: #6ee7d8;
 }
 
 .settings-controls-compact .segment-button {
@@ -734,7 +742,7 @@ button:disabled {
 .btn:focus-visible,
 .icon-button:focus-visible,
 .segment-button:focus-visible,
-.nav-button:focus-visible,
+.top-nav-button:focus-visible,
 .mobile-bottom-button:focus-visible,
 .dropzone:focus-visible,
 .visibility-option:focus-visible,
@@ -843,12 +851,13 @@ button:disabled {
 }
 
 .upload-page {
-  max-width: 76rem;
+  width: 100%;
+  max-width: none;
 }
 
 .upload-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.16fr) minmax(20rem, 0.84fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(22rem, 0.75fr);
   gap: 1rem;
   align-items: stretch;
 }
@@ -1118,7 +1127,7 @@ button:disabled {
 .batch-toolbar {
   position: sticky;
   z-index: 12;
-  top: 0.75rem;
+  top: calc(var(--app-header-height) + 0.75rem);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1389,6 +1398,12 @@ button:disabled {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.76rem;
   line-height: 1.55;
+}
+
+.detail-layout {
+  display: grid;
+  align-items: start;
+  gap: 1rem;
 }
 
 .login-shell {
@@ -1718,6 +1733,44 @@ button:disabled {
   --status-text: #c4b5fd;
 }
 
+@media (min-width: 1024px) {
+  .app-brand {
+    min-width: 10.5rem;
+    flex: 0 0 auto;
+  }
+  .app-brand-tagline {
+    display: block;
+  }
+  .app-brand-email {
+    display: none;
+  }
+  .desktop-top-nav {
+    display: flex;
+  }
+  .header-account {
+    display: flex;
+  }
+  .mobile-bottom-nav {
+    display: none;
+  }
+  .app-main {
+    padding-top: 2rem;
+    padding-bottom: 2.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .header-account-copy {
+    display: block;
+  }
+  .detail-layout {
+    grid-template-columns: minmax(0, 1.45fr) minmax(22rem, 0.55fr);
+  }
+  .detail-metadata-panel .metadata-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 1023px) {
   .app-main {
     min-height: calc(100vh - 4rem);
@@ -1840,11 +1893,11 @@ button:disabled {
 }
 
 @media (max-width: 370px) {
-  .app-mobile-header .brand-mark,
-  .app-mobile-header .text-\[11px\] {
+  .app-header .app-brand-mark,
+  .app-header .app-brand-subtitle {
     display: none;
   }
-  .app-mobile-header .settings-controls-compact .segment-button {
+  .app-header .settings-controls-compact .segment-button {
     min-width: 1.7rem;
     padding: 0 0.25rem;
   }

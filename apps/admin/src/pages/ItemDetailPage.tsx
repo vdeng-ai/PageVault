@@ -154,7 +154,7 @@ export function ItemDetailPage({
 
   if (!item) {
     return (
-      <section className="page-stack max-w-5xl">
+      <section className="page-stack">
         <button
           className="btn btn-secondary btn-sm w-fit"
           type="button"
@@ -175,7 +175,7 @@ export function ItemDetailPage({
   }
 
   return (
-    <section className="page-stack max-w-5xl">
+    <section className="page-stack">
       <button className="back-link" type="button" onClick={requestBack}>
         <ArrowLeft className="h-4 w-4" aria-hidden />
         {t("common.back")}
@@ -210,127 +210,129 @@ export function ItemDetailPage({
         </a>
       </div>
 
-      <div className="surface feature-surface p-5 sm:p-6">
-        <div className="section-heading">
-          <span className="section-icon">
-            <FileCog className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <h2>{t("detail.settingsTitle")}</h2>
-            <p>{t("detail.settingsSubtitle")}</p>
+      <div className="detail-layout">
+        <div className="surface feature-surface p-5 sm:p-6">
+          <div className="section-heading">
+            <span className="section-icon">
+              <FileCog className="h-5 w-5" aria-hidden />
+            </span>
+            <div>
+              <h2>{t("detail.settingsTitle")}</h2>
+              <p>{t("detail.settingsSubtitle")}</p>
+            </div>
           </div>
-        </div>
-        <div className="mt-6 grid gap-5">
-          <label className="field-label">
-            {t("common.title")}
-            <input
-              className="control px-3"
-              value={fields.title}
-              maxLength={200}
-              aria-invalid={fields.title.trim().length === 0}
-              onChange={(event) =>
-                setFields((current) => ({
-                  ...current,
-                  title: event.target.value,
-                }))
+          <div className="mt-6 grid gap-5">
+            <label className="field-label">
+              {t("common.title")}
+              <input
+                className="control px-3"
+                value={fields.title}
+                maxLength={200}
+                aria-invalid={fields.title.trim().length === 0}
+                onChange={(event) =>
+                  setFields((current) => ({
+                    ...current,
+                    title: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="field-label sm:max-w-sm">
+              {t("common.visibility")}
+              <select
+                className="control px-3"
+                value={fields.visibility}
+                onChange={(event) =>
+                  setFields((current) => ({
+                    ...current,
+                    visibility: event.target.value as Visibility,
+                  }))
+                }
+              >
+                <option value="public">{t("common.public")}</option>
+                <option value="private">{t("common.private")}</option>
+              </select>
+            </label>
+            <ExpiryEditor
+              urlExpiresAt={fields.urlExpiresAt}
+              fileExpiresAt={fields.fileExpiresAt}
+              onUrlChange={(value) =>
+                setFields((current) => ({ ...current, urlExpiresAt: value }))
+              }
+              onFileChange={(value) =>
+                setFields((current) => ({ ...current, fileExpiresAt: value }))
               }
             />
-          </label>
-          <label className="field-label sm:max-w-sm">
-            {t("common.visibility")}
-            <select
-              className="control px-3"
-              value={fields.visibility}
-              onChange={(event) =>
-                setFields((current) => ({
-                  ...current,
-                  visibility: event.target.value as Visibility,
-                }))
-              }
-            >
-              <option value="public">{t("common.public")}</option>
-              <option value="private">{t("common.private")}</option>
-            </select>
-          </label>
-          <ExpiryEditor
-            urlExpiresAt={fields.urlExpiresAt}
-            fileExpiresAt={fields.fileExpiresAt}
-            onUrlChange={(value) =>
-              setFields((current) => ({ ...current, urlExpiresAt: value }))
-            }
-            onFileChange={(value) =>
-              setFields((current) => ({ ...current, fileExpiresAt: value }))
-            }
-          />
-          {error && (
-            <div className="alert-error" role="alert">
-              {error}
-            </div>
-          )}
-          <div className="detail-action-bar">
-            <div className="flex flex-wrap gap-2">
+            {error && (
+              <div className="alert-error" role="alert">
+                {error}
+              </div>
+            )}
+            <div className="detail-action-bar">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  disabled={busy || !dirty || !valid}
+                  onClick={save}
+                >
+                  {busy ? (
+                    <span className="spinner" aria-hidden />
+                  ) : (
+                    <Save className="h-4 w-4" aria-hidden />
+                  )}
+                  {t("common.save")}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  disabled={busy || !dirty || !initial}
+                  onClick={() => initial && setFields(initial)}
+                >
+                  <RotateCcw className="h-4 w-4" aria-hidden />
+                  {t("common.reset")}
+                </button>
+              </div>
               <button
-                className="btn btn-primary"
+                className="btn btn-danger"
                 type="button"
-                disabled={busy || !dirty || !valid}
-                onClick={save}
+                disabled={busy}
+                onClick={() => setConfirmation("delete")}
               >
-                {busy ? (
-                  <span className="spinner" aria-hidden />
-                ) : (
-                  <Save className="h-4 w-4" aria-hidden />
-                )}
-                {t("common.save")}
-              </button>
-              <button
-                className="btn btn-secondary"
-                type="button"
-                disabled={busy || !dirty || !initial}
-                onClick={() => initial && setFields(initial)}
-              >
-                <RotateCcw className="h-4 w-4" aria-hidden />
-                {t("common.reset")}
+                <Trash2 className="h-4 w-4" aria-hidden />
+                {t("common.delete")}
               </button>
             </div>
-            <button
-              className="btn btn-danger"
-              type="button"
-              disabled={busy}
-              onClick={() => setConfirmation("delete")}
-            >
-              <Trash2 className="h-4 w-4" aria-hidden />
-              {t("common.delete")}
-            </button>
           </div>
         </div>
-      </div>
 
-      <div className="surface feature-surface p-5 sm:p-6">
-        <div className="section-heading">
-          <span className="section-icon">
-            <Database className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <h2>{t("detail.metadataTitle")}</h2>
-            <p>{t("detail.metadataSubtitle")}</p>
+        <div className="surface feature-surface detail-metadata-panel p-5 sm:p-6">
+          <div className="section-heading">
+            <span className="section-icon">
+              <Database className="h-5 w-5" aria-hidden />
+            </span>
+            <div>
+              <h2>{t("detail.metadataTitle")}</h2>
+              <p>{t("detail.metadataSubtitle")}</p>
+            </div>
           </div>
+          <dl className="metadata-grid mt-6">
+            <div>
+              <dt>
+                <Hash className="h-4 w-4" aria-hidden />
+                {t("detail.sha256")}
+              </dt>
+              <dd>{item.sha256}</dd>
+            </div>
+            <div>
+              <dt>
+                <Database className="h-4 w-4" aria-hidden />
+                {t("detail.objectKey")}
+              </dt>
+              <dd>{item.objectKey}</dd>
+            </div>
+          </dl>
         </div>
-        <dl className="metadata-grid mt-6">
-          <div>
-            <dt>
-              <Hash className="h-4 w-4" aria-hidden />
-              {t("detail.sha256")}
-            </dt>
-            <dd>{item.sha256}</dd>
-          </div>
-          <div>
-            <dt>
-              <Database className="h-4 w-4" aria-hidden />
-              {t("detail.objectKey")}
-            </dt>
-            <dd>{item.objectKey}</dd>
-          </div>
-        </dl>
       </div>
 
       <ConfirmDialog

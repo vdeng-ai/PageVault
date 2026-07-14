@@ -3,7 +3,7 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, parseRouteHash } from "./App.js";
-import { dashboard, me } from "./api/client.js";
+import { dashboard, getItem, me } from "./api/client.js";
 import { FeedbackProvider } from "./components/Feedback.js";
 import { SettingsProvider } from "./settings.js";
 
@@ -70,15 +70,56 @@ describe("App navigation", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelectorAll("aside nav [data-route]")).toHaveLength(
-        3,
-      );
+      expect(
+        container.querySelectorAll(".desktop-top-nav [data-route]"),
+      ).toHaveLength(3);
     });
+
+    expect(container.querySelector("aside")).toBeNull();
     expect(
       Array.from(
-        container.querySelectorAll<HTMLElement>("aside nav [data-route]"),
+        container.querySelectorAll<HTMLElement>(
+          ".desktop-top-nav [data-route]",
+        ),
+      ).map((element) => element.dataset.route),
+    ).toEqual(["upload", "items", "dashboard"]);
+    expect(
+      Array.from(
+        container.querySelectorAll<HTMLElement>(
+          ".mobile-bottom-nav [data-route]",
+        ),
       ).map((element) => element.dataset.route),
     ).toEqual(["upload", "items", "dashboard"]);
     expect(vi.mocked(dashboard)).not.toHaveBeenCalled();
+  });
+
+  it("marks files active in both navigation variants for detail routes", async () => {
+    window.location.hash = "#/items/item-1";
+    vi.mocked(getItem).mockReturnValue(new Promise<never>(() => undefined));
+
+    const { container } = render(
+      <SettingsProvider>
+        <FeedbackProvider>
+          <App />
+        </FeedbackProvider>
+      </SettingsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('.desktop-top-nav [data-route="items"]'),
+      ).not.toBeNull();
+    });
+
+    expect(
+      container
+        .querySelector('.desktop-top-nav [data-route="items"]')
+        ?.getAttribute("aria-current"),
+    ).toBe("page");
+    expect(
+      container
+        .querySelector('.mobile-bottom-nav [data-route="items"]')
+        ?.getAttribute("aria-current"),
+    ).toBe("page");
   });
 });

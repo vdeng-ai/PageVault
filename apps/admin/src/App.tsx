@@ -162,22 +162,25 @@ export function App() {
 
   return (
     <div className="app-shell min-h-screen">
-      <aside className="app-sidebar fixed inset-y-0 left-0 z-20 hidden w-72 lg:flex lg:flex-col">
-        <div className="app-sidebar-header flex h-20 items-center px-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="brand-mark brand-mark-lg">
-              <ShieldCheck className="h-6 w-6" aria-hidden />
+      <header className="app-header">
+        <div className="app-header-inner">
+          <div className="app-brand">
+            <div className="brand-mark app-brand-mark">
+              <ShieldCheck className="h-5 w-5" aria-hidden />
             </div>
-            <div className="min-w-0">
-              <div className="brand-name">PageVault</div>
-              <div className="brand-tagline">{t("app.controlCenter")}</div>
+            <div className="app-brand-copy">
+              <div className="app-brand-name">PageVault</div>
+              <div className="app-brand-subtitle">
+                <span className="app-brand-tagline">
+                  {t("app.controlCenter")}
+                </span>
+                <span className="app-brand-email">{user.email}</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="px-4 pt-5">
-          <div className="nav-eyebrow">{t("app.workspace")}</div>
+
           <nav
-            className="mt-2 grid gap-1.5"
+            className="desktop-top-nav"
             aria-label={t("app.primaryNavigation")}
           >
             {navItems.map((item) => {
@@ -188,69 +191,46 @@ export function App() {
               return (
                 <button
                   key={item.route}
-                  className={`nav-button ${active ? "nav-button-active" : ""}`}
+                  className={`top-nav-button ${active ? "top-nav-button-active" : ""}`}
                   type="button"
                   data-route={item.route}
                   aria-current={active ? "page" : undefined}
                   onClick={() => navigate(item.path)}
                 >
-                  <span className="nav-icon">
-                    <Icon className="h-4 w-4" aria-hidden />
-                  </span>
-                  {item.label}
+                  <Icon className="h-4 w-4" aria-hidden />
+                  <span>{item.label}</span>
                 </button>
               );
             })}
           </nav>
-        </div>
-        <div className="sidebar-footer mt-auto p-4">
-          <div className="account-card mb-3">
-            <div className="account-avatar">
-              {user.email?.slice(0, 1).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold text-sidebar-muted">
-                {t("login.admin")}
-              </div>
-              <div className="truncate text-sm font-semibold text-sidebar">
-                {user.email}
-              </div>
-            </div>
-          </div>
-          <SettingsControls />
-          <button
-            className="nav-button mt-3 w-full"
-            type="button"
-            onClick={() => {
-              void logout().finally(() => setUser({ authenticated: false }));
-            }}
-          >
-            <span className="nav-icon">
-              <LogOut className="h-4 w-4" aria-hidden />
-            </span>
-            {t("app.signOut")}
-          </button>
-        </div>
-      </aside>
 
-      <header className="app-mobile-header sticky top-0 z-20 lg:hidden">
-        <div className="flex min-h-16 items-center justify-between gap-3 px-4 py-2">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="brand-mark h-9 w-9">
-              <ShieldCheck className="h-5 w-5" aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-primary">PageVault</div>
-              <div className="truncate text-[11px] font-medium text-muted">
-                {user.email}
+          <div className="app-header-actions">
+            <SettingsControls compact />
+            <div className="header-account">
+              <div className="header-account-avatar">
+                {user.email?.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="header-account-copy">
+                <div>{t("login.admin")}</div>
+                <strong>{user.email}</strong>
               </div>
             </div>
+            <button
+              className="icon-button header-sign-out"
+              type="button"
+              title={t("app.signOut")}
+              aria-label={t("app.signOut")}
+              onClick={() => {
+                void logout().finally(() => setUser({ authenticated: false }));
+              }}
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+            </button>
           </div>
-          <SettingsControls compact />
         </div>
       </header>
 
-      <main className="app-main mx-auto w-full max-w-[1600px] px-4 pb-28 pt-5 sm:px-6 lg:ml-72 lg:w-auto lg:px-8 lg:pb-10 lg:pt-8">
+      <main className="app-main">
         {route.name === "upload" && (
           <UploadPage onViewItem={(id) => navigate(`/items/${id}`)} />
         )}
@@ -269,7 +249,7 @@ export function App() {
       </main>
 
       <nav
-        className="mobile-bottom-nav lg:hidden"
+        className="mobile-bottom-nav"
         aria-label={t("app.primaryNavigation")}
       >
         {navItems.map((item) => {
