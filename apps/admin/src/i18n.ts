@@ -8,6 +8,8 @@ const en = {
   "app.loading": "Loading",
   "app.primaryNavigation": "Primary navigation",
   "app.signOut": "Sign out",
+  "app.controlCenter": "Secure publishing",
+  "app.workspace": "Workspace",
 
   "settings.language": "Language",
   "settings.theme": "Theme",
@@ -41,11 +43,27 @@ const en = {
   "common.saveFailed": "Save failed",
   "common.deleteFailed": "Delete failed",
   "common.uploadFailed": "Upload failed",
+  "common.cancel": "Cancel",
+  "common.confirm": "Confirm",
+  "common.close": "Close",
+  "common.reset": "Reset",
+  "common.retry": "Try again",
+  "common.clear": "Clear",
+  "common.disable": "Disable",
+  "common.copied": "Link copied",
+  "common.copyFailed": "Could not copy the link",
+  "common.saved": "Changes saved",
+  "common.updated": "File updated",
+  "common.deleted": "File deleted",
+  "common.batchUpdated": ({ count }) => `${count} files updated`,
 
   "login.admin": "Admin",
+  "login.eyebrow": "Protected workspace",
+  "login.subtitle": "Sign in to publish and manage your hosted files.",
   "login.email": "Email",
   "login.password": "Password",
   "login.signIn": "Sign in",
+  "login.signingIn": "Signing in…",
 
   "status.active": "Active",
   "status.private": "Private",
@@ -55,6 +73,7 @@ const en = {
   "status.fileExpired": "File expired",
 
   "dashboard.title": "Dashboard",
+  "dashboard.uploadAction": "New upload",
   "dashboard.chartAria": "Library distribution chart",
   "dashboard.allRecords": "All records",
   "dashboard.totalFiles": "Total files",
@@ -72,8 +91,10 @@ const en = {
   "dashboard.needAttention": ({ count }) => `${count} need attention`,
   "dashboard.public": "Public",
   "dashboard.notPublic": "Not public",
-  "dashboard.distributionPublicDetail": ({ percent }) => `${percent}% of all records`,
-  "dashboard.distributionNotPublicDetail": ({ percent }) => `${percent}% private or restricted`,
+  "dashboard.distributionPublicDetail": ({ percent }) =>
+    `${percent}% of all records`,
+  "dashboard.distributionNotPublicDetail": ({ percent }) =>
+    `${percent}% private or restricted`,
   "dashboard.distributionDeletedDetail": ({ percent }) => `${percent}% removed`,
   "dashboard.noRecords": "Upload files to populate the dashboard charts.",
   "dashboard.signalsTitle": "Operational signals",
@@ -86,11 +107,21 @@ const en = {
   "dashboard.deletedSignalDetail": "Removed records",
 
   "files.title": "Files",
+  "files.subtitle": "Search, publish, and manage every hosted object.",
   "files.pageSummary": ({ page }) => `Page ${page}`,
   "files.recordSummary": ({ total }) => `${total} records`,
   "files.allStatus": "All status",
   "files.allVisibility": "All visibility",
   "files.pagination": ({ page, totalPages }) => `${page} / ${totalPages}`,
+  "files.searchPlaceholder": "Search title, filename, or URL",
+  "files.clearFilters": "Clear filters",
+  "files.emptyTitle": "Your library is ready",
+  "files.emptyDetail":
+    "Upload the first file to start building your collection.",
+  "files.noResultsTitle": "No matching files",
+  "files.noResultsDetail": "Try another search or clear the current filters.",
+  "files.newUpload": "Upload a file",
+  "files.loading": "Loading files",
 
   "table.selectAll": "Select all",
   "table.selectItem": ({ title }) => `Select ${title}`,
@@ -104,6 +135,7 @@ const en = {
   "table.copyUrl": "Copy URL",
   "table.openPreview": "Open preview",
   "table.edit": "Edit",
+  "table.moreActions": "More actions",
   "table.setPrivate": "Set private",
   "table.setPublic": "Set public",
   "table.restore": "Restore",
@@ -114,15 +146,65 @@ const en = {
   "batch.filePlusDays": ({ days }) => `File +${days}d`,
 
   "upload.title": "Upload",
-  "upload.subtitle": "Ready for a new object",
+  "upload.eyebrow": "Publish something new",
+  "upload.subtitle":
+    "Drop a file, choose access, and share it in one focused flow.",
   "upload.file": "File",
   "upload.acceptedTypes": ".html / .htm / .md / .jpg / .png / .webp",
+  "upload.dropTitle": "Drop your file here",
+  "upload.dropHint": "or choose a file from your device",
+  "upload.browse": "Choose file",
+  "upload.replace": "Replace",
+  "upload.remove": "Remove",
+  "upload.selectedFile": "Selected file",
+  "upload.publishSettings": "Publishing settings",
+  "upload.publishHint":
+    "Control access and how long the link and file stay available.",
   "upload.urlDays": "URL days",
+  "upload.urlDaysHint": "How long the public link stays active",
   "upload.fileDays": "File days",
+  "upload.fileDaysHint": "How long the stored file is retained",
+  "upload.publicHint": "Anyone with the link can open it",
+  "upload.privateHint": "Only visible in the admin workspace",
+  "upload.action": "Upload and publish",
+  "upload.uploading": "Uploading…",
+  "upload.successTitle": "Your file is live",
+  "upload.successSubtitle":
+    "The share link is ready. Choose what you want to do next.",
   "upload.copyUrl": "Copy URL",
+  "upload.openPreview": "Open preview",
+  "upload.viewDetails": "View details",
+  "upload.uploadAnother": "Upload another",
+  "upload.invalidType":
+    "Choose a supported HTML, Markdown, JPEG, PNG, or WebP file.",
+  "upload.invalidDays":
+    "Expiry values must be whole numbers greater than zero.",
+  "upload.chooseFile": "Choose a file before uploading.",
 
+  "detail.eyebrow": "File details",
+  "detail.subtitle": "Update publishing settings and inspect stored metadata.",
+  "detail.settingsTitle": "Publishing settings",
+  "detail.settingsSubtitle": "Changes take effect as soon as they are saved.",
+  "detail.metadataTitle": "Storage metadata",
+  "detail.metadataSubtitle": "Immutable identifiers for this stored object.",
+  "detail.unsaved": "Unsaved changes",
   "detail.objectKey": "Object key",
-  "detail.sha256": "SHA-256"
+  "detail.sha256": "SHA-256",
+
+  "confirm.deleteItem": ({ title }) => `Delete “${title}”?`,
+  "confirm.deleteItemBody":
+    "The public link will stop working and the file will enter the deletion workflow.",
+  "confirm.disableItem": ({ title }) => `Disable “${title}”?`,
+  "confirm.disableItemBody":
+    "The public link will stop working until this file is restored.",
+  "confirm.batchDelete": ({ count }) => `Delete ${count} selected files?`,
+  "confirm.batchDeleteBody":
+    "Their public links will stop working and the files will enter the deletion workflow.",
+  "confirm.batchDisable": ({ count }) => `Disable ${count} selected files?`,
+  "confirm.batchDisableBody":
+    "Their public links will stop working until the files are restored.",
+  "confirm.discardTitle": "Discard unsaved changes?",
+  "confirm.discardBody": "The edits on this page will be lost.",
 } satisfies Record<string, Message>;
 
 type TranslationKey = keyof typeof en;
@@ -131,6 +213,8 @@ const zh = {
   "app.loading": "加载中",
   "app.primaryNavigation": "主导航",
   "app.signOut": "退出登录",
+  "app.controlCenter": "安全发布中心",
+  "app.workspace": "工作区",
 
   "settings.language": "语言",
   "settings.theme": "风格",
@@ -164,11 +248,27 @@ const zh = {
   "common.saveFailed": "保存失败",
   "common.deleteFailed": "删除失败",
   "common.uploadFailed": "上传失败",
+  "common.cancel": "取消",
+  "common.confirm": "确认",
+  "common.close": "关闭",
+  "common.reset": "重置",
+  "common.retry": "重试",
+  "common.clear": "清除",
+  "common.disable": "停用",
+  "common.copied": "链接已复制",
+  "common.copyFailed": "无法复制链接",
+  "common.saved": "更改已保存",
+  "common.updated": "文件已更新",
+  "common.deleted": "文件已删除",
+  "common.batchUpdated": ({ count }) => `已更新 ${count} 个文件`,
 
   "login.admin": "管理后台",
+  "login.eyebrow": "受保护的工作区",
+  "login.subtitle": "登录后即可发布并管理托管文件。",
   "login.email": "邮箱",
   "login.password": "密码",
   "login.signIn": "登录",
+  "login.signingIn": "正在登录…",
 
   "status.active": "可用",
   "status.private": "私有",
@@ -178,6 +278,7 @@ const zh = {
   "status.fileExpired": "文件已过期",
 
   "dashboard.title": "仪表盘",
+  "dashboard.uploadAction": "新建上传",
   "dashboard.chartAria": "资源分布图",
   "dashboard.allRecords": "全部记录",
   "dashboard.totalFiles": "文件总数",
@@ -195,8 +296,10 @@ const zh = {
   "dashboard.needAttention": ({ count }) => `${count} 项需要关注`,
   "dashboard.public": "公开",
   "dashboard.notPublic": "非公开",
-  "dashboard.distributionPublicDetail": ({ percent }) => `占全部记录 ${percent}%`,
-  "dashboard.distributionNotPublicDetail": ({ percent }) => `${percent}% 为私有或受限`,
+  "dashboard.distributionPublicDetail": ({ percent }) =>
+    `占全部记录 ${percent}%`,
+  "dashboard.distributionNotPublicDetail": ({ percent }) =>
+    `${percent}% 为私有或受限`,
   "dashboard.distributionDeletedDetail": ({ percent }) => `${percent}% 已移除`,
   "dashboard.noRecords": "上传文件后，仪表盘图表会显示数据。",
   "dashboard.signalsTitle": "运行信号",
@@ -209,11 +312,20 @@ const zh = {
   "dashboard.deletedSignalDetail": "已移除记录",
 
   "files.title": "文件",
+  "files.subtitle": "搜索、发布并管理所有托管对象。",
   "files.pageSummary": ({ page }) => `第 ${page} 页`,
   "files.recordSummary": ({ total }) => `${total} 条记录`,
   "files.allStatus": "全部状态",
   "files.allVisibility": "全部可见性",
   "files.pagination": ({ page, totalPages }) => `${page} / ${totalPages}`,
+  "files.searchPlaceholder": "搜索标题、文件名或 URL",
+  "files.clearFilters": "清除筛选",
+  "files.emptyTitle": "资源库已准备好",
+  "files.emptyDetail": "上传第一个文件，开始建立你的资源集合。",
+  "files.noResultsTitle": "没有匹配的文件",
+  "files.noResultsDetail": "尝试其他关键词，或清除当前筛选条件。",
+  "files.newUpload": "上传文件",
+  "files.loading": "正在加载文件",
 
   "table.selectAll": "全选",
   "table.selectItem": ({ title }) => `选择 ${title}`,
@@ -227,6 +339,7 @@ const zh = {
   "table.copyUrl": "复制 URL",
   "table.openPreview": "打开预览",
   "table.edit": "编辑",
+  "table.moreActions": "更多操作",
   "table.setPrivate": "设为私有",
   "table.setPublic": "设为公开",
   "table.restore": "恢复",
@@ -237,20 +350,62 @@ const zh = {
   "batch.filePlusDays": ({ days }) => `文件 +${days} 天`,
 
   "upload.title": "上传",
-  "upload.subtitle": "准备创建新对象",
+  "upload.eyebrow": "发布新内容",
+  "upload.subtitle": "拖入文件、设置访问方式，一次完成发布与分享。",
   "upload.file": "文件",
   "upload.acceptedTypes": ".html / .htm / .md / .jpg / .png / .webp",
+  "upload.dropTitle": "将文件拖到这里",
+  "upload.dropHint": "或从设备中选择文件",
+  "upload.browse": "选择文件",
+  "upload.replace": "替换",
+  "upload.remove": "移除",
+  "upload.selectedFile": "已选择文件",
+  "upload.publishSettings": "发布设置",
+  "upload.publishHint": "控制访问方式，以及链接和文件的有效时间。",
   "upload.urlDays": "URL 天数",
+  "upload.urlDaysHint": "公开链接保持有效的时间",
   "upload.fileDays": "文件天数",
+  "upload.fileDaysHint": "存储文件的保留时间",
+  "upload.publicHint": "任何获得链接的人都可以打开",
+  "upload.privateHint": "仅在管理工作区内可见",
+  "upload.action": "上传并发布",
+  "upload.uploading": "正在上传…",
+  "upload.successTitle": "文件已上线",
+  "upload.successSubtitle": "分享链接已经准备好，选择下一步操作。",
   "upload.copyUrl": "复制 URL",
+  "upload.openPreview": "打开预览",
+  "upload.viewDetails": "查看详情",
+  "upload.uploadAnother": "继续上传",
+  "upload.invalidType":
+    "请选择受支持的 HTML、Markdown、JPEG、PNG 或 WebP 文件。",
+  "upload.invalidDays": "有效期必须是大于零的整数。",
+  "upload.chooseFile": "请先选择要上传的文件。",
 
+  "detail.eyebrow": "文件详情",
+  "detail.subtitle": "更新发布设置并查看存储元数据。",
+  "detail.settingsTitle": "发布设置",
+  "detail.settingsSubtitle": "保存后，更改会立即生效。",
+  "detail.metadataTitle": "存储元数据",
+  "detail.metadataSubtitle": "该存储对象的不可变标识。",
+  "detail.unsaved": "有未保存的更改",
   "detail.objectKey": "对象键",
-  "detail.sha256": "SHA-256"
+  "detail.sha256": "SHA-256",
+
+  "confirm.deleteItem": ({ title }) => `删除“${title}”？`,
+  "confirm.deleteItemBody": "公开链接将立即失效，文件会进入删除流程。",
+  "confirm.disableItem": ({ title }) => `停用“${title}”？`,
+  "confirm.disableItemBody": "恢复此文件前，公开链接将无法访问。",
+  "confirm.batchDelete": ({ count }) => `删除选中的 ${count} 个文件？`,
+  "confirm.batchDeleteBody": "这些公开链接将立即失效，文件会进入删除流程。",
+  "confirm.batchDisable": ({ count }) => `停用选中的 ${count} 个文件？`,
+  "confirm.batchDisableBody": "恢复这些文件前，对应公开链接将无法访问。",
+  "confirm.discardTitle": "放弃未保存的更改？",
+  "confirm.discardBody": "当前页面中的编辑内容将会丢失。",
 } satisfies Record<TranslationKey, Message>;
 
 const dictionaries: Record<Language, Record<TranslationKey, Message>> = {
   en,
-  "zh-CN": zh
+  "zh-CN": zh,
 };
 
 export type { TranslationKey };
@@ -259,7 +414,11 @@ export function languageLocale(language: Language): string {
   return language === "zh-CN" ? "zh-CN" : "en-US";
 }
 
-export function translate(language: Language, key: TranslationKey, args: MessageArgs = {}): string {
+export function translate(
+  language: Language,
+  key: TranslationKey,
+  args: MessageArgs = {},
+): string {
   const message = dictionaries[language][key];
   return typeof message === "function" ? message(args) : message;
 }

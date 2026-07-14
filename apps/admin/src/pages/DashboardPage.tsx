@@ -1,10 +1,12 @@
 import {
+  BarChart3,
   Eye,
   FileClock,
   FileText,
   Globe2,
   LockKeyhole,
   Trash2,
+  UploadCloud,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { dashboard, type DashboardStats } from "../api/client.js";
@@ -126,10 +128,7 @@ function ChartListSkeleton({ rows }: { rows: number }) {
   return (
     <div className="grid gap-3">
       {Array.from({ length: rows }, (_, index) => (
-        <div
-          key={index}
-          className="panel-row rounded-lg border p-3"
-        >
+        <div key={index} className="panel-row rounded-lg border p-3">
           <div className="animate-pulse">
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-1 items-center gap-3">
@@ -169,7 +168,7 @@ function SignalSkeleton() {
   );
 }
 
-export function DashboardPage() {
+export function DashboardPage({ onUpload }: { onUpload: () => void }) {
   const { locale, t } = useSettings();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -179,10 +178,10 @@ export function DashboardPage() {
       .then(setStats)
       .catch((nextError: unknown) =>
         setError(
-          nextError instanceof Error ? nextError.message : t("common.loadFailed"),
+          nextError instanceof Error ? nextError.message : "load-failed",
         ),
       );
-  }, [t]);
+  }, []);
 
   const data = stats ?? emptyStats;
   const isLoading = stats === null && error === null;
@@ -202,7 +201,9 @@ export function DashboardPage() {
     {
       label: t("dashboard.publicFiles"),
       value: data.publicCount,
-      detail: t("dashboard.publicFilesDetail", { percent: percent(data.publicCount, data.total) }),
+      detail: t("dashboard.publicFilesDetail", {
+        percent: percent(data.publicCount, data.total),
+      }),
       icon: Globe2,
       style: "metric-accent-sky",
       percentTotal: data.total,
@@ -210,7 +211,9 @@ export function DashboardPage() {
     {
       label: t("dashboard.urlExpired"),
       value: data.urlExpired,
-      detail: t("dashboard.urlExpiredDetail", { percent: percent(data.urlExpired, data.total) }),
+      detail: t("dashboard.urlExpiredDetail", {
+        percent: percent(data.urlExpired, data.total),
+      }),
       icon: Eye,
       style: "metric-accent-indigo",
       percentTotal: data.total,
@@ -226,7 +229,9 @@ export function DashboardPage() {
     {
       label: t("dashboard.deleted"),
       value: data.deleted,
-      detail: t("dashboard.deletedDetail", { percent: percent(data.deleted, allRecords) }),
+      detail: t("dashboard.deletedDetail", {
+        percent: percent(data.deleted, allRecords),
+      }),
       icon: Trash2,
       style: "metric-accent-rose",
       percentTotal: allRecords,
@@ -238,19 +243,25 @@ export function DashboardPage() {
       label: t("dashboard.public"),
       value: data.publicCount,
       color: "#0284c7",
-      description: t("dashboard.distributionPublicDetail", { percent: percent(data.publicCount, allRecords) }),
+      description: t("dashboard.distributionPublicDetail", {
+        percent: percent(data.publicCount, allRecords),
+      }),
     },
     {
       label: t("dashboard.notPublic"),
       value: privateCount,
       color: "#0f766e",
-      description: t("dashboard.distributionNotPublicDetail", { percent: percent(privateCount, allRecords) }),
+      description: t("dashboard.distributionNotPublicDetail", {
+        percent: percent(privateCount, allRecords),
+      }),
     },
     {
       label: t("dashboard.deleted"),
       value: data.deleted,
       color: "#e11d48",
-      description: t("dashboard.distributionDeletedDetail", { percent: percent(data.deleted, allRecords) }),
+      description: t("dashboard.distributionDeletedDetail", {
+        percent: percent(data.deleted, allRecords),
+      }),
     },
   ];
 
@@ -294,17 +305,29 @@ export function DashboardPage() {
 
   return (
     <section className="page-stack">
-      <div className="page-header">
+      <div className="page-header page-header-hero">
         <div>
-          <h2 className="page-title">{t("dashboard.title")}</h2>
+          <div className="page-eyebrow">
+            <BarChart3 className="h-4 w-4" aria-hidden />
+            {t("app.controlCenter")}
+          </div>
+          <h1 className="page-title">{t("dashboard.title")}</h1>
           <p className="page-subtitle">
             {new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(
               new Date(),
             )}
           </p>
         </div>
+        <button className="btn btn-primary" type="button" onClick={onUpload}>
+          <UploadCloud className="h-4 w-4" aria-hidden />
+          {t("dashboard.uploadAction")}
+        </button>
       </div>
-      {error && <div className="alert-error">{error}</div>}
+      {error && (
+        <div className="alert-error">
+          {error === "load-failed" ? t("common.loadFailed") : error}
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {isLoading
@@ -323,7 +346,7 @@ export function DashboardPage() {
                     </div>
                     <span className="chip rounded-md px-2 py-1 text-xs font-semibold">
                       {metric.value === 0
-                        ? "0%"
+                        ? 0
                         : percent(metric.value, metric.percentTotal)}
                       %
                     </span>
@@ -357,7 +380,9 @@ export function DashboardPage() {
               <div className="skeleton-muted h-9 w-36 animate-pulse rounded-md" />
             ) : (
               <div className="attention-chip rounded-md px-3 py-2 text-sm font-semibold ring-1">
-                {t("dashboard.needAttention", { count: formatNumber(attentionCount, locale) })}
+                {t("dashboard.needAttention", {
+                  count: formatNumber(attentionCount, locale),
+                })}
               </div>
             )}
           </div>

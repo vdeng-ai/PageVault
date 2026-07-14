@@ -2,11 +2,17 @@ import { useSettings } from "../settings.js";
 
 function toLocalDateTime(value: string): string {
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
   const offsetMs = date.getTimezoneOffset() * 60 * 1000;
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
 function fromLocalDateTime(value: string): string {
+  if (value.length === 0) {
+    return "";
+  }
   return new Date(value).toISOString();
 }
 
@@ -14,7 +20,7 @@ export function ExpiryEditor({
   urlExpiresAt,
   fileExpiresAt,
   onUrlChange,
-  onFileChange
+  onFileChange,
 }: {
   urlExpiresAt: string;
   fileExpiresAt: string;
@@ -31,7 +37,12 @@ export function ExpiryEditor({
           className="control px-3"
           type="datetime-local"
           value={toLocalDateTime(urlExpiresAt)}
-          onChange={(event) => onUrlChange(fromLocalDateTime(event.target.value))}
+          aria-invalid={
+            urlExpiresAt.length === 0 || Number.isNaN(Date.parse(urlExpiresAt))
+          }
+          onChange={(event) =>
+            onUrlChange(fromLocalDateTime(event.target.value))
+          }
         />
       </label>
       <label className="field-label">
@@ -40,7 +51,13 @@ export function ExpiryEditor({
           className="control px-3"
           type="datetime-local"
           value={toLocalDateTime(fileExpiresAt)}
-          onChange={(event) => onFileChange(fromLocalDateTime(event.target.value))}
+          aria-invalid={
+            fileExpiresAt.length === 0 ||
+            Number.isNaN(Date.parse(fileExpiresAt))
+          }
+          onChange={(event) =>
+            onFileChange(fromLocalDateTime(event.target.value))
+          }
         />
       </label>
     </div>

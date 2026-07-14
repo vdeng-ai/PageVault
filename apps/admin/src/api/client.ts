@@ -46,6 +46,15 @@ export interface DashboardStats {
   deleted: number;
 }
 
+export interface UploadResult {
+  id: string;
+  title: string;
+  slug: string;
+  publicUrl: string;
+  urlExpiresAt: string;
+  fileExpiresAt: string;
+}
+
 export type BatchAction =
   | "extend_url"
   | "extend_file"
@@ -147,14 +156,7 @@ export function uploadHtml(input: {
   urlExpireDays: number;
   fileExpireDays: number;
   visibility: Visibility;
-}): Promise<{
-  id: string;
-  title: string;
-  slug: string;
-  publicUrl: string;
-  urlExpiresAt: string;
-  fileExpiresAt: string;
-}> {
+}): Promise<UploadResult> {
   const body = new FormData();
   body.set("file", input.file);
   body.set("urlExpireDays", String(input.urlExpireDays));

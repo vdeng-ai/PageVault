@@ -1,132 +1,321 @@
-import { Check, Clipboard, Upload } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Clipboard,
+  ExternalLink,
+  Eye,
+  LockKeyhole,
+  RotateCcw,
+  Rocket,
+  UploadCloud,
+} from "lucide-react";
 import { useState } from "react";
-import { uploadHtml, type Visibility } from "../api/client.js";
+import {
+  uploadHtml,
+  type UploadResult,
+  type Visibility,
+} from "../api/client.js";
+import { useFeedback } from "../components/Feedback.js";
 import { UploadDropzone } from "../components/UploadDropzone.js";
 import { useSettings } from "../settings.js";
 
-export function UploadPage() {
+const supportedExtensions = new Set([
+  "html",
+  "htm",
+  "md",
+  "markdown",
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+]);
+
+function isSupportedFile(file: File): boolean {
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  return extension !== undefined && supportedExtensions.has(extension);
+}
+
+function positiveInteger(value: string): number | null {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return parsed > 0 ? parsed : null;
+}
+
+export function UploadPage({
+  onViewItem,
+}: {
+  onViewItem: (id: string) => void;
+}) {
   const { t } = useSettings();
+  const { notify } = useFeedback();
   const [file, setFile] = useState<File | null>(null);
-  const [urlExpireDays, setUrlExpireDays] = useState(7);
-  const [fileExpireDays, setFileExpireDays] = useState(180);
+  const [urlExpireDays, setUrlExpireDays] = useState("7");
+  const [fileExpireDays, setFileExpireDays] = useState("180");
   const [visibility, setVisibility] = useState<Visibility>("public");
-  const [result, setResult] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [result, setResult] = useState<UploadResult | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const parsedUrlDays = positiveInteger(urlExpireDays);
+  const parsedFileDays = positiveInteger(fileExpireDays);
+  const expiryValid = parsedUrlDays !== null && parsedFileDays !== null;
+
+  function chooseFile(nextFile: File): void {
+    setResult(null);
+    setError(null);
+    if (!isSupportedFile(nextFile)) {
+      setFile(null);
+      setFileError(t("upload.invalidType"));
+      return;
+    }
+    setFile(nextFile);
+    setFileError(null);
+  }
+
+  function copyUrl(): void {
+    if (!result) {
+      return;
+    }
+    void navigator.clipboard
+      .writeText(result.publicUrl)
+      .then(() => notify(t("common.copied"), "success"))
+      .catch(() => notify(t("common.copyFailed"), "error"));
+  }
+
+  function submit(): void {
+    if (!file) {
+      setFileError(t("upload.chooseFile"));
+      return;
+    }
+    if (parsedUrlDays === null || parsedFileDays === null) {
+      setError(t("upload.invalidDays"));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    void uploadHtml({
+      file,
+      urlExpireDays: parsedUrlDays,
+      fileExpireDays: parsedFileDays,
+      visibility,
+    })
+      .then(setResult)
+      .catch((nextError: unknown) =>
+        setError(
+          nextError instanceof Error
+            ? nextError.message
+            : t("common.uploadFailed"),
+        ),
+      )
+      .finally(() => setBusy(false));
+  }
+
   return (
-    <section className="page-stack max-w-3xl">
-      <div className="page-header">
+    <section className="page-stack upload-page">
+      <div className="page-header page-header-hero">
         <div>
-          <h2 className="page-title">{t("upload.title")}</h2>
-          <p className="page-subtitle">{t("upload.subtitle")}</p>
+          <div className="page-eyebrow">
+            <Rocket className="h-4 w-4" aria-hidden />
+            {t("upload.eyebrow")}
+          </div>
+          <h1 className="page-title page-title-lg">{t("upload.title")}</h1>
+          <p className="page-subtitle max-w-2xl">{t("upload.subtitle")}</p>
+        </div>
+        <div className="hero-orbit" aria-hidden>
+          <UploadCloud className="h-7 w-7" />
         </div>
       </div>
-      <div className="surface p-5">
-        <UploadDropzone file={file} onFile={setFile} />
-        <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <label className="field-label">
-            {t("upload.urlDays")}
-            <input
-              className="control px-3"
-              type="number"
-              min={1}
-              value={urlExpireDays}
-              onChange={(event) =>
-                setUrlExpireDays(Number.parseInt(event.target.value, 10))
-              }
-            />
-          </label>
-          <label className="field-label">
-            {t("upload.fileDays")}
-            <input
-              className="control px-3"
-              type="number"
-              min={1}
-              value={fileExpireDays}
-              onChange={(event) =>
-                setFileExpireDays(Number.parseInt(event.target.value, 10))
-              }
-            />
-          </label>
-          <label className="field-label">
-            {t("common.visibility")}
-            <select
-              className="control px-3"
-              value={visibility}
-              onChange={(event) =>
-                setVisibility(event.target.value as Visibility)
-              }
-            >
-              <option value="public">{t("common.public")}</option>
-              <option value="private">{t("common.private")}</option>
-            </select>
-          </label>
-        </div>
-        {error && (
-          <div className="alert-error mt-4">
-            {error}
+
+      <div className="upload-layout">
+        <div className="surface feature-surface p-4 sm:p-6">
+          <div className="section-heading">
+            <span className="section-step">1</span>
+            <div>
+              <h2>{t("upload.file")}</h2>
+              <p>{t("upload.acceptedTypes")}</p>
+            </div>
           </div>
-        )}
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <button
-            className="btn btn-primary"
-            type="button"
-            disabled={!file || busy}
-            onClick={() => {
-              if (!file) {
-                return;
-              }
-              setBusy(true);
-              setError(null);
-              setResult(null);
-              void uploadHtml({
-                file,
-                urlExpireDays,
-                fileExpireDays,
-                visibility,
-              })
-                .then((response) => setResult(response.publicUrl))
-                .catch((nextError: unknown) =>
-                  setError(
-                    nextError instanceof Error
-                      ? nextError.message
-                      : t("common.uploadFailed"),
-                  ),
-                )
-                .finally(() => setBusy(false));
-            }}
-          >
-            <Upload className="h-4 w-4" aria-hidden />
-            {t("upload.title")}
-          </button>
-          {result && (
-            <button
-              className="btn btn-secondary"
-              type="button"
-              onClick={() => {
-                void navigator.clipboard.writeText(result).then(() => {
-                  setCopied(true);
-                  window.setTimeout(() => setCopied(false), 1200);
-                });
+          <div className="mt-5">
+            <UploadDropzone
+              file={file}
+              error={fileError}
+              onFile={chooseFile}
+              onClear={() => {
+                setFile(null);
+                setFileError(null);
+                setResult(null);
               }}
-            >
-              {copied ? (
-                <Check className="h-4 w-4" aria-hidden />
-              ) : (
-                <Clipboard className="h-4 w-4" aria-hidden />
-              )}
-              {t("upload.copyUrl")}
-            </button>
-          )}
-        </div>
-        {result && (
-          <div className="success-output mt-4 break-all rounded-md border px-3 py-2 font-mono text-sm">
-            {result}
+            />
           </div>
-        )}
+        </div>
+
+        <div className="surface feature-surface p-4 sm:p-6">
+          <div className="section-heading">
+            <span className="section-step">2</span>
+            <div>
+              <h2>{t("upload.publishSettings")}</h2>
+              <p>{t("upload.publishHint")}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-5">
+            <div>
+              <div className="field-label mb-2">{t("common.visibility")}</div>
+              <div className="visibility-selector">
+                <button
+                  className={`visibility-option ${visibility === "public" ? "visibility-option-active" : ""}`}
+                  type="button"
+                  aria-pressed={visibility === "public"}
+                  onClick={() => setVisibility("public")}
+                >
+                  <span className="visibility-icon">
+                    <Eye className="h-5 w-5" aria-hidden />
+                  </span>
+                  <span>
+                    <strong>{t("common.public")}</strong>
+                    <small>{t("upload.publicHint")}</small>
+                  </span>
+                </button>
+                <button
+                  className={`visibility-option ${visibility === "private" ? "visibility-option-active" : ""}`}
+                  type="button"
+                  aria-pressed={visibility === "private"}
+                  onClick={() => setVisibility("private")}
+                >
+                  <span className="visibility-icon">
+                    <LockKeyhole className="h-5 w-5" aria-hidden />
+                  </span>
+                  <span>
+                    <strong>{t("common.private")}</strong>
+                    <small>{t("upload.privateHint")}</small>
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="field-label">
+                <span>{t("upload.urlDays")}</span>
+                <span className="number-control">
+                  <input
+                    className="control"
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    value={urlExpireDays}
+                    aria-invalid={positiveInteger(urlExpireDays) === null}
+                    onChange={(event) => setUrlExpireDays(event.target.value)}
+                  />
+                  <span>{t("upload.urlDays")}</span>
+                </span>
+                <small className="field-hint">{t("upload.urlDaysHint")}</small>
+              </label>
+              <label className="field-label">
+                <span>{t("upload.fileDays")}</span>
+                <span className="number-control">
+                  <input
+                    className="control"
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    value={fileExpireDays}
+                    aria-invalid={positiveInteger(fileExpireDays) === null}
+                    onChange={(event) => setFileExpireDays(event.target.value)}
+                  />
+                  <span>{t("upload.fileDays")}</span>
+                </span>
+                <small className="field-hint">{t("upload.fileDaysHint")}</small>
+              </label>
+            </div>
+
+            {!expiryValid && (
+              <div className="field-error">{t("upload.invalidDays")}</div>
+            )}
+            {error && <div className="alert-error">{error}</div>}
+
+            <button
+              className="btn btn-primary btn-lg w-full"
+              type="button"
+              disabled={!file || !expiryValid || busy}
+              aria-busy={busy}
+              onClick={submit}
+            >
+              {busy ? (
+                <span className="spinner" aria-hidden />
+              ) : (
+                <UploadCloud className="h-5 w-5" aria-hidden />
+              )}
+              {busy ? t("upload.uploading") : t("upload.action")}
+              {!busy && <ArrowRight className="ml-auto h-5 w-5" aria-hidden />}
+            </button>
+          </div>
+        </div>
       </div>
+
+      {result && (
+        <div className="success-panel" role="status">
+          <div className="success-icon">
+            <CheckCircle2 className="h-7 w-7" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2>{t("upload.successTitle")}</h2>
+            <p>{t("upload.successSubtitle")}</p>
+            <button
+              className="success-url"
+              type="button"
+              onClick={copyUrl}
+              title={result.publicUrl}
+            >
+              <span>{result.publicUrl}</span>
+              <Clipboard className="h-4 w-4 shrink-0" aria-hidden />
+            </button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={copyUrl}
+              >
+                <Clipboard className="h-4 w-4" aria-hidden />
+                {t("upload.copyUrl")}
+              </button>
+              <a
+                className="btn btn-secondary"
+                href={result.publicUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <ExternalLink className="h-4 w-4" aria-hidden />
+                {t("upload.openPreview")}
+              </a>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => onViewItem(result.id)}
+              >
+                {t("upload.viewDetails")}
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </button>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => {
+                  setFile(null);
+                  setResult(null);
+                  setError(null);
+                  setFileError(null);
+                }}
+              >
+                <RotateCcw className="h-4 w-4" aria-hidden />
+                {t("upload.uploadAnother")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

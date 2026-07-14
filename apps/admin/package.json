@@ -18,9 +18,12 @@
     "tailwindcss": "^4.1.12"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "jsdom": "^29.1.1",
     "vite": "^7.1.2"
   }
 }

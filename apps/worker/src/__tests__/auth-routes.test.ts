@@ -151,7 +151,7 @@ async function createFixture() {
 }
 
 function item(overrides: Partial<HtmlItem> = {}): HtmlItem {
-  const now = new Date("2026-07-05T00:00:00.000Z");
+  const now = new Date();
   return {
     id: overrides.id ?? "item-1",
     title: "Product",
