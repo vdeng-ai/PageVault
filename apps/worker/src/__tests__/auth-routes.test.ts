@@ -188,12 +188,12 @@ describe("admin auth routes", () => {
     const { env, handle } = await createFixture();
     const productionEnv = {
       ...env,
-      ADMIN_BASE_URL: "https://admin-html.vdengai.com",
-      PUBLIC_BASE_URL: "https://h.vdengai.com",
+      ADMIN_BASE_URL: "https://admin-html.example.com",
+      PUBLIC_BASE_URL: "https://h.example.com",
     };
 
     const response = await handle(
-      new Request("https://admin-html.vdengai.com/api/admin/items"),
+      new Request("https://admin-html.example.com/api/admin/items"),
       productionEnv,
     );
     expect(response.status).toBe(401);
@@ -625,8 +625,8 @@ describe("public routes", () => {
     const { env, handle, repo, storage } = await createFixture();
     const productionEnv = {
       ...env,
-      ADMIN_BASE_URL: "https://admin-html.vdengai.com",
-      PUBLIC_BASE_URL: "https://h.vdengai.com",
+      ADMIN_BASE_URL: "https://admin-html.example.com",
+      PUBLIC_BASE_URL: "https://h.example.com",
     };
     const active = item({
       slug: "html-ed559a5f",
@@ -640,7 +640,7 @@ describe("public routes", () => {
     );
 
     const response = await handle(
-      new Request("https://h.vdengai.com/p/html-ed559a5f"),
+      new Request("https://h.example.com/p/html-ed559a5f"),
       productionEnv,
     );
     expect(response.status).toBe(200);

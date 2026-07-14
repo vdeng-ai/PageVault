@@ -1,6 +1,6 @@
 # Cloudflare Deploy
 
-PageVault deploys one Cloudflare Worker to two hostnames: the admin hostname and the public hostname. The Worker is the Cloudflare serverless application that runs PageVault. It serves the admin SPA through Workers Static Assets, stores original HTML in a private R2 bucket, stores metadata in D1, and runs a daily Cron Trigger for retention cleanup.
+PageVault deploys one Cloudflare Worker to two hostnames: the admin hostname and the public hostname. The Worker serves the admin SPA through Workers Static Assets, stores uploaded files in a private R2 bucket, stores metadata in D1, and runs a daily Cron Trigger for retention cleanup.
 
 The product name is `PageVault`; Cloudflare resources, package scopes, and GitHub Actions deployment identifiers use the lowercase `pagevault` form.
 
@@ -87,12 +87,7 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
 
    Set `PUBLIC_BASE_URL` and `ADMIN_BASE_URL` to your two real HTTPS origins, without trailing slashes. Set `ADMIN_PASSWORD_HASH` to the output from `scripts/hash-password.ts` and `SESSION_SECRET` to the generated random secret. Do not commit the filled file.
 
-   For the `vdengai.com` deployment, the intended values are:
-
-   ```dotenv
-   PUBLIC_BASE_URL=https://h.vdengai.com
-   ADMIN_BASE_URL=https://admin-html.vdengai.com
-   ```
+   See [Configuration](./configuration.md) for all supported runtime values and defaults.
 
 7. Build and deploy the Worker:
 
@@ -116,14 +111,14 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
 
    Prefer Worker custom domains for this project. Worker routes are useful for matching requests on existing Cloudflare-proxied DNS records, but PageVault in Cloudflare mode is the application origin itself.
 
-   If you add Cloudflare Access, Zero Trust, Basic Auth, firewall challenges, or similar upstream authentication, apply those rules only to the admin hostname. Do not apply them to the public hostname or to a wildcard pattern such as `*.example.com`; generated public URLs like `https://h.vdengai.com/p/html-ed559a5f` must load without an admin login.
+   If you add Cloudflare Access, Zero Trust, Basic Auth, firewall challenges, or similar upstream authentication, apply those rules only to the admin hostname. Do not apply them to the public hostname or to a wildcard pattern such as `*.example.com`; generated public URLs like `https://h.example.com/p/report-ed559a5f` must load without an admin login.
 
 9. Verify the deployment:
    - Sign in on the admin hostname.
    - Upload a small supported file.
    - Open the generated public URL on the public hostname from an unauthenticated browser, private window, or different device.
    - Confirm public roots, API paths, and admin paths on the public hostname are not exposed.
-   - Confirm `https://admin-html.vdengai.com/` still requires the admin account.
+   - Confirm `https://admin-html.example.com/` still requires the admin account.
 
 ## Troubleshooting
 
@@ -138,3 +133,5 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
 This repository includes `.github/workflows/deploy.yml` for automatic Cloudflare deployment. It runs on pushes to `main` and through `workflow_dispatch`, installs the root `packageManager` version with Corepack, runs checks and builds, writes `apps/worker/.env.production` from GitHub Secrets, then deploys with `wrangler deploy --keep-vars --secrets-file .env.production`.
 
 The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply pagevault-db --remote` before or alongside the deploy you intend to release.
+
+See [Security](./security.md) for the runtime trust model and required hostname isolation.
