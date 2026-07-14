@@ -84,7 +84,7 @@ importers:
       '@hono/node-server':
         specifier: ^1.18.2
         version: 1.19.14(hono@4.12.27)
-      '@htmlbed/core':
+      '@pagevault/core':
         specifier: workspace:*
         version: link:../../packages/core
       hono:

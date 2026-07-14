@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { mkdirSync } from "node:fs";
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
-import { AppError, type MetadataRepository } from "@htmlbed/core";
+import { AppError, type MetadataRepository } from "@pagevault/core";
 import type {
   AccessCountInput,
   AuditLogInput,
@@ -12,7 +12,7 @@ import type {
   ListItemsInput,
   ListItemsResult,
   UpdateItemInput,
-} from "@htmlbed/core";
+} from "@pagevault/core";
 import {
   buildListWhere,
   insertItemSql,

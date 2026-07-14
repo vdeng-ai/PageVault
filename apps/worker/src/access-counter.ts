@@ -1,4 +1,4 @@
-import type { AccessCountInput, HtmlBedService } from "@htmlbed/core";
+import type { AccessCountInput, PageVaultService } from "@pagevault/core";
 import type { AppBindings, WaitUntilContext } from "./bindings.js";
 
 type AccessCountMode = "windowed" | "exact" | "off";
@@ -64,7 +64,7 @@ function drainPendingAccessCounts(): AccessCountInput[] {
   return entries;
 }
 
-export async function flushAccessCounts(service: HtmlBedService): Promise<void> {
+export async function flushAccessCounts(service: PageVaultService): Promise<void> {
   const entries = drainPendingAccessCounts();
   if (entries.length === 0) {
     return;
@@ -80,7 +80,7 @@ export async function flushAccessCounts(service: HtmlBedService): Promise<void> 
 }
 
 export function recordPublicAccess(
-  service: HtmlBedService,
+  service: PageVaultService,
   env: AppBindings,
   ctx: WaitUntilContext | undefined,
   itemId: string,

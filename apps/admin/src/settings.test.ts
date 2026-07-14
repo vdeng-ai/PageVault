@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { parseLanguage, parseThemePreference, resolveTheme } from "./settings.js";
+import {
+  LANGUAGE_STORAGE_KEY,
+  parseLanguage,
+  parseThemePreference,
+  resolveTheme,
+  THEME_STORAGE_KEY,
+} from "./settings.js";
 
 describe("settings helpers", () => {
+  it("uses PageVault-scoped browser storage keys", () => {
+    expect(LANGUAGE_STORAGE_KEY).toBe("pagevault.admin.language");
+    expect(THEME_STORAGE_KEY).toBe("pagevault.admin.theme");
+  });
+
   it("defaults to English for missing or invalid languages", () => {
     expect(parseLanguage(null)).toBe("en");
     expect(parseLanguage("fr")).toBe("en");

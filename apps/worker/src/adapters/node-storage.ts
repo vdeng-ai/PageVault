@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
-import type { StorageProvider, StoredObject } from "@htmlbed/core";
+import type { StorageProvider, StoredObject } from "@pagevault/core";
 
 export class LocalFileStorage implements StorageProvider {
   constructor(private readonly rootDir: string) {}

@@ -1,4 +1,4 @@
-import { createHtmlBedConfig, HtmlBedService } from "@htmlbed/core";
+import { createPageVaultConfig, PageVaultService } from "@pagevault/core";
 import { CloudflareD1Repository } from "./adapters/cloudflare-db.js";
 import { CloudflareR2Storage } from "./adapters/cloudflare-storage.js";
 import type { AppBindings } from "./bindings.js";
@@ -11,14 +11,14 @@ function numberEnv(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-export function serviceFromCloudflareEnv(env: AppBindings): HtmlBedService {
+export function serviceFromCloudflareEnv(env: AppBindings): PageVaultService {
   if (!env.DB || !env.HTML_BUCKET) {
     throw new Error("Cloudflare DB and R2 bindings are required");
   }
-  return new HtmlBedService(
+  return new PageVaultService(
     new CloudflareD1Repository(env.DB),
     new CloudflareR2Storage(env.HTML_BUCKET),
-    createHtmlBedConfig({
+    createPageVaultConfig({
       publicBaseUrl: env.PUBLIC_BASE_URL,
       defaultUrlExpireDays: numberEnv(env.DEFAULT_URL_EXPIRE_DAYS, 7),
       defaultFileExpireDays: numberEnv(env.DEFAULT_FILE_EXPIRE_DAYS, 180),

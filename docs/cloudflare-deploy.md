@@ -2,7 +2,7 @@
 
 PageVault deploys one Cloudflare Worker to two hostnames: the admin hostname and the public hostname. The Worker is the Cloudflare serverless application that runs PageVault. It serves the admin SPA through Workers Static Assets, stores original HTML in a private R2 bucket, stores metadata in D1, and runs a daily Cron Trigger for retention cleanup.
 
-PageVault is the product display name. Keep the existing `htmlbed` Worker, R2 bucket, D1 database, package scope, and GitHub Actions deployment identifiers unless you are intentionally migrating production resources.
+The product name is `PageVault`; Cloudflare resources, package scopes, and GitHub Actions deployment identifiers use the lowercase `pagevault` form.
 
 ## Prerequisites
 
@@ -50,7 +50,7 @@ PageVault is the product display name. Keep the existing `htmlbed` Worker, R2 bu
 3. Create the private R2 bucket:
 
    ```bash
-   pnpm wrangler r2 bucket create htmlbed-files
+   pnpm wrangler r2 bucket create pagevault-files
    ```
 
    R2 is Cloudflare's object storage. PageVault uses this bucket for uploaded files, and the bucket must stay private.
@@ -58,15 +58,15 @@ PageVault is the product display name. Keep the existing `htmlbed` Worker, R2 bu
 4. Create the D1 database:
 
    ```bash
-   pnpm wrangler d1 create htmlbed-db
+   pnpm wrangler d1 create pagevault-db
    ```
 
-   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Copy the returned `database_id` into the `d1_databases` entry in `apps/worker/wrangler.jsonc`.
+   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Wrangler resolves the binding from the tracked `pagevault-db` database name, so the account-specific `database_id` does not need to be committed.
 
 5. Apply migrations to the remote D1 database:
 
    ```bash
-   pnpm wrangler d1 migrations apply htmlbed-db --remote
+   pnpm wrangler d1 migrations apply pagevault-db --remote
    ```
 
 6. Prepare the Worker runtime secrets file.
@@ -98,14 +98,14 @@ PageVault is the product display name. Keep the existing `htmlbed` Worker, R2 bu
 
    ```bash
    pnpm run build
-   pnpm --filter @htmlbed/worker run deploy
+   pnpm --filter @pagevault/worker run deploy
    ```
 
-   The deploy script runs `wrangler deploy --keep-vars --secrets-file .env.production` from `apps/worker`. For a preflight without uploading, use `pnpm --filter @htmlbed/worker run deploy:dry-run`. You do not need to create the Worker manually in the Cloudflare dashboard. On first deploy, Wrangler reads `apps/worker/wrangler.jsonc` and creates the Worker named `htmlbed`; on later deploys, it updates that Worker.
+   The deploy script runs `wrangler deploy --keep-vars --secrets-file .env.production` from `apps/worker`. For a preflight without uploading, use `pnpm --filter @pagevault/worker run deploy:dry-run`. You do not need to create the Worker manually in the Cloudflare dashboard. On first deploy, Wrangler reads `apps/worker/wrangler.jsonc` and creates the Worker named `pagevault`; on later deploys, it updates that Worker.
 
 8. Add Worker custom domains in the Cloudflare dashboard.
 
-   Open the deployed `htmlbed` Worker, then open its Domains & Routes area and add:
+   Open the deployed `pagevault` Worker, then open its Domains & Routes area and add:
 
    ```text
    admin-html.example.com
@@ -128,7 +128,7 @@ PageVault is the product display name. Keep the existing `htmlbed` Worker, R2 bu
 ## Troubleshooting
 
 - `pnpm wrangler whoami` shows the wrong account: log out or switch accounts before creating resources.
-- `database_id` errors: verify the ID copied from `pnpm wrangler d1 create htmlbed-db` matches `apps/worker/wrangler.jsonc`.
+- D1 binding errors: run `pnpm wrangler d1 info pagevault-db` and confirm the database exists in the account shown by `pnpm wrangler whoami`.
 - Custom domain does not resolve: confirm the Cloudflare zone is active and the custom domain status is active in the Worker dashboard.
 - Login or upload fails after deploy: confirm all required runtime secrets exist with `pnpm wrangler secret list`.
 - Worker returns 500: inspect live logs with `pnpm wrangler tail`.
@@ -137,4 +137,4 @@ PageVault is the product display name. Keep the existing `htmlbed` Worker, R2 bu
 
 This repository includes `.github/workflows/deploy.yml` for automatic Cloudflare deployment. It runs on pushes to `main` and through `workflow_dispatch`, installs the root `packageManager` version with Corepack, runs checks and builds, writes `apps/worker/.env.production` from GitHub Secrets, then deploys with `wrangler deploy --keep-vars --secrets-file .env.production`.
 
-The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply htmlbed-db --remote` before or alongside the deploy you intend to release.
+The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply pagevault-db --remote` before or alongside the deploy you intend to release.

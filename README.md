@@ -4,7 +4,7 @@ Language: English | [简体中文](./README.zh-CN.md)
 
 PageVault is a lightweight publishing and lifecycle management system for HTML, Markdown, and image files. It stores original uploads privately, exposes only valid public URLs through an application gateway, and gives a single administrator a web UI for upload, expiry, status, and deletion workflows.
 
-PageVault is the product display name. Existing deployment identifiers intentionally remain `htmlbed` for Worker, R2, D1, Docker paths, package scopes, and GitHub Actions compatibility.
+The product name is `PageVault`; deployment identifiers, package scopes, and data paths use the lowercase `pagevault` form.
 
 ## Architecture
 
@@ -60,17 +60,17 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
 
    Important entries in this file:
 
-   - `name`: the Worker name. The default is `htmlbed`.
+   - `name`: the Worker name. The default is `pagevault`.
    - `assets`: points Wrangler at the built admin frontend in `apps/admin/dist`.
    - `r2_buckets`: binds the private R2 bucket to the Worker. The application code reads the `HTML_BUCKET` binding, so keep that binding name intact.
-   - `d1_databases`: binds the D1 database to the Worker. You must replace `database_id` after creating the database.
+   - `d1_databases`: binds the D1 database to the Worker by its `pagevault-db` name. The account-specific database UUID is intentionally not committed.
    - `triggers`: schedules the daily cleanup Cron Trigger.
    - `secrets.required`: declares the runtime keys that Wrangler must load from local `.env` files during development and from Cloudflare secrets during deployment.
 
 3. Create the private R2 bucket.
 
    ```bash
-   pnpm wrangler r2 bucket create htmlbed-files
+   pnpm wrangler r2 bucket create pagevault-files
    ```
 
    R2 is Cloudflare's object storage. PageVault uses this bucket for the original uploaded files. Do not make this bucket public. Public R2 access would bypass PageVault's expiry, status, deletion, audit, and access-count checks.
@@ -78,15 +78,15 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
 4. Create the D1 database.
 
    ```bash
-   pnpm wrangler d1 create htmlbed-db
+   pnpm wrangler d1 create pagevault-db
    ```
 
-   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Wrangler prints a `database_id`; copy that value into the `d1_databases` entry in `apps/worker/wrangler.jsonc`. The `database_name` can stay as `htmlbed-db` unless you intentionally chose another name.
+   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Wrangler resolves the binding from the tracked `pagevault-db` database name, so the account-specific `database_id` does not need to be committed.
 
 5. Apply D1 migrations to the remote database.
 
    ```bash
-   pnpm wrangler d1 migrations apply htmlbed-db --remote
+   pnpm wrangler d1 migrations apply pagevault-db --remote
    ```
 
    This creates the tables PageVault needs. Use `--remote` because this database is the production Cloudflare D1 database, not Wrangler's local development database.
@@ -113,14 +113,14 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
 
    ```bash
    pnpm run build
-   pnpm --filter @htmlbed/worker run deploy
+   pnpm --filter @pagevault/worker run deploy
    ```
 
-   The deploy script runs `wrangler deploy --keep-vars --secrets-file .env.production` from `apps/worker`. For a preflight without uploading, use `pnpm --filter @htmlbed/worker run deploy:dry-run`. You do not need to create a Worker manually before this. On the first deploy, Wrangler creates the Worker named by `name` in `wrangler.jsonc`; on later deploys, it updates the same Worker.
+   The deploy script runs `wrangler deploy --keep-vars --secrets-file .env.production` from `apps/worker`. For a preflight without uploading, use `pnpm --filter @pagevault/worker run deploy:dry-run`. You do not need to create a Worker manually before this. On the first deploy, Wrangler creates the Worker named by `name` in `wrangler.jsonc`; on later deploys, it updates the same Worker.
 
 8. Add custom domains after the first successful deploy.
 
-   In the Cloudflare dashboard, open the deployed `htmlbed` Worker, then open its Domains & Routes area. Add these as Worker custom domains:
+   In the Cloudflare dashboard, open the deployed `pagevault` Worker, then open its Domains & Routes area. Add these as Worker custom domains:
 
    ```text
    admin-html.example.com
@@ -132,8 +132,8 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    A custom domain sends a hostname directly to the Worker, which is the recommended setup for PageVault on Cloudflare. Use Workers routes only if you intentionally want route patterns on existing Cloudflare-proxied DNS records. Routes are useful when a Worker sits in front of another origin server; PageVault's Cloudflare mode normally does not need that extra origin. Route patterns look like this:
 
    ```text
-   admin-html.example.com/* -> htmlbed
-   h.example.com/*          -> htmlbed
+   admin-html.example.com/* -> pagevault
+   h.example.com/*          -> pagevault
    ```
 
    The application decides admin versus public behavior from the incoming `Host` header.
@@ -189,18 +189,18 @@ ADMIN_PASSWORD_HASH
 SESSION_SECRET
 ```
 
-The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply htmlbed-db --remote` before or alongside the deploy you intend to release.
+The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply pagevault-db --remote` before or alongside the deploy you intend to release.
 
 ### Common Cloudflare Questions
 
 - Do I need to create the Worker in the dashboard first?
-  No. Use Wrangler. `pnpm --filter @htmlbed/worker run deploy` creates or updates the Worker from `apps/worker/wrangler.jsonc`.
+  No. Use Wrangler. `pnpm --filter @pagevault/worker run deploy` creates or updates the Worker from `apps/worker/wrangler.jsonc`.
 - When do I add custom domains?
   Add them after the first successful deploy, because the dashboard needs an existing Worker to attach them to.
 - Why two domains?
   The admin UI and public HTML gateway intentionally use different hostnames. The session cookie is scoped to the admin hostname, and the public hostname only serves valid published HTML URLs.
 - What if I change `ADMIN_BASE_URL` or `PUBLIC_BASE_URL` later?
-  Update `apps/worker/.env.production`, run `pnpm --filter @htmlbed/worker run deploy`, and update the matching custom domain in Cloudflare.
+  Update `apps/worker/.env.production`, run `pnpm --filter @pagevault/worker run deploy`, and update the matching custom domain in Cloudflare.
 - What if the custom domain does not resolve?
   Confirm the root domain is active in Cloudflare, the hostname has no conflicting DNS record, and the custom domain status in the Worker dashboard is active.
 - What if the Worker returns 500 after deploy?
@@ -214,7 +214,7 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
 
 1. Prepare a host-specific compose file.
 
-   Copy `docker/docker-compose.example.yml` to a deployment location such as `/opt/htmlbed/docker-compose.yml`, then replace all example domains, email addresses, and secrets. Do not commit the filled file if it contains real secrets.
+   Copy `docker/docker-compose.example.yml` to a deployment location such as `/opt/pagevault/docker-compose.yml`, then replace all example domains, email addresses, and secrets. Do not commit the filled file if it contains real secrets.
 
 2. Set the required runtime values.
 
@@ -225,8 +225,8 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
    RUNTIME: node
    DB_DRIVER: sqlite
    STORAGE_DRIVER: local
-   SQLITE_PATH: /data/htmlbed/htmlbed.sqlite
-   LOCAL_STORAGE_DIR: /data/htmlbed/objects
+   SQLITE_PATH: /data/pagevault/pagevault.sqlite
+   LOCAL_STORAGE_DIR: /data/pagevault/objects
    ADMIN_BASE_URL: https://admin-html.example.com
    PUBLIC_BASE_URL: https://h.example.com
    ADMIN_EMAIL: admin@example.com
@@ -239,10 +239,10 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
 3. Start the service:
 
    ```bash
-   docker compose -f /opt/htmlbed/docker-compose.yml up -d --build
+   docker compose -f /opt/pagevault/docker-compose.yml up -d --build
    ```
 
-   The container entrypoint runs the SQLite migration before starting the server. Metadata and uploaded objects are stored under `/data/htmlbed` by default, so that directory must be persistent and included in backups.
+   The container entrypoint runs the SQLite migration before starting the server. Metadata and uploaded objects are stored under `/data/pagevault` by default, so that directory must be persistent and included in backups.
 
 4. Configure TLS and reverse proxy.
 
@@ -253,25 +253,25 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
    h.example.com          -> http://127.0.0.1:13080
    ```
 
-   Terminate HTTPS at the reverse proxy. Do not serve `/data/htmlbed` directly from the proxy.
+   Terminate HTTPS at the reverse proxy. Do not serve `/data/pagevault` directly from the proxy.
 
    Preserving `Host` is required. If the reverse proxy rewrites every request to `127.0.0.1`, PageVault can no longer tell whether the request came from the admin hostname or the public hostname.
 
 5. Verify Docker deployment:
 
    ```bash
-   docker compose -f /opt/htmlbed/docker-compose.yml ps
-   docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed
+   docker compose -f /opt/pagevault/docker-compose.yml ps
+   docker compose -f /opt/pagevault/docker-compose.yml logs -f pagevault
    ```
 
    Then sign in on the admin hostname, upload a small supported file, and open the generated public URL on the public hostname.
 
 6. Upgrade safely.
 
-   Back up `/data/htmlbed/htmlbed.sqlite` and `/data/htmlbed/objects`, update the source image or repository, then rebuild and restart:
+   Back up `/data/pagevault/pagevault.sqlite` and `/data/pagevault/objects`, update the source image or repository, then rebuild and restart:
 
    ```bash
-   docker compose -f /opt/htmlbed/docker-compose.yml up -d --build
+   docker compose -f /opt/pagevault/docker-compose.yml up -d --build
    ```
 
    The startup migration is idempotent for the current schema.
@@ -292,8 +292,8 @@ Docker is the non-Cloudflare deployment path. Instead of D1 and R2, it stores me
 | `RUNTIME`                  | Docker env                     | yes         | Use `node`.                                                   |
 | `DB_DRIVER`                | Docker env                     | yes         | Use `sqlite`.                                                 |
 | `STORAGE_DRIVER`           | Docker env                     | yes         | Use `local`.                                                  |
-| `SQLITE_PATH`              | Docker env                     | no          | SQLite file path, defaults to `/data/htmlbed/htmlbed.sqlite`. |
-| `LOCAL_STORAGE_DIR`        | Docker env                     | no          | Local object directory, defaults to `/data/htmlbed/objects`.  |
+| `SQLITE_PATH`              | Docker env                     | no          | SQLite file path, defaults to `/data/pagevault/pagevault.sqlite`. |
+| `LOCAL_STORAGE_DIR`        | Docker env                     | no          | Local object directory, defaults to `/data/pagevault/objects`.  |
 | `PORT`                     | Docker env                     | no          | HTTP port inside the container, defaults to `3000`.           |
 
 ## Security Model
@@ -302,14 +302,14 @@ Public users can only request a single published file through `/p/:slug`, `/p/:s
 
 The R2 bucket must not be public. A public R2 bucket would bypass URL expiry, status checks, deletion state, audit logging, and access counting. All object reads must go through the Worker or Docker server gateway.
 
-The admin and public surfaces should use different hostnames. The `htmlbed_session` cookie is scoped to the admin host only; it must not be set on a parent domain such as `.example.com`.
+The admin and public surfaces should use different hostnames. The `pagevault_session` cookie is scoped to the admin host only; it must not be set on a parent domain such as `.example.com`.
 
 PageVault intentionally does not sanitize, rewrite, inject scripts into, or otherwise alter uploaded HTML. Markdown is stored as original bytes and rendered with raw HTML disabled; images are returned as uploaded bytes. Only authenticated administrators can upload files.
 
 ## Migrations and Maintenance
 
-- Cloudflare migrations: `pnpm wrangler d1 migrations apply htmlbed-db --remote`.
+- Cloudflare migrations: `pnpm wrangler d1 migrations apply pagevault-db --remote`.
 - Docker migrations: the container entrypoint runs migrations before serving. For a local Node run, use `pnpm tsx scripts/local-migrate.ts`.
 - Cloudflare logs: use `pnpm wrangler tail`.
-- Docker logs: use `docker compose -f /opt/htmlbed/docker-compose.yml logs -f htmlbed`.
+- Docker logs: use `docker compose -f /opt/pagevault/docker-compose.yml logs -f pagevault`.
 - Rotate admin credentials by generating a new password hash and updating `ADMIN_PASSWORD_HASH`; existing sessions can be invalidated by rotating `SESSION_SECRET`.

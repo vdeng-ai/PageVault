@@ -1,4 +1,4 @@
-import { isAppError } from "@htmlbed/core";
+import { isAppError } from "@pagevault/core";
 import { Hono } from "hono";
 import type { AppBindings, AssetFetcher, HonoRuntime, ServiceFactory } from "./bindings.js";
 import { apiSecurityHeaders } from "./middleware/security-headers.js";

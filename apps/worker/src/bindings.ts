@@ -1,4 +1,4 @@
-import type { AdminSession, HtmlBedService } from "@htmlbed/core";
+import type { AdminSession, PageVaultService } from "@pagevault/core";
 
 export interface AppBindings {
   ASSETS?: Fetcher;
@@ -27,7 +27,7 @@ export type HonoRuntime = {
   Variables: AppVariables;
 };
 
-export type ServiceFactory = (env: AppBindings) => HtmlBedService;
+export type ServiceFactory = (env: AppBindings) => PageVaultService;
 export type AssetFetcher = (request: Request, env: AppBindings) => Promise<Response>;
 export interface WaitUntilContext {
   waitUntil(promise: Promise<unknown>): void;

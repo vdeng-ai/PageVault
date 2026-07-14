@@ -1,4 +1,4 @@
-import { HTML_CONTENT_TYPE } from "@htmlbed/core";
+import { HTML_CONTENT_TYPE } from "@pagevault/core";
 import { describe, expect, it } from "vitest";
 import { CloudflareD1Repository } from "../cloudflare-db.js";
 import type { HtmlItemRow } from "../item-row.js";

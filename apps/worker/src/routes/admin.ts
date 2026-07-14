@@ -1,11 +1,11 @@
 import type {
-  HtmlBedService,
+  PageVaultService,
   HtmlItem,
   ListItemsInput,
   UpdateItemInput,
   Visibility,
-} from "@htmlbed/core";
-import { getDerivedStatus } from "@htmlbed/core";
+} from "@pagevault/core";
+import { getDerivedStatus } from "@pagevault/core";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import type { HonoRuntime, ServiceFactory } from "../bindings.js";
@@ -45,7 +45,7 @@ const batchSchema = z.object({
 function service(
   c: Context<HonoRuntime>,
   createService: ServiceFactory,
-): HtmlBedService {
+): PageVaultService {
   return createService(c.env);
 }
 
@@ -65,7 +65,7 @@ function numberFromQuery(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function itemDto(api: HtmlBedService, item: HtmlItem) {
+function itemDto(api: PageVaultService, item: HtmlItem) {
   return {
     ...item,
     publicUrl: api.publicUrl(item.slug),
@@ -74,7 +74,7 @@ function itemDto(api: HtmlBedService, item: HtmlItem) {
 }
 
 async function existingItemSlugs(
-  api: HtmlBedService,
+  api: PageVaultService,
   ids: string[],
 ): Promise<string[]> {
   return Array.from(

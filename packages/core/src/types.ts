@@ -141,7 +141,7 @@ export interface DashboardStats {
   deleted: number;
 }
 
-export interface HtmlBedConfig {
+export interface PageVaultConfig {
   publicBaseUrl: string;
   defaultUrlExpireDays: number;
   defaultFileExpireDays: number;

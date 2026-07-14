@@ -9,7 +9,7 @@ import {
   verifyCsrfToken,
   verifyPassword,
   verifySession,
-} from "@htmlbed/core";
+} from "@pagevault/core";
 import type { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";

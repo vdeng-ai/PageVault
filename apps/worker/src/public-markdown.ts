@@ -1,4 +1,4 @@
-import type { HtmlItem, StoredObject } from "@htmlbed/core";
+import type { HtmlItem, StoredObject } from "@pagevault/core";
 import MarkdownIt from "markdown-it";
 
 const markdown = new MarkdownIt({

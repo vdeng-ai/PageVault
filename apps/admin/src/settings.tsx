@@ -6,8 +6,8 @@ export type { Language, TranslationKey } from "./i18n.js";
 export type ThemePreference = "system" | "light" | "dark";
 export type ResolvedTheme = "light" | "dark";
 
-export const LANGUAGE_STORAGE_KEY = "htmlbed.admin.language";
-export const THEME_STORAGE_KEY = "htmlbed.admin.theme";
+export const LANGUAGE_STORAGE_KEY = "pagevault.admin.language";
+export const THEME_STORAGE_KEY = "pagevault.admin.theme";
 
 const LANGUAGES: readonly Language[] = ["en", "zh-CN"];
 const THEME_PREFERENCES: readonly ThemePreference[] = ["system", "light", "dark"];

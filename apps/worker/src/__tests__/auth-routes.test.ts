@@ -1,12 +1,12 @@
 import {
-  createHtmlBedConfig,
-  HtmlBedService,
+  createPageVaultConfig,
+  PageVaultService,
   HTML_CONTENT_TYPE,
   MARKDOWN_CONTENT_TYPE,
   PNG_CONTENT_TYPE,
   pbkdf2Sha256,
-} from "@htmlbed/core";
-import { addDays } from "@htmlbed/core";
+} from "@pagevault/core";
+import { addDays } from "@pagevault/core";
 import type {
   AccessCountInput,
   AuditLogInput,
@@ -19,7 +19,7 @@ import type {
   StorageProvider,
   StoredObject,
   UpdateItemInput,
-} from "@htmlbed/core";
+} from "@pagevault/core";
 import { describe, expect, it } from "vitest";
 import {
   flushAccessCounts,
@@ -135,10 +135,10 @@ async function createFixture() {
   };
   const repo = new MemoryRepository();
   const storage = new MemoryStorage();
-  const service = new HtmlBedService(
+  const service = new PageVaultService(
     repo,
     storage,
-    createHtmlBedConfig({ publicBaseUrl: "https://public.test" }),
+    createPageVaultConfig({ publicBaseUrl: "https://public.test" }),
   );
   const handle = createRequestHandler({
     createService: () => service,
@@ -214,7 +214,7 @@ describe("admin auth routes", () => {
     );
     expect(login.status).toBe(200);
     const cookie = login.headers.get("Set-Cookie");
-    expect(cookie).toContain("htmlbed_session=");
+    expect(cookie).toContain("pagevault_session=");
 
     const me = await handle(
       new Request("https://admin.test/api/auth/me", {

@@ -1,13 +1,13 @@
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize, resolve } from "node:path";
-import { createHtmlBedConfig, HtmlBedService } from "@htmlbed/core";
+import { createPageVaultConfig, PageVaultService } from "@pagevault/core";
 import { NodeSqliteRepository } from "./adapters/node-db.js";
 import { LocalFileStorage } from "./adapters/node-storage.js";
 import type { AppBindings } from "./bindings.js";
 
 export interface NodeRuntime {
   env: AppBindings;
-  service: HtmlBedService;
+  service: PageVaultService;
   migrate(): Promise<void>;
 }
 
@@ -29,8 +29,8 @@ function numberEnv(name: string, fallback: number): number {
 }
 
 export function createNodeRuntime(): NodeRuntime {
-  const sqlitePath = process.env.SQLITE_PATH ?? "/data/htmlbed/htmlbed.sqlite";
-  const localStorageDir = process.env.LOCAL_STORAGE_DIR ?? "/data/htmlbed/objects";
+  const sqlitePath = process.env.SQLITE_PATH ?? "/data/pagevault/pagevault.sqlite";
+  const localStorageDir = process.env.LOCAL_STORAGE_DIR ?? "/data/pagevault/objects";
   const repository = NodeSqliteRepository.open(sqlitePath);
   const storage = new LocalFileStorage(localStorageDir);
   const env: AppBindings = {
@@ -44,10 +44,10 @@ export function createNodeRuntime(): NodeRuntime {
     DEFAULT_FILE_EXPIRE_DAYS: String(numberEnv("DEFAULT_FILE_EXPIRE_DAYS", 180)),
     MAX_UPLOAD_SIZE_MB: String(numberEnv("MAX_UPLOAD_SIZE_MB", 10))
   };
-  const service = new HtmlBedService(
+  const service = new PageVaultService(
     repository,
     storage,
-    createHtmlBedConfig({
+    createPageVaultConfig({
       publicBaseUrl: env.PUBLIC_BASE_URL,
       defaultUrlExpireDays: numberEnv("DEFAULT_URL_EXPIRE_DAYS", 7),
       defaultFileExpireDays: numberEnv("DEFAULT_FILE_EXPIRE_DAYS", 180),

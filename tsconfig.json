@@ -4,7 +4,7 @@
     "baseUrl": ".",
     "noEmit": true,
     "paths": {
-      "@htmlbed/core": ["packages/core/src/index.ts"]
+      "@pagevault/core": ["packages/core/src/index.ts"]
     },
     "types": ["node"]
   },

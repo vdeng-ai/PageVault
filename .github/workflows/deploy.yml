@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: htmlbed-production
+  group: pagevault-production
   cancel-in-progress: false
 
 jobs:

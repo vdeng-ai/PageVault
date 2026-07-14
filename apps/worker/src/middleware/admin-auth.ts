@@ -3,7 +3,7 @@ import {
   SESSION_COOKIE_NAME,
   verifyCsrfToken,
   verifySession
-} from "@htmlbed/core";
+} from "@pagevault/core";
 import type { Context, MiddlewareHandler } from "hono";
 import type { HonoRuntime } from "../bindings.js";
 

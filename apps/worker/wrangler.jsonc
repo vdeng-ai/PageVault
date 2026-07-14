@@ -1,54 +1,65 @@
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "htmlbed",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-07-05",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": "../admin/dist",
-    "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/*", "!/assets/*"],
-  },
-  "vars": {
-    "PUBLIC_HTML_CACHE_SECONDS": "3600",
-    "ACCESS_COUNT_FLUSH_SECONDS": "300",
-    "ACCESS_COUNT_MODE": "windowed",
-  },
-  "r2_buckets": [
-    {
-      "binding": "HTML_BUCKET",
-      "bucket_name": "htmlbed-files",
-    },
-  ],
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "htmlbed-db",
-      "database_id": "ccc1b8d1-f285-442a-b537-a551a6bfe1ea",
-      "migrations_dir": "../../migrations",
-    },
-  ],
-  "triggers": {
-    "crons": ["17 3 * * *"],
-  },
-  "secrets": {
-    "required": [
-      "APP_ENV",
-      "PUBLIC_BASE_URL",
-      "ADMIN_BASE_URL",
-      "DEFAULT_URL_EXPIRE_DAYS",
-      "DEFAULT_FILE_EXPIRE_DAYS",
-      "MAX_UPLOAD_SIZE_MB",
-      "ADMIN_EMAIL",
-      "ADMIN_PASSWORD_HASH",
-      "SESSION_SECRET",
-    ],
-  },
-  "observability": {
-    "enabled": true,
-    "logs": {
-      "head_sampling_rate": 0.1,
-    },
-  },
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "pagevault",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-05",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": "../admin/dist",
+		"binding": "ASSETS",
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/*",
+			"!/assets/*"
+		],
+	},
+	"vars": {
+		"PUBLIC_HTML_CACHE_SECONDS": "3600",
+		"ACCESS_COUNT_FLUSH_SECONDS": "300",
+		"ACCESS_COUNT_MODE": "windowed",
+	},
+	"r2_buckets": [
+		{
+			"binding": "HTML_BUCKET",
+			"bucket_name": "pagevault-files",
+		},
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "pagevault-db",
+			"migrations_dir": "../../migrations",
+		},
+		{
+			"binding": "pagevault_db",
+			"database_name": "pagevault-db",
+			"database_id": "2be2dabe-d128-4d5b-9e4c-95fc82df8edc"
+		},
+	],
+	"triggers": {
+		"crons": [
+			"17 3 * * *"
+		],
+	},
+	"secrets": {
+		"required": [
+			"APP_ENV",
+			"PUBLIC_BASE_URL",
+			"ADMIN_BASE_URL",
+			"DEFAULT_URL_EXPIRE_DAYS",
+			"DEFAULT_FILE_EXPIRE_DAYS",
+			"MAX_UPLOAD_SIZE_MB",
+			"ADMIN_EMAIL",
+			"ADMIN_PASSWORD_HASH",
+			"SESSION_SECRET",
+		],
+	},
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"head_sampling_rate": 0.1,
+		},
+	},
 }

@@ -1,4 +1,4 @@
-import type { HtmlItem, ItemStatus, Visibility } from "@htmlbed/core";
+import type { HtmlItem, ItemStatus, Visibility } from "@pagevault/core";
 
 export interface HtmlItemRow {
   id: string;

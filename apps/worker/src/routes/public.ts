@@ -1,5 +1,5 @@
-import type { HtmlBedService, HtmlItem } from "@htmlbed/core";
-import { HTML_CONTENT_TYPE, normalizePublicSlug } from "@htmlbed/core";
+import type { PageVaultService, HtmlItem } from "@pagevault/core";
+import { HTML_CONTENT_TYPE, normalizePublicSlug } from "@pagevault/core";
 import type { AppBindings, WaitUntilContext } from "../bindings.js";
 import {
   publicErrorPage,
@@ -124,7 +124,7 @@ export async function handlePublicRequest(
   request: Request,
   env: AppBindings,
   ctx: WaitUntilContext | undefined,
-  service: HtmlBedService,
+  service: PageVaultService,
 ): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return publicErrorPage(404);

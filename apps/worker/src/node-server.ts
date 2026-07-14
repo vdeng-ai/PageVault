@@ -29,4 +29,4 @@ serve({
   fetch: (request) => handleRequest(request, runtime.env)
 });
 
-console.log(JSON.stringify({ message: "htmlbed node server listening", port }));
+console.log(JSON.stringify({ message: "pagevault node server listening", port }));

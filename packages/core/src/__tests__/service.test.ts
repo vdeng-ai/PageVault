@@ -8,7 +8,7 @@ import {
 } from "../constants.js";
 import { addDays } from "../expiry.js";
 import type { MetadataRepository } from "../repository.js";
-import { HtmlBedService, createHtmlBedConfig } from "../service.js";
+import { PageVaultService, createPageVaultConfig } from "../service.js";
 import type { StorageProvider, StoredObject } from "../storage.js";
 import type {
   AccessCountInput,
@@ -159,10 +159,10 @@ class MemoryRepository implements MetadataRepository {
 function createService() {
   const repo = new MemoryRepository();
   const storage = new MemoryStorage();
-  const service = new HtmlBedService(
+  const service = new PageVaultService(
     repo,
     storage,
-    createHtmlBedConfig({
+    createPageVaultConfig({
       publicBaseUrl: "https://h.example.com",
     }),
   );

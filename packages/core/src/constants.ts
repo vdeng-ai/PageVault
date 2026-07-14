@@ -6,7 +6,7 @@ export const MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8";
 export const JPEG_CONTENT_TYPE = "image/jpeg";
 export const PNG_CONTENT_TYPE = "image/png";
 export const WEBP_CONTENT_TYPE = "image/webp";
-export const SESSION_COOKIE_NAME = "htmlbed_session";
+export const SESSION_COOKIE_NAME = "pagevault_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 export const PBKDF2_MIN_ITERATIONS = 100000;
 export const PBKDF2_MAX_ITERATIONS = 100000;

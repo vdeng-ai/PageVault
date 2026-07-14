@@ -1,4 +1,4 @@
-import type { HtmlItem, StoredObject } from "@htmlbed/core";
+import type { HtmlItem, StoredObject } from "@pagevault/core";
 
 const SHARE_META_MAX_BYTES = 10 * 1024 * 1024;
 const DESCRIPTION_MAX_CHARS = 180;

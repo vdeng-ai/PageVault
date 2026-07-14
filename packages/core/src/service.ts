@@ -26,7 +26,7 @@ import type {
   AccessCountInput,
   DashboardStats,
   GcResult,
-  HtmlBedConfig,
+  PageVaultConfig,
   HtmlItem,
   ListItemsInput,
   ListItemsResult,
@@ -98,11 +98,11 @@ function assertVisibility(value: Visibility): void {
   }
 }
 
-export class HtmlBedService {
+export class PageVaultService {
   constructor(
     private readonly repository: MetadataRepository,
     private readonly storage: StorageProvider,
-    private readonly config: HtmlBedConfig,
+    private readonly config: PageVaultConfig,
   ) {}
 
   async uploadHtml(input: UploadHtmlInput): Promise<UploadResult> {
@@ -475,9 +475,9 @@ export class HtmlBedService {
   }
 }
 
-export function createHtmlBedConfig(
-  input: Partial<HtmlBedConfig> & { publicBaseUrl: string },
-): HtmlBedConfig {
+export function createPageVaultConfig(
+  input: Partial<PageVaultConfig> & { publicBaseUrl: string },
+): PageVaultConfig {
   return {
     publicBaseUrl: input.publicBaseUrl,
     defaultUrlExpireDays: input.defaultUrlExpireDays ?? DEFAULT_URL_EXPIRE_DAYS,

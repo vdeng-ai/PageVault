@@ -1,11 +1,11 @@
 {
-  "name": "@htmlbed/worker",
+  "name": "@pagevault/worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "pnpm --filter @htmlbed/core run build && wrangler types src/worker-configuration.d.ts --strict-vars false && tsc -p tsconfig.json",
+    "build": "pnpm --filter @pagevault/core run build && wrangler types src/worker-configuration.d.ts --strict-vars false && tsc -p tsconfig.json",
     "deploy": "wrangler deploy --keep-vars --secrets-file .env.production",
     "deploy:dry-run": "wrangler deploy --dry-run --keep-vars --secrets-file .env.production",
     "dev": "wrangler dev",
@@ -13,11 +13,11 @@
     "lint": "eslint src --max-warnings=0",
     "start": "node dist/node-server.js",
     "test": "vitest run src",
-    "typecheck": "pnpm --filter @htmlbed/core run build && wrangler types src/worker-configuration.d.ts --strict-vars false && tsc -p tsconfig.json --noEmit"
+    "typecheck": "pnpm --filter @pagevault/core run build && wrangler types src/worker-configuration.d.ts --strict-vars false && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.18.2",
-    "@htmlbed/core": "workspace:*",
+    "@pagevault/core": "workspace:*",
     "hono": "^4.8.10",
     "markdown-it": "^14.1.0",
     "zod": "^4.0.17"

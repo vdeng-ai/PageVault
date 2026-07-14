@@ -1,4 +1,4 @@
-import type { StorageProvider, StoredObject } from "@htmlbed/core";
+import type { StorageProvider, StoredObject } from "@pagevault/core";
 
 export class CloudflareR2Storage implements StorageProvider {
   constructor(private readonly bucket: R2Bucket) {}

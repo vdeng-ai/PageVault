@@ -1,7 +1,7 @@
 import type { AppBindings, WaitUntilContext } from "./bindings.js";
 
 const DEFAULT_PUBLIC_HTML_CACHE_SECONDS = 3600;
-const CACHE_ITEM_ID_HEADER = "X-HTMLBed-Cache-Item-Id";
+const CACHE_ITEM_ID_HEADER = "X-PageVault-Cache-Item-Id";
 
 export interface CachedPublicHtml {
   itemId: string | null;

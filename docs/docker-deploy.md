@@ -10,8 +10,8 @@ Set:
 - `RUNTIME=node`
 - `DB_DRIVER=sqlite`
 - `STORAGE_DRIVER=local`
-- `SQLITE_PATH=/data/htmlbed/htmlbed.sqlite`
-- `LOCAL_STORAGE_DIR=/data/htmlbed/objects`
+- `SQLITE_PATH=/data/pagevault/pagevault.sqlite`
+- `LOCAL_STORAGE_DIR=/data/pagevault/objects`
 - `ADMIN_BASE_URL=https://admin-html.example.com`
 - `PUBLIC_BASE_URL=https://h.example.com`
 - `ADMIN_EMAIL=admin@example.com`
