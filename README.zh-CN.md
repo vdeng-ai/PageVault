@@ -63,7 +63,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
    - `name`：Worker 名称，默认是 `pagevault`。
    - `assets`：告诉 Wrangler 管理端前端构建产物在 `apps/admin/dist`。
    - `r2_buckets`：把私有 R2 bucket 绑定到 Worker。应用代码读取 `HTML_BUCKET` 这个 binding，因此不要改这个 binding 名。
-   - `d1_databases`：通过 `pagevault-db` 名称把 D1 数据库绑定到 Worker；账号专属的数据库 UUID 不提交到仓库。
+   - `d1_databases`：把 D1 数据库绑定到 Worker。只保留一个 binding 为 `DB` 的条目，数据库名使用 `pagevault-db`，UUID 使用创建数据库时 Wrangler 返回的值。
    - `triggers`：配置每天执行清理任务的 Cron Trigger。
    - `secrets.required`：声明 Wrangler 本地开发时要从 `.env` 文件加载、部署时要从 Cloudflare secrets 提供的运行时键。
 
@@ -81,7 +81,7 @@ Cloudflare 模式会把同一个 Worker 绑定到两个主机名。Worker 是运
    pnpm wrangler d1 create pagevault-db
    ```
 
-   D1 是 Cloudflare 的 SQLite 兼容数据库。PageVault 用它保存 slug、状态、过期时间、访问计数等元数据。Wrangler 会通过仓库中配置的 `pagevault-db` 数据库名解析 binding，因此无需提交账号专属的 `database_id`。
+   D1 是 Cloudflare 的 SQLite 兼容数据库。PageVault 用它保存 slug、状态、过期时间、访问计数等元数据。把 Wrangler 返回的 `database_id` 填入 `apps/worker/wrangler.jsonc` 中现有的 `DB` 条目，不要再添加第二个 D1 binding。
 
 5. 将 D1 迁移应用到远端数据库。
 

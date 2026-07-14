@@ -61,7 +61,7 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
    pnpm wrangler d1 create pagevault-db
    ```
 
-   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Wrangler resolves the binding from the tracked `pagevault-db` database name, so the account-specific `database_id` does not need to be committed.
+   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Put the returned `database_id` in the existing `DB` entry in `apps/worker/wrangler.jsonc`; do not add a second D1 binding. If Wrangler offers to update the config automatically, make sure the selected binding name is `DB`.
 
 5. Apply migrations to the remote D1 database:
 

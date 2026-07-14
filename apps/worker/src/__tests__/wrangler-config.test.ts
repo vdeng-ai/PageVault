@@ -2,15 +2,26 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("wrangler static assets routing", () => {
-  it("uses PageVault deployment resource names without a committed D1 UUID", async () => {
+  it("uses one PageVault D1 binding with its deployed database UUID", async () => {
     const config = await readFile(
       new URL("../../wrangler.jsonc", import.meta.url),
       "utf8",
     );
+    const d1Block = /"d1_databases"\s*:\s*\[(?<body>[\s\S]*?)^\s*\],/m.exec(
+      config,
+    )?.groups?.body;
 
     expect(config).toMatch(/^\s*"name"\s*:\s*"pagevault"/m);
-    expect(config).toMatch(/"database_name"\s*:\s*"pagevault-db"/);
-    expect(config).not.toMatch(/"database_id"\s*:/);
+    expect(d1Block).toBeTruthy();
+    expect(
+      d1Block?.match(/"database_name"\s*:\s*"pagevault-db"/g),
+    ).toHaveLength(1);
+    expect(d1Block?.match(/"binding"\s*:\s*"DB"/g)).toHaveLength(1);
+    expect(
+      d1Block?.match(
+        /"database_id"\s*:\s*"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"/g,
+      ),
+    ).toHaveLength(1);
   });
 
   it("uses selective Worker-first routing so static assets can bypass Worker", async () => {

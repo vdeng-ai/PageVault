@@ -63,7 +63,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    - `name`: the Worker name. The default is `pagevault`.
    - `assets`: points Wrangler at the built admin frontend in `apps/admin/dist`.
    - `r2_buckets`: binds the private R2 bucket to the Worker. The application code reads the `HTML_BUCKET` binding, so keep that binding name intact.
-   - `d1_databases`: binds the D1 database to the Worker by its `pagevault-db` name. The account-specific database UUID is intentionally not committed.
+   - `d1_databases`: binds the D1 database to the Worker. Keep exactly one entry with binding `DB`, database name `pagevault-db`, and the UUID returned when the database is created.
    - `triggers`: schedules the daily cleanup Cron Trigger.
    - `secrets.required`: declares the runtime keys that Wrangler must load from local `.env` files during development and from Cloudflare secrets during deployment.
 
@@ -81,7 +81,7 @@ Cloudflare mode runs one Worker on both hostnames. The Worker is the Cloudflare 
    pnpm wrangler d1 create pagevault-db
    ```
 
-   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Wrangler resolves the binding from the tracked `pagevault-db` database name, so the account-specific `database_id` does not need to be committed.
+   D1 is Cloudflare's SQLite-compatible database. PageVault uses it for metadata such as slug, status, expiry, and counters. Put the returned `database_id` in the existing `DB` entry in `apps/worker/wrangler.jsonc`; do not add a second D1 binding.
 
 5. Apply D1 migrations to the remote database.
 

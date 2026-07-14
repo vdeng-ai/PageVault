@@ -30,12 +30,8 @@
 		{
 			"binding": "DB",
 			"database_name": "pagevault-db",
+			"database_id": "2be2dabe-d128-4d5b-9e4c-95fc82df8edc",
 			"migrations_dir": "../../migrations",
-		},
-		{
-			"binding": "pagevault_db",
-			"database_name": "pagevault-db",
-			"database_id": "2be2dabe-d128-4d5b-9e4c-95fc82df8edc"
 		},
 	],
 	"triggers": {
