@@ -160,6 +160,7 @@ const en = {
   "upload.publishSettings": "Publishing settings",
   "upload.publishHint":
     "Control access and how long the link and file stay available.",
+  "upload.expirySettings": "Expiry and retention",
   "upload.urlDays": "URL days",
   "upload.urlDaysHint": "How long the public link stays active",
   "upload.fileDays": "File days",
@@ -362,6 +363,7 @@ const zh = {
   "upload.selectedFile": "已选择文件",
   "upload.publishSettings": "发布设置",
   "upload.publishHint": "控制访问方式，以及链接和文件的有效时间。",
+  "upload.expirySettings": "有效期与保留",
   "upload.urlDays": "URL 天数",
   "upload.urlDaysHint": "公开链接保持有效的时间",
   "upload.fileDays": "文件天数",

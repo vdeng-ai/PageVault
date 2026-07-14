@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   CheckCircle2,
+  Clock3,
   Clipboard,
   ExternalLink,
   Eye,
@@ -131,15 +132,22 @@ export function UploadPage({
       </div>
 
       <div className="upload-layout">
-        <div className="surface feature-surface p-4 sm:p-6">
-          <div className="section-heading">
-            <span className="section-step">1</span>
-            <div>
-              <h2>{t("upload.file")}</h2>
-              <p>{t("upload.acceptedTypes")}</p>
+        <section
+          className="upload-step upload-step-file"
+          aria-labelledby="upload-file-heading"
+        >
+          <header className="upload-step-header">
+            <div className="section-heading">
+              <span className="section-step" aria-hidden>
+                1
+              </span>
+              <div>
+                <h2 id="upload-file-heading">{t("upload.file")}</h2>
+                <p>{t("upload.acceptedTypes")}</p>
+              </div>
             </div>
-          </div>
-          <div className="mt-5">
+          </header>
+          <div className="upload-step-body">
             <UploadDropzone
               file={file}
               error={fileError}
@@ -151,109 +159,158 @@ export function UploadPage({
               }}
             />
           </div>
-        </div>
+        </section>
 
-        <div className="surface feature-surface p-4 sm:p-6">
-          <div className="section-heading">
-            <span className="section-step">2</span>
-            <div>
-              <h2>{t("upload.publishSettings")}</h2>
-              <p>{t("upload.publishHint")}</p>
+        <section
+          className="upload-step upload-step-settings"
+          aria-labelledby="upload-settings-heading"
+        >
+          <header className="upload-step-header">
+            <div className="section-heading">
+              <span className="section-step" aria-hidden>
+                2
+              </span>
+              <div>
+                <h2 id="upload-settings-heading">
+                  {t("upload.publishSettings")}
+                </h2>
+                <p>{t("upload.publishHint")}</p>
+              </div>
             </div>
-          </div>
+          </header>
 
-          <div className="mt-5 grid gap-5">
-            <div>
-              <div className="field-label mb-2">{t("common.visibility")}</div>
-              <div className="visibility-selector">
-                <button
-                  className={`visibility-option ${visibility === "public" ? "visibility-option-active" : ""}`}
-                  type="button"
-                  aria-pressed={visibility === "public"}
-                  onClick={() => setVisibility("public")}
-                >
-                  <span className="visibility-icon">
-                    <Eye className="h-5 w-5" aria-hidden />
+          <div className="upload-step-body">
+            <div className="upload-settings-grid">
+              <div
+                className="settings-subpanel settings-subpanel-access"
+                role="group"
+                aria-labelledby="upload-visibility-heading"
+              >
+                <div className="settings-subpanel-heading">
+                  <span className="settings-subpanel-icon" aria-hidden>
+                    <Eye className="h-5 w-5" />
                   </span>
-                  <span>
-                    <strong>{t("common.public")}</strong>
-                    <small>{t("upload.publicHint")}</small>
+                  <h3 id="upload-visibility-heading">
+                    {t("common.visibility")}
+                  </h3>
+                </div>
+                <div className="visibility-selector">
+                  <button
+                    className={`visibility-option ${visibility === "public" ? "visibility-option-active" : ""}`}
+                    type="button"
+                    aria-pressed={visibility === "public"}
+                    onClick={() => setVisibility("public")}
+                  >
+                    <span className="visibility-icon">
+                      <Eye className="h-5 w-5" aria-hidden />
+                    </span>
+                    <span>
+                      <strong>{t("common.public")}</strong>
+                      <small>{t("upload.publicHint")}</small>
+                    </span>
+                  </button>
+                  <button
+                    className={`visibility-option ${visibility === "private" ? "visibility-option-active" : ""}`}
+                    type="button"
+                    aria-pressed={visibility === "private"}
+                    onClick={() => setVisibility("private")}
+                  >
+                    <span className="visibility-icon">
+                      <LockKeyhole className="h-5 w-5" aria-hidden />
+                    </span>
+                    <span>
+                      <strong>{t("common.private")}</strong>
+                      <small>{t("upload.privateHint")}</small>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div
+                className="settings-subpanel settings-subpanel-expiry"
+                role="group"
+                aria-labelledby="upload-expiry-heading"
+              >
+                <div className="settings-subpanel-heading">
+                  <span className="settings-subpanel-icon" aria-hidden>
+                    <Clock3 className="h-5 w-5" />
                   </span>
-                </button>
-                <button
-                  className={`visibility-option ${visibility === "private" ? "visibility-option-active" : ""}`}
-                  type="button"
-                  aria-pressed={visibility === "private"}
-                  onClick={() => setVisibility("private")}
-                >
-                  <span className="visibility-icon">
-                    <LockKeyhole className="h-5 w-5" aria-hidden />
-                  </span>
-                  <span>
-                    <strong>{t("common.private")}</strong>
-                    <small>{t("upload.privateHint")}</small>
-                  </span>
-                </button>
+                  <h3 id="upload-expiry-heading">
+                    {t("upload.expirySettings")}
+                  </h3>
+                </div>
+                <div className="expiry-fields">
+                  <label className="field-label">
+                    <span>{t("upload.urlDays")}</span>
+                    <span className="number-control">
+                      <input
+                        className="control"
+                        type="number"
+                        min={1}
+                        inputMode="numeric"
+                        value={urlExpireDays}
+                        aria-invalid={positiveInteger(urlExpireDays) === null}
+                        onChange={(event) =>
+                          setUrlExpireDays(event.target.value)
+                        }
+                      />
+                      <span>{t("upload.urlDays")}</span>
+                    </span>
+                    <small className="field-hint">
+                      {t("upload.urlDaysHint")}
+                    </small>
+                  </label>
+                  <label className="field-label">
+                    <span>{t("upload.fileDays")}</span>
+                    <span className="number-control">
+                      <input
+                        className="control"
+                        type="number"
+                        min={1}
+                        inputMode="numeric"
+                        value={fileExpireDays}
+                        aria-invalid={positiveInteger(fileExpireDays) === null}
+                        onChange={(event) =>
+                          setFileExpireDays(event.target.value)
+                        }
+                      />
+                      <span>{t("upload.fileDays")}</span>
+                    </span>
+                    <small className="field-hint">
+                      {t("upload.fileDaysHint")}
+                    </small>
+                  </label>
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="field-label">
-                <span>{t("upload.urlDays")}</span>
-                <span className="number-control">
-                  <input
-                    className="control"
-                    type="number"
-                    min={1}
-                    inputMode="numeric"
-                    value={urlExpireDays}
-                    aria-invalid={positiveInteger(urlExpireDays) === null}
-                    onChange={(event) => setUrlExpireDays(event.target.value)}
-                  />
-                  <span>{t("upload.urlDays")}</span>
-                </span>
-                <small className="field-hint">{t("upload.urlDaysHint")}</small>
-              </label>
-              <label className="field-label">
-                <span>{t("upload.fileDays")}</span>
-                <span className="number-control">
-                  <input
-                    className="control"
-                    type="number"
-                    min={1}
-                    inputMode="numeric"
-                    value={fileExpireDays}
-                    aria-invalid={positiveInteger(fileExpireDays) === null}
-                    onChange={(event) => setFileExpireDays(event.target.value)}
-                  />
-                  <span>{t("upload.fileDays")}</span>
-                </span>
-                <small className="field-hint">{t("upload.fileDaysHint")}</small>
-              </label>
+            <div className="upload-submit-bar">
+              <div className="upload-feedback" aria-live="polite">
+                {!expiryValid && (
+                  <div className="field-error">{t("upload.invalidDays")}</div>
+                )}
+                {error && <div className="alert-error">{error}</div>}
+              </div>
+              <button
+                className="btn btn-primary btn-lg upload-submit-button"
+                type="button"
+                disabled={!file || !expiryValid || busy}
+                aria-busy={busy}
+                onClick={submit}
+              >
+                {busy ? (
+                  <span className="spinner" aria-hidden />
+                ) : (
+                  <UploadCloud className="h-5 w-5" aria-hidden />
+                )}
+                {busy ? t("upload.uploading") : t("upload.action")}
+                {!busy && (
+                  <ArrowRight className="ml-auto h-5 w-5" aria-hidden />
+                )}
+              </button>
             </div>
-
-            {!expiryValid && (
-              <div className="field-error">{t("upload.invalidDays")}</div>
-            )}
-            {error && <div className="alert-error">{error}</div>}
-
-            <button
-              className="btn btn-primary btn-lg w-full"
-              type="button"
-              disabled={!file || !expiryValid || busy}
-              aria-busy={busy}
-              onClick={submit}
-            >
-              {busy ? (
-                <span className="spinner" aria-hidden />
-              ) : (
-                <UploadCloud className="h-5 w-5" aria-hidden />
-              )}
-              {busy ? t("upload.uploading") : t("upload.action")}
-              {!busy && <ArrowRight className="ml-auto h-5 w-5" aria-hidden />}
-            </button>
           </div>
-        </div>
+        </section>
       </div>
 
       {result && (

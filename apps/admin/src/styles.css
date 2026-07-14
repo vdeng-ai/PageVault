@@ -2,7 +2,7 @@
 
 :root {
   color: #102538;
-  background: #f2f6f8;
+  background: #eef3f5;
   color-scheme: light;
   font-family:
     Inter,
@@ -15,11 +15,12 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
-  --bg: #f2f6f8;
-  --bg-top: #eaf5f4;
+  --bg: #eef3f5;
+  --bg-top: #e4f2f0;
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --surface-muted: #f5f8fa;
+  --surface-muted: #f4f7f8;
+  --surface-subtle: #f9fbfc;
   --surface-hover: #edf4f5;
   --surface-pressed: #e4edef;
   --border: #d8e2e7;
@@ -48,8 +49,15 @@
   --info-surface: #eef6ff;
   --info-border: #bad8ff;
   --info-text: #245ea9;
-  --shadow-xs: 0 1px 2px rgba(8, 30, 47, 0.05);
-  --shadow-sm: 0 8px 24px rgba(8, 30, 47, 0.07);
+  --upload-file-header: #edf9f6;
+  --upload-file-border: #b9ded7;
+  --upload-file-accent: #0f766e;
+  --upload-settings-header: #eff6fb;
+  --upload-settings-border: #c5d9e7;
+  --upload-settings-accent: #356f99;
+  --upload-settings-panel: #f4f8fb;
+  --shadow-xs: 0 1px 3px rgba(8, 30, 47, 0.06);
+  --shadow-sm: 0 10px 28px rgba(8, 30, 47, 0.08);
   --shadow-lg: 0 24px 60px rgba(4, 20, 34, 0.22);
   --focus-ring: rgba(20, 184, 166, 0.24);
   --chart-track: #e3ebef;
@@ -66,6 +74,7 @@
   --surface: #101e29;
   --surface-raised: #13242f;
   --surface-muted: #172936;
+  --surface-subtle: #12232e;
   --surface-hover: #1c3341;
   --surface-pressed: #213b49;
   --border: #29404e;
@@ -94,6 +103,13 @@
   --info-surface: #142c46;
   --info-border: #315d8c;
   --info-text: #93c5fd;
+  --upload-file-header: #10332f;
+  --upload-file-border: #28675e;
+  --upload-file-accent: #45d9c5;
+  --upload-settings-header: #142d40;
+  --upload-settings-border: #315b78;
+  --upload-settings-accent: #7dc5f5;
+  --upload-settings-panel: #142733;
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.22);
   --shadow-sm: 0 12px 30px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.42);
@@ -115,6 +131,11 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
+    radial-gradient(
+      circle at 8% 0%,
+      color-mix(in srgb, var(--accent-surface) 72%, transparent) 0,
+      transparent 23rem
+    ),
     linear-gradient(180deg, var(--bg-top) 0, transparent 25rem), var(--bg);
 }
 
@@ -150,8 +171,8 @@ button:disabled {
   z-index: 30;
   top: 0;
   height: var(--app-header-height);
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
   box-shadow: var(--shadow-xs);
   backdrop-filter: blur(16px);
 }
@@ -228,7 +249,7 @@ button:disabled {
   justify-content: center;
   gap: 0.45rem;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 0 0.75rem;
   color: var(--text-muted);
   font-size: 0.82rem;
@@ -483,7 +504,7 @@ button:disabled {
 
 .page-stack {
   display: grid;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 .page-header {
@@ -496,7 +517,8 @@ button:disabled {
 
 .page-header-hero {
   position: relative;
-  padding: 0.25rem 0 0.75rem;
+  border-bottom: 1px solid var(--border-soft);
+  padding: 0.35rem 0 1rem;
 }
 
 .page-eyebrow {
@@ -541,7 +563,7 @@ button:disabled {
   height: 4rem;
   place-items: center;
   border: 1px solid var(--accent-soft);
-  border-radius: 8px;
+  border-radius: 12px;
   background: linear-gradient(
     135deg,
     var(--accent-surface),
@@ -553,9 +575,9 @@ button:disabled {
 
 .surface {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .feature-surface {
@@ -566,7 +588,7 @@ button:disabled {
 .feature-surface::before {
   position: absolute;
   inset: 0 0 auto;
-  height: 2px;
+  height: 3px;
   background: var(--brand-gradient);
   opacity: 0.72;
   content: "";
@@ -574,7 +596,7 @@ button:disabled {
 
 .surface-muted {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface-muted);
 }
 
@@ -618,7 +640,7 @@ button:disabled {
   width: 100%;
   height: 2.65rem;
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--surface-raised);
   color: var(--text-primary);
   font-size: 0.875rem;
@@ -649,7 +671,7 @@ button:disabled {
   justify-content: center;
   gap: 0.5rem;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 0 0.95rem;
   font-size: 0.85rem;
   font-weight: 750;
@@ -858,22 +880,95 @@ button:disabled {
 .upload-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
+  gap: 1.5rem;
   align-items: stretch;
+}
+
+.upload-step {
+  --step-accent: var(--accent);
+  --step-border: var(--border);
+  --step-header: var(--surface-muted);
+  position: relative;
+  border: 1px solid var(--step-border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.upload-step::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 12px 0 0 12px;
+  background: var(--step-accent);
+  content: "";
+  pointer-events: none;
+}
+
+.upload-step-file {
+  --step-accent: var(--upload-file-accent);
+  --step-border: var(--upload-file-border);
+  --step-header: var(--upload-file-header);
+}
+
+.upload-step-file::after {
+  position: absolute;
+  bottom: -1.55rem;
+  left: 2.15rem;
+  width: 2px;
+  height: 1.55rem;
+  background: linear-gradient(
+    180deg,
+    var(--upload-file-accent),
+    var(--upload-settings-accent)
+  );
+  content: "";
+  pointer-events: none;
+}
+
+.upload-step-settings {
+  --step-accent: var(--upload-settings-accent);
+  --step-border: var(--upload-settings-border);
+  --step-header: var(--upload-settings-header);
+}
+
+.upload-step-header {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--step-border);
+  border-radius: 11px 11px 0 0;
+  background: var(--step-header);
+  padding: 1rem 1rem 1rem 1.25rem;
+}
+
+.upload-step .section-step {
+  background: var(--step-accent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--step-accent) 25%, transparent);
+}
+
+.upload-step-body {
+  padding: 1rem;
 }
 
 .dropzone {
   position: relative;
   display: flex;
   width: 100%;
-  min-height: 21rem;
+  min-height: 18rem;
   overflow: hidden;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 1px dashed var(--border-strong);
-  border-radius: 8px;
-  background: var(--surface-muted);
+  border: 1px dashed var(--upload-file-border);
+  border-radius: 10px;
+  background:
+    radial-gradient(
+      circle at 50% 0,
+      color-mix(in srgb, var(--accent-surface) 80%, transparent),
+      transparent 14rem
+    ),
+    var(--surface-subtle);
   padding: 2rem 1.25rem;
   text-align: center;
   transition:
@@ -886,7 +981,9 @@ button:disabled {
 .dropzone-active {
   border-color: var(--accent);
   background: var(--accent-surface);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
+    0 10px 28px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .dropzone-error {
@@ -896,7 +993,7 @@ button:disabled {
 .dropzone-glow {
   position: absolute;
   inset: 0 0 auto;
-  height: 0.3rem;
+  height: 0.22rem;
   background: var(--brand-gradient);
   opacity: 0.8;
 }
@@ -907,7 +1004,7 @@ button:disabled {
   height: 3.5rem;
   place-items: center;
   border: 1px solid var(--accent-soft);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface-raised);
   color: var(--accent-text);
   box-shadow: var(--shadow-sm);
@@ -915,13 +1012,17 @@ button:disabled {
 
 .selected-file-card {
   display: flex;
-  min-height: 21rem;
+  min-height: 11rem;
   align-items: center;
   gap: 1rem;
-  border: 1px dashed var(--accent);
-  border-radius: 8px;
-  background: var(--accent-surface);
-  padding: 1.25rem;
+  border: 1px solid var(--upload-file-border);
+  border-radius: 10px;
+  background: linear-gradient(
+    120deg,
+    var(--accent-surface),
+    color-mix(in srgb, var(--surface-raised) 84%, var(--accent-surface))
+  );
+  padding: 1.5rem;
 }
 
 .selected-file-preview {
@@ -932,7 +1033,7 @@ button:disabled {
   overflow: hidden;
   place-items: center;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface-raised);
   color: var(--accent-text);
 }
@@ -951,6 +1052,52 @@ button:disabled {
   color: var(--accent-text);
 }
 
+.upload-settings-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.settings-subpanel {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+  padding: 1rem;
+}
+
+.settings-subpanel-expiry {
+  border-color: var(--upload-settings-border);
+  background: var(--upload-settings-panel);
+}
+
+.settings-subpanel-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.settings-subpanel-heading h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.settings-subpanel-icon {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--upload-settings-border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--upload-settings-accent);
+  box-shadow: var(--shadow-xs);
+}
+
 .visibility-selector {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -964,8 +1111,8 @@ button:disabled {
   align-items: center;
   gap: 0.65rem;
   border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--surface-muted);
+  border-radius: 9px;
+  background: var(--surface-raised);
   padding: 0.75rem;
   color: var(--text-secondary);
   text-align: left;
@@ -992,8 +1139,8 @@ button:disabled {
   height: 2.25rem;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 7px;
-  background: var(--surface-raised);
+  border-radius: 8px;
+  background: var(--surface-muted);
   box-shadow: var(--shadow-xs);
 }
 
@@ -1011,6 +1158,11 @@ button:disabled {
   color: var(--text-muted);
   font-size: 0.68rem;
   line-height: 1.35;
+}
+
+.expiry-fields {
+  display: grid;
+  gap: 1rem;
 }
 
 .number-control {
@@ -1033,13 +1185,35 @@ button:disabled {
   pointer-events: none;
 }
 
+.upload-submit-bar {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 1rem;
+}
+
+.upload-feedback {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.upload-feedback:empty {
+  display: none;
+}
+
+.upload-submit-button {
+  width: 100%;
+}
+
 .success-panel {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 1rem;
   overflow: hidden;
   border: 1px solid var(--success-border);
-  border-radius: 8px;
+  border-radius: 12px;
   background: linear-gradient(
     110deg,
     var(--success-surface),
@@ -1047,6 +1221,15 @@ button:disabled {
   );
   padding: 1.25rem;
   box-shadow: var(--shadow-sm);
+}
+
+.success-panel::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 12px 0 0 12px;
+  background: var(--success-text);
+  content: "";
 }
 
 .success-icon {
@@ -1733,6 +1916,22 @@ button:disabled {
   --status-text: #c4b5fd;
 }
 
+@media (min-width: 640px) {
+  .upload-step-header {
+    padding: 1.15rem 1.5rem;
+  }
+  .upload-step-body {
+    padding: 1.5rem;
+  }
+  .expiry-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .upload-submit-button {
+    width: min(24rem, 100%);
+    justify-self: end;
+  }
+}
+
 @media (min-width: 1024px) {
   .app-brand {
     min-width: 10.5rem;
@@ -1756,6 +1955,9 @@ button:disabled {
   .app-main {
     padding-top: 2rem;
     padding-bottom: 2.5rem;
+  }
+  .upload-settings-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
@@ -1781,9 +1983,8 @@ button:disabled {
 }
 
 @media (max-width: 860px) {
-  .dropzone,
-  .selected-file-card {
-    min-height: 17rem;
+  .dropzone {
+    min-height: 16rem;
   }
   .login-shell {
     grid-template-columns: minmax(0, 1fr);
@@ -1822,6 +2023,9 @@ button:disabled {
   }
   .hero-orbit {
     display: none;
+  }
+  .upload-step-file::after {
+    left: 1.55rem;
   }
   .selected-file-card {
     min-height: 0;

@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -50,6 +51,34 @@ describe("UploadPage", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+  });
+
+  it("exposes the upload flow as distinct, accessible settings groups", async () => {
+    const user = userEvent.setup();
+    renderUpload();
+
+    expect(screen.getByRole("region", { name: "File" })).toBeTruthy();
+    expect(
+      screen.getByRole("region", { name: "Publishing settings" }),
+    ).toBeTruthy();
+
+    const visibility = screen.getByRole("group", { name: "Visibility" });
+    const publicOption = within(visibility).getByRole("button", {
+      name: /Public/,
+    });
+    const privateOption = within(visibility).getByRole("button", {
+      name: /Private/,
+    });
+    expect(publicOption.getAttribute("aria-pressed")).toBe("true");
+
+    await user.click(privateOption);
+    expect(privateOption.getAttribute("aria-pressed")).toBe("true");
+    expect(publicOption.getAttribute("aria-pressed")).toBe("false");
+
+    const expiry = screen.getByRole("group", {
+      name: "Expiry and retention",
+    });
+    expect(within(expiry).getAllByRole("spinbutton")).toHaveLength(2);
   });
 
   it("uploads once with the existing defaults and keeps the user on a success panel", async () => {
