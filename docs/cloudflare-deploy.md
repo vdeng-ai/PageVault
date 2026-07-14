@@ -2,6 +2,8 @@
 
 PageVault deploys one Cloudflare Worker to two hostnames: the admin hostname and the public hostname. The Worker serves the admin SPA through Workers Static Assets, stores uploaded files in a private R2 bucket, stores metadata in D1, and runs a daily Cron Trigger for retention cleanup.
 
+PageVault can start within Cloudflare's included free usage quotas for Workers, D1, and R2. These quotas are limited rather than unlimited; review the current [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/), [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/), and [R2 pricing](https://developers.cloudflare.com/r2/pricing/) before production use.
+
 The product name is `PageVault`; Cloudflare resources, package scopes, and GitHub Actions deployment identifiers use the lowercase `pagevault` form.
 
 ## Prerequisites

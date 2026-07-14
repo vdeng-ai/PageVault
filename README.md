@@ -1,24 +1,31 @@
 # PageVault
 
+### Turn AI-made pages into links that open anywhere.
+
 [![CI](https://github.com/vdeng-ai/PageVault/actions/workflows/ci.yml/badge.svg)](https://github.com/vdeng-ai/PageVault/actions/workflows/ci.yml)
 [![Docker](https://github.com/vdeng-ai/PageVault/actions/workflows/docker.yml/badge.svg)](https://github.com/vdeng-ai/PageVault/actions/workflows/docker.yml)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](./docs/cloudflare-deploy.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 Language: English | [简体中文](./README.zh-CN.md)
 
-PageVault is a lightweight, self-hosted publishing and lifecycle management system for HTML, Markdown, and image files. It keeps original uploads private, exposes only valid public URLs through an application gateway, and provides a focused web workspace for a single administrator.
+PageVault is a personal-first, self-hosted publisher for sharing AI-generated HTML, Markdown, and infographics in WeChat and other messaging apps. It turns files that are awkward to preview in chat into controlled links that open directly in a browser.
+
+**Upload once → get a controlled link → paste it into any chat.**
+
+**Free-tier friendly:** PageVault can start on Cloudflare's included free quotas for Workers, D1, and R2. Usage beyond those quotas is subject to Cloudflare's current pricing.
 
 ![PageVault upload page with file, visibility, and retention settings](./docs/assets/pagevault-upload.png)
 
 ## Highlights
 
-- Publish `.html`, `.htm`, `.md`, `.markdown`, `.jpg`, `.jpeg`, `.png`, and `.webp` files.
-- Control public URL expiry and stored-file retention independently.
-- Switch content between public and private, disable access, restore records, or delete them.
-- Track file status, access counts, expiry, and upcoming retention cleanup from the dashboard.
-- Keep R2 buckets and local object storage private; public reads always pass through PageVault checks.
-- Deploy to Cloudflare Workers or run the same service with Docker.
-- Use the admin interface in English or Simplified Chinese, with light and dark themes.
+- **Chat-ready sharing** — Turn HTML and Markdown that messaging apps cannot preview into browser-friendly links.
+- **Built for AI output** — Share AI-generated interactive pages, reports, documents, and infographics.
+- **One upload, one link** — Copy a usable link as soon as the upload finishes, without building a website.
+- **Personal-first** — A single-admin design without teams, tenants, or complex roles.
+- **Controlled access** — Choose public or private visibility, set URL expiry and file retention, disable access, or delete content.
+- **Private storage** — Original files are never exposed directly; every public request passes through the PageVault gateway.
+- **Deploy your way** — Start with Cloudflare Workers, D1, and R2 free quotas, or run the same service with Docker.
 
 ## Architecture
 
@@ -50,7 +57,7 @@ Then choose a deployment target:
 
 | Target     | Best for                                       | Guide                                                |
 | ---------- | ---------------------------------------------- | ---------------------------------------------------- |
-| Cloudflare | Managed serverless runtime with D1 and R2      | [Cloudflare deployment](./docs/cloudflare-deploy.md) |
+| Cloudflare | Free-tier-friendly runtime with D1 and R2      | [Cloudflare deployment](./docs/cloudflare-deploy.md) |
 | Docker     | Self-managed server with SQLite and local disk | [Docker deployment](./docs/docker-deploy.md)         |
 
 For a contributor-oriented local setup, see [CONTRIBUTING.md](./CONTRIBUTING.md).

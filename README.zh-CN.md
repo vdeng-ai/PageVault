@@ -1,24 +1,31 @@
 # PageVault
 
+### 把 AI 作品变成一条在微信里也能直接打开的链接。
+
 [![CI](https://github.com/vdeng-ai/PageVault/actions/workflows/ci.yml/badge.svg)](https://github.com/vdeng-ai/PageVault/actions/workflows/ci.yml)
 [![Docker](https://github.com/vdeng-ai/PageVault/actions/workflows/docker.yml/badge.svg)](https://github.com/vdeng-ai/PageVault/actions/workflows/docker.yml)
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](./docs/cloudflare-deploy.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 语言：[English](./README.md) | 简体中文
 
-PageVault 是一个面向 HTML、Markdown 和图片文件的轻量级自托管发布与生命周期管理系统。它私有存储原始文件，只通过应用网关暴露有效的公开 URL，并为单个管理员提供专注、清晰的 Web 管理界面。
+PageVault 是一个为个人使用设计的自托管发布工具，用于在微信和其他聊天软件中分享 AI 生成的 HTML、Markdown 和信息图。它把不便在聊天窗口中直接预览的文件转换为可以在浏览器中一键打开的可控链接。
+
+**上传内容 → 生成可控链接 → 粘贴到任意聊天窗口。**
+
+**免费层级友好：** PageVault 可以使用 Cloudflare Workers、D1 和 R2 提供的免费配额起步部署；超出免费配额后，将按照 Cloudflare 当前定价计费。
 
 ![PageVault 上传页面，包含文件、可见性和保留期限设置](./docs/assets/pagevault-upload.png)
 
 ## 核心功能
 
-- 发布 `.html`、`.htm`、`.md`、`.markdown`、`.jpg`、`.jpeg`、`.png` 和 `.webp` 文件。
-- 分别控制公开 URL 的有效期和原始文件的保留期限。
-- 切换公开或私有状态、停用访问、恢复记录或删除文件。
-- 通过仪表盘查看文件状态、访问次数、过期情况和即将清理的文件。
-- R2 bucket 和本地对象存储始终保持私有，所有公开读取都经过 PageVault 校验。
-- 可部署到 Cloudflare Workers，也可使用 Docker 运行同一套服务。
-- 管理界面支持英文、简体中文，以及浅色和深色主题。
+- **Chat-ready sharing** — 把 IM 软件无法直接预览的 HTML 和 Markdown 转换为浏览器链接。
+- **Built for AI output** — 适合分享 AI 生成的交互页面、报告、说明文档和信息图。
+- **One upload, one link** — 上传完成即可复制链接，无需建立完整网站。
+- **Personal-first** — 单管理员设计，没有复杂的团队、租户和权限体系。
+- **Controlled access** — 支持公开或私有、链接过期、文件保留期限、停用和删除。
+- **Private storage** — 原始文件不直接公开，所有访问统一经过 PageVault 网关。
+- **Deploy your way** — 可使用 Cloudflare Workers、D1 和 R2 免费配额起步，也支持 Docker。
 
 ## 架构
 
@@ -48,10 +55,10 @@ pnpm tsx scripts/hash-password.ts
 
 然后选择部署方式：
 
-| 目标       | 适用场景                                 | 指南                                           |
-| ---------- | ---------------------------------------- | ---------------------------------------------- |
-| Cloudflare | 使用 D1 和 R2 的托管 serverless 运行环境 | [Cloudflare 部署](./docs/cloudflare-deploy.md) |
-| Docker     | 使用 SQLite 和本地磁盘的自管理服务器     | [Docker 部署](./docs/docker-deploy.md)         |
+| 目标       | 适用场景                             | 指南                                           |
+| ---------- | ------------------------------------ | ---------------------------------------------- |
+| Cloudflare | 可从免费层级起步的 D1 和 R2 托管环境 | [Cloudflare 部署](./docs/cloudflare-deploy.md) |
+| Docker     | 使用 SQLite 和本地磁盘的自管理服务器 | [Docker 部署](./docs/docker-deploy.md)         |
 
 面向贡献者的本地开发流程请参阅 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
