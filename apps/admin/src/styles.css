@@ -857,7 +857,7 @@ button:disabled {
 
 .upload-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(22rem, 0.75fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   align-items: stretch;
 }
@@ -1781,9 +1781,6 @@ button:disabled {
 }
 
 @media (max-width: 860px) {
-  .upload-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .dropzone,
   .selected-file-card {
     min-height: 17rem;
