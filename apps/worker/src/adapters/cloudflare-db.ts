@@ -23,6 +23,7 @@ type BindValue = string | number | null;
 
 interface DashboardStatsRow {
   total: number;
+  total_size_bytes: number;
   public_count: number;
   url_expired: number;
   file_deleting_soon: number;
@@ -220,6 +221,7 @@ export class CloudflareD1Repository implements MetadataRepository {
         `
           SELECT
             COALESCE(SUM(CASE WHEN status != 'deleted' THEN 1 ELSE 0 END), 0) AS total,
+            COALESCE(SUM(CASE WHEN status != 'deleted' THEN size_bytes ELSE 0 END), 0) AS total_size_bytes,
             COALESCE(SUM(CASE WHEN status = 'active' AND visibility = 'public' THEN 1 ELSE 0 END), 0) AS public_count,
             COALESCE(SUM(CASE WHEN status != 'deleted' AND url_expires_at <= ? THEN 1 ELSE 0 END), 0) AS url_expired,
             COALESCE(SUM(CASE WHEN status != 'deleted' AND file_expires_at > ? AND file_expires_at <= ? THEN 1 ELSE 0 END), 0) AS file_deleting_soon,
@@ -232,6 +234,7 @@ export class CloudflareD1Repository implements MetadataRepository {
 
     return {
       total: row?.total ?? 0,
+      totalSizeBytes: row?.total_size_bytes ?? 0,
       publicCount: row?.public_count ?? 0,
       urlExpired: row?.url_expired ?? 0,
       fileDeletingSoon: row?.file_deleting_soon ?? 0,

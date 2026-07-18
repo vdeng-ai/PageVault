@@ -85,15 +85,22 @@ describe("ItemListPage request behavior", () => {
 
   it("applies a row PATCH locally and confirms deletion without list reloads", async () => {
     const user = userEvent.setup();
+    const onEdit = vi.fn();
     render(
       <SettingsProvider>
         <FeedbackProvider>
-          <ItemListPage onEdit={vi.fn()} onUpload={vi.fn()} />
+          <ItemListPage onEdit={onEdit} onUpload={vi.fn()} />
         </FeedbackProvider>
       </SettingsProvider>,
     );
 
     await waitFor(() => expect(vi.mocked(listItems)).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText("Test file")).toBeNull();
+    const fileLinks = screen.getAllByRole("button", { name: "test.html" });
+    expect(fileLinks).toHaveLength(2);
+    await user.click(fileLinks[0]!);
+    expect(onEdit).toHaveBeenCalledWith("item-1");
+
     await user.click(
       screen.getAllByRole("button", { name: "More actions" })[0]!,
     );

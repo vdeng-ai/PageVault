@@ -38,7 +38,7 @@ The create response contains the plaintext `token` once. Later list responses re
 
 `GET /api/admin/dashboard`
 
-Returns counts for live files, public files, URL-expired files, files whose retention ends soon, and deleted records.
+Returns counts for live files, public files, URL-expired files, files whose retention ends soon, and deleted records. The response also includes `totalSizeBytes`, the combined size of records that have not been deleted.
 
 ## Items
 

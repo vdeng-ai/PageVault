@@ -326,8 +326,6 @@ button:disabled {
 
 .header-sign-out {
   flex: 0 0 auto;
-  border: 1px solid var(--border);
-  background: var(--surface-muted);
 }
 
 .app-main {
@@ -848,6 +846,22 @@ button:disabled {
 .icon-button:hover:not(:disabled) {
   background: var(--surface-hover);
   color: var(--text-primary);
+}
+
+.icon-button.header-sign-out {
+  border: 1px solid var(--danger-border);
+  background: var(--danger-surface);
+  color: var(--danger);
+}
+
+.icon-button.header-sign-out:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger-surface) 72%, var(--danger));
+  color: var(--danger-hover);
+}
+
+.icon-button.header-sign-out:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 24%, transparent);
 }
 
 .spinner {
@@ -1786,6 +1800,7 @@ button:disabled {
 }
 
 .metric-accent-teal,
+.metric-accent-slate,
 .metric-accent-sky,
 .metric-accent-indigo,
 .metric-accent-amber,
@@ -1799,6 +1814,11 @@ button:disabled {
   --metric-bg: #e8faf7;
   --metric-text: #0f766e;
   --metric-ring: #b9ede5;
+}
+.metric-accent-slate {
+  --metric-bg: #f1f5f9;
+  --metric-text: #475569;
+  --metric-ring: #cbd5e1;
 }
 .metric-accent-sky {
   --metric-bg: #eef8ff;
@@ -1825,6 +1845,11 @@ button:disabled {
   --metric-bg: #103633;
   --metric-text: #7cebdd;
   --metric-ring: #235b56;
+}
+:root[data-theme="dark"] .metric-accent-slate {
+  --metric-bg: #1e293b;
+  --metric-text: #cbd5e1;
+  --metric-ring: #475569;
 }
 :root[data-theme="dark"] .metric-accent-sky {
   --metric-bg: #102d40;
@@ -1926,10 +1951,6 @@ button:disabled {
   .expiry-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .upload-submit-button {
-    width: min(24rem, 100%);
-    justify-self: end;
-  }
 }
 
 @media (min-width: 1024px) {
@@ -1945,6 +1966,9 @@ button:disabled {
   }
   .desktop-top-nav {
     display: flex;
+  }
+  .app-header-actions {
+    margin-left: auto;
   }
   .header-account {
     display: flex;
@@ -2208,7 +2232,7 @@ button:disabled {
 .workspace-hero .page-title {
   color: #fff;
   font-size: clamp(2rem, 3.5vw, 3.25rem);
-  letter-spacing: -0.045em;
+  letter-spacing: 0;
 }
 
 .workspace-hero .page-subtitle {
@@ -2405,6 +2429,7 @@ button:disabled {
 }
 
 .dashboard-metric-card.metric-accent-teal,
+.dashboard-metric-card.metric-accent-slate,
 .dashboard-metric-card.metric-accent-sky,
 .dashboard-metric-card.metric-accent-indigo,
 .dashboard-metric-card.metric-accent-amber,
@@ -2425,7 +2450,7 @@ button:disabled {
 
 .dashboard-metric-value {
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .dashboard-insight-grid {
@@ -2588,7 +2613,8 @@ button:disabled {
 }
 
 .library-workspace .item-table-desktop {
-  overflow: hidden auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-radius: 16px;
   box-shadow: 0 20px 48px rgba(8, 30, 47, 0.1);
 }
@@ -2626,6 +2652,11 @@ button:disabled {
   overflow: hidden;
   border-radius: 15px;
   box-shadow: 0 16px 36px rgba(8, 30, 47, 0.09);
+}
+
+.library-workspace .item-card-file-name {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .library-workspace .item-card::before {
@@ -3016,24 +3047,20 @@ button:disabled {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
-  .dashboard-metric-card:first-child {
-    grid-column: span 2;
-  }
-
-  .dashboard-metric-card:not(:first-child) {
-    grid-column: span 1;
-  }
-
-  .dashboard-metric-card:first-child .dashboard-metric-value {
-    font-size: 2.65rem;
-  }
-
   .detail-workspace .detail-layout {
     grid-template-columns: minmax(0, 1.32fr) minmax(22rem, 0.68fr);
   }
 }
 
 @media (max-width: 700px) {
+  .library-workspace .item-card-url,
+  .library-workspace .item-card-meta dd {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .workspace-hero {
     min-height: 0;
     align-items: flex-start;

@@ -159,6 +159,7 @@ class MemoryRepository implements MetadataRepository {
   ): Promise<DashboardStats> {
     return {
       total: 0,
+      totalSizeBytes: 0,
       publicCount: 0,
       urlExpired: 0,
       fileDeletingSoon: 0,

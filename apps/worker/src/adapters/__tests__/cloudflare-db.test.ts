@@ -18,7 +18,7 @@ class FakeD1Statement {
 
   async first<T>(): Promise<T | null> {
     this.db.firstSqls.push(this.sql);
-    return { total: this.db.total } as T;
+    return (this.db.firstResult ?? { total: this.db.total }) as T;
   }
 
   async all<T>(): Promise<{ results: T[] }> {
@@ -41,6 +41,7 @@ class FakeD1Database {
   readonly runSqls: string[] = [];
   readonly runValues: unknown[][] = [];
   runChanges = 1;
+  firstResult: Record<string, number> | null = null;
 
   constructor(
     readonly rows: HtmlItemRow[],
@@ -120,6 +121,37 @@ describe("CloudflareD1Repository getItemsByIds", () => {
     expect(db.allSqls[0]).toContain("WHERE id IN (?, ?)");
     expect(db.allValues[0]).toEqual(["a", "b"]);
     expect(result.map((item) => item.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("CloudflareD1Repository dashboard stats", () => {
+  it("returns stored bytes from the existing aggregate query", async () => {
+    const db = new FakeD1Database([], 0);
+    db.firstResult = {
+      total: 2,
+      total_size_bytes: 3_072,
+      public_count: 1,
+      url_expired: 0,
+      file_deleting_soon: 1,
+      deleted: 1,
+    };
+    const repository = new CloudflareD1Repository(db.asD1());
+
+    await expect(
+      repository.getDashboardStats(
+        "2026-07-05T00:00:00.000Z",
+        "2026-07-12T00:00:00.000Z",
+      ),
+    ).resolves.toEqual({
+      total: 2,
+      totalSizeBytes: 3_072,
+      publicCount: 1,
+      urlExpired: 0,
+      fileDeletingSoon: 1,
+      deleted: 1,
+    });
+    expect(db.firstSqls).toHaveLength(1);
+    expect(db.firstSqls[0]).toContain("total_size_bytes");
   });
 });
 

@@ -4,16 +4,20 @@ import {
   FileClock,
   FileText,
   Globe2,
+  HardDrive,
   LockKeyhole,
   Trash2,
   UploadCloud,
+  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { dashboard, type DashboardStats } from "../api/client.js";
+import { formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
 
 const emptyStats: DashboardStats = {
   total: 0,
+  totalSizeBytes: 0,
   publicCount: 0,
   urlExpired: 0,
   fileDeletingSoon: 0,
@@ -40,6 +44,16 @@ type Segment = {
   value: number;
   color: string;
   description: string;
+};
+
+type DashboardMetric = {
+  label: string;
+  value: number;
+  displayValue?: string;
+  detail: string;
+  icon: LucideIcon;
+  style: string;
+  percentTotal?: number;
 };
 
 function DonutChart({
@@ -189,7 +203,7 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
   const allRecords = data.total + data.deleted;
   const attentionCount = data.urlExpired + data.fileDeletingSoon;
 
-  const metrics = [
+  const metrics: DashboardMetric[] = [
     {
       label: t("dashboard.totalFiles"),
       value: data.total,
@@ -197,6 +211,14 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
       icon: FileText,
       style: "metric-accent-teal",
       percentTotal: data.total,
+    },
+    {
+      label: t("dashboard.totalSize"),
+      value: data.totalSizeBytes,
+      displayValue: formatFileSize(data.totalSizeBytes, locale),
+      detail: t("dashboard.totalSizeDetail"),
+      icon: HardDrive,
+      style: "metric-accent-slate",
     },
     {
       label: t("dashboard.publicFiles"),
@@ -338,7 +360,7 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
 
       <div className="dashboard-metric-grid">
         {isLoading
-          ? Array.from({ length: 5 }, (_, index) => (
+          ? Array.from({ length: 6 }, (_, index) => (
               <MetricSkeleton key={index} />
             ))
           : metrics.map((metric) => {
@@ -352,15 +374,17 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
                     <div className="dashboard-metric-icon flex h-10 w-10 items-center justify-center rounded-md ring-1">
                       <Icon className="h-5 w-5" aria-hidden />
                     </div>
-                    <span className="chip rounded-md px-2 py-1 text-xs font-semibold">
-                      {metric.value === 0
-                        ? 0
-                        : percent(metric.value, metric.percentTotal)}
-                      %
-                    </span>
+                    {metric.percentTotal !== undefined && (
+                      <span className="chip rounded-md px-2 py-1 text-xs font-semibold">
+                        {metric.value === 0
+                          ? 0
+                          : percent(metric.value, metric.percentTotal)}
+                        %
+                      </span>
+                    )}
                   </div>
                   <div className="dashboard-metric-value mt-5 text-3xl font-semibold tracking-normal text-primary">
-                    {formatNumber(metric.value, locale)}
+                    {metric.displayValue ?? formatNumber(metric.value, locale)}
                   </div>
                   <div className="mt-1 text-sm font-semibold text-secondary">
                     {metric.label}

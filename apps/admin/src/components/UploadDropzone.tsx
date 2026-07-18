@@ -1,17 +1,7 @@
 import { FileCode2, FileImage, RefreshCw, UploadCloud, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
-
-function formatSize(bytes: number, locale: string): string {
-  const formatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
-  if (bytes < 1024) {
-    return `${formatter.format(bytes)} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${formatter.format(bytes / 1024)} KB`;
-  }
-  return `${formatter.format(bytes / 1024 / 1024)} MB`;
-}
 
 function fileExtension(filename: string): string {
   const extension = filename.split(".").pop();
@@ -90,7 +80,7 @@ export function UploadDropzone({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
             <span className="file-type-chip">{fileExtension(file.name)}</span>
-            <span>{formatSize(file.size, locale)}</span>
+            <span>{formatFileSize(file.size, locale)}</span>
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">

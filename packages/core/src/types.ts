@@ -159,6 +159,7 @@ export interface GcResult {
 
 export interface DashboardStats {
   total: number;
+  totalSizeBytes: number;
   publicCount: number;
   urlExpired: number;
   fileDeletingSoon: number;

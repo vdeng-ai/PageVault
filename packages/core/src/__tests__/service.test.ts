@@ -149,6 +149,9 @@ class MemoryRepository implements MetadataRepository {
     const items = Array.from(this.items.values());
     return {
       total: items.filter((nextItem) => nextItem.status !== "deleted").length,
+      totalSizeBytes: items
+        .filter((nextItem) => nextItem.status !== "deleted")
+        .reduce((total, nextItem) => total + nextItem.sizeBytes, 0),
       publicCount: items.filter(
         (nextItem) =>
           nextItem.status === "active" && nextItem.visibility === "public",
@@ -618,6 +621,7 @@ describe("dashboard stats", () => {
 
     await expect(service.getDashboardStats(now)).resolves.toEqual({
       total: 127,
+      totalSizeBytes: 1_524,
       publicCount: 127,
       urlExpired: 1,
       fileDeletingSoon: 1,

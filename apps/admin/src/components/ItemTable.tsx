@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { HtmlItem } from "../api/client.js";
+import { formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
 import { StatusBadge } from "./StatusBadge.js";
 
@@ -23,19 +24,6 @@ function formatDate(value: string | null, locale: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function formatSize(bytes: number, locale: string): string {
-  const numberFormatter = new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 1,
-  });
-  if (bytes < 1024) {
-    return `${numberFormatter.format(bytes)} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${numberFormatter.format(bytes / 1024)} KB`;
-  }
-  return `${numberFormatter.format(bytes / 1024 / 1024)} MB`;
 }
 
 function ItemActionMenu({
@@ -263,8 +251,8 @@ export function ItemTable({
 
   return (
     <>
-      <div className="surface item-table-desktop hidden overflow-x-auto lg:block">
-        <table className="min-w-[1120px] text-left text-sm">
+      <div className="surface item-table-desktop hidden xl:block">
+        <table className="w-full min-w-[1040px] text-left text-sm">
           <thead className="table-head border-b text-xs uppercase">
             <tr>
               <th className="w-11 px-4 py-3.5">
@@ -276,11 +264,10 @@ export function ItemTable({
                   onChange={(event) => onSelectAll(event.target.checked)}
                 />
               </th>
-              <th className="min-w-52 px-3 py-3.5">{t("common.title")}</th>
-              <th className="px-3 py-3.5">{t("table.status")}</th>
-              <th className="min-w-44 px-3 py-3.5">
+              <th className="min-w-52 px-3 py-3.5">
                 {t("table.originalFile")}
               </th>
+              <th className="px-3 py-3.5">{t("table.status")}</th>
               <th className="w-56 px-3 py-3.5">{t("table.publicUrl")}</th>
               <th className="min-w-40 px-3 py-3.5">{t("common.urlExpiry")}</th>
               <th className="min-w-40 px-3 py-3.5">{t("common.fileExpiry")}</th>
@@ -309,13 +296,14 @@ export function ItemTable({
                     }
                   />
                 </td>
-                <td className="max-w-56 px-3 py-4">
+                <td className="max-w-64 px-3 py-4">
                   <button
                     className="link-button block max-w-full truncate text-left font-bold"
                     type="button"
+                    title={item.originalFilename}
                     onClick={() => onEdit(item.id)}
                   >
-                    {item.title}
+                    {item.originalFilename}
                   </button>
                   <div className="mt-1 truncate text-xs text-muted">
                     {formatDate(item.createdAt, locale)}
@@ -323,9 +311,6 @@ export function ItemTable({
                 </td>
                 <td className="px-3 py-4">
                   <StatusBadge status={item.derivedStatus} />
-                </td>
-                <td className="max-w-48 px-3 py-4 text-secondary">
-                  <div className="truncate">{item.originalFilename}</div>
                 </td>
                 <td className="w-56 max-w-56 px-3 py-4">
                   <button
@@ -344,7 +329,7 @@ export function ItemTable({
                   {formatDate(item.fileExpiresAt, locale)}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-secondary">
-                  {formatSize(item.sizeBytes, locale)}
+                  {formatFileSize(item.sizeBytes, locale)}
                 </td>
                 <td className="px-3 py-4 text-secondary">
                   {numberFormatter.format(item.accessCount)}
@@ -362,7 +347,7 @@ export function ItemTable({
         </table>
       </div>
 
-      <div className="item-card-list grid gap-3 lg:hidden">
+      <div className="item-card-list grid gap-3 xl:hidden">
         {items.map((item) => (
           <article
             key={item.id}
@@ -379,21 +364,21 @@ export function ItemTable({
               />
               <div className="min-w-0 flex-1">
                 <button
-                  className="link-button block max-w-full truncate text-left text-base font-bold"
+                  className="link-button item-card-file-name block w-full text-left text-base font-bold"
                   type="button"
                   onClick={() => onEdit(item.id)}
                 >
-                  {item.title}
-                </button>
-                <div className="mt-1 truncate text-xs font-medium text-muted">
                   {item.originalFilename}
+                </button>
+                <div className="mt-1 text-xs font-medium text-muted">
+                  {formatDate(item.createdAt, locale)}
                 </div>
               </div>
               <StatusBadge status={item.derivedStatus} />
             </div>
 
             <button
-              className="inline-code mt-4 block w-full truncate rounded-lg px-3 py-2 text-left font-mono text-xs"
+              className="inline-code item-card-url mt-4 block w-full truncate rounded-lg px-3 py-2 text-left font-mono text-xs"
               type="button"
               title={item.publicUrl}
               onClick={() => onCopy(item.publicUrl)}
@@ -412,7 +397,7 @@ export function ItemTable({
               </div>
               <div>
                 <dt>{t("table.size")}</dt>
-                <dd>{formatSize(item.sizeBytes, locale)}</dd>
+                <dd>{formatFileSize(item.sizeBytes, locale)}</dd>
               </div>
               <div>
                 <dt>{t("table.access")}</dt>
