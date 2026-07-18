@@ -27,6 +27,7 @@ import type {
   AccessCountInput,
   DashboardStats,
   CreatedApiKey,
+  ApiUploadLease,
   GcResult,
   PageVaultConfig,
   HtmlItem,
@@ -44,6 +45,7 @@ const ID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const API_KEY_TOKEN_PREFIX = "pvk_";
 const API_KEY_TOKEN_PATTERN = /^pvk_[0-9a-f]{64}$/;
 const API_KEY_USAGE_WRITE_INTERVAL_MS = 60 * 60 * 1000;
+const API_UPLOAD_LEASE_MS = 15 * 60 * 1000;
 
 function encodeTimePart(timeMs: number): string {
   let value = BigInt(timeMs);
@@ -180,6 +182,25 @@ export class PageVaultService {
       throw new AppError("API key not found", 404, "api_key_not_found");
     }
     await this.audit(null, "api_key_revoke", JSON.stringify({ id }), now);
+  }
+
+  async tryAcquireApiUploadLease(
+    now = new Date(),
+  ): Promise<ApiUploadLease | null> {
+    const owner = randomHex(16);
+    const expiresAt = new Date(
+      now.getTime() + API_UPLOAD_LEASE_MS,
+    ).toISOString();
+    const acquired = await this.repository.tryAcquireApiUploadLease(
+      owner,
+      expiresAt,
+      now.toISOString(),
+    );
+    return acquired ? { owner, expiresAt } : null;
+  }
+
+  async releaseApiUploadLease(owner: string): Promise<void> {
+    await this.repository.releaseApiUploadLease(owner);
   }
 
   async uploadHtml(input: UploadHtmlInput): Promise<UploadResult> {

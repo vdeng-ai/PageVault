@@ -14,11 +14,13 @@ The product name is `PageVault`; deployment identifiers, package scopes, and dat
 | `APP_ENV`                  | Cloudflare deployment | `production` in Docker                     | Set to `production` outside a local development environment.          |
 | `ADMIN_BASE_URL`           | Cloudflare deployment | `https://admin-html.example.com` in Docker | Full admin origin without a trailing slash.                           |
 | `PUBLIC_BASE_URL`          | Cloudflare deployment | `https://h.example.com` in Docker          | Full public origin without a trailing slash.                          |
-| `DEFAULT_URL_EXPIRE_DAYS`  | No                    | `7`                                        | Default lifetime of a public URL.                                     |
-| `DEFAULT_FILE_EXPIRE_DAYS` | No                    | `180`                                      | Default retention period for an uploaded file.                        |
+| `DEFAULT_URL_EXPIRE_DAYS`  | No                    | `15`                                       | Default lifetime of a public URL.                                     |
+| `DEFAULT_FILE_EXPIRE_DAYS` | No                    | `30`                                       | Default retention period for an uploaded file.                        |
 | `MAX_UPLOAD_SIZE_MB`       | No                    | `10`                                       | Maximum accepted upload size in MiB.                                  |
 
 `ADMIN_BASE_URL` and `PUBLIC_BASE_URL` must use different hostnames in production. PageVault routes requests by the incoming `Host` header, not by a path prefix.
+
+Deployment environment values override these code defaults. When upgrading an existing installation, update `DEFAULT_URL_EXPIRE_DAYS` to `15` and `DEFAULT_FILE_EXPIRE_DAYS` to `30` if those variables are already set. Existing item expiry timestamps are not changed.
 
 Generate credentials locally and never commit the resulting values:
 

@@ -20,10 +20,10 @@ export function serviceFromCloudflareEnv(env: AppBindings): PageVaultService {
     new CloudflareR2Storage(env.HTML_BUCKET),
     createPageVaultConfig({
       publicBaseUrl: env.PUBLIC_BASE_URL,
-      defaultUrlExpireDays: numberEnv(env.DEFAULT_URL_EXPIRE_DAYS, 7),
-      defaultFileExpireDays: numberEnv(env.DEFAULT_FILE_EXPIRE_DAYS, 180),
-      maxUploadSizeMb: numberEnv(env.MAX_UPLOAD_SIZE_MB, 10)
-    })
+      defaultUrlExpireDays: numberEnv(env.DEFAULT_URL_EXPIRE_DAYS, 15),
+      defaultFileExpireDays: numberEnv(env.DEFAULT_FILE_EXPIRE_DAYS, 30),
+      maxUploadSizeMb: numberEnv(env.MAX_UPLOAD_SIZE_MB, 10),
+    }),
   );
 }
 
@@ -32,5 +32,8 @@ export function hostnameFromBaseUrl(value: string): string {
 }
 
 export function isLocalDevHost(hostname: string, env: AppBindings): boolean {
-  return env.APP_ENV !== "production" && (hostname === "localhost" || hostname === "127.0.0.1");
+  return (
+    env.APP_ENV !== "production" &&
+    (hostname === "localhost" || hostname === "127.0.0.1")
+  );
 }

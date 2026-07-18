@@ -109,8 +109,8 @@ describe("UploadPage", () => {
     expect(vi.mocked(uploadHtml)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(uploadHtml)).toHaveBeenCalledWith({
       file,
-      urlExpireDays: 7,
-      fileExpireDays: 180,
+      urlExpireDays: 15,
+      fileExpireDays: 30,
       visibility: "public",
     });
 

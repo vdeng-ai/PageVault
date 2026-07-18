@@ -54,9 +54,36 @@ export function requireAdminWriteOrApiKey(
     }
 
     const token = bearerToken(authorization);
-    if (!token || !(await createService(c.env).authenticateApiKey(token))) {
+    const api = createService(c.env);
+    if (!token || !(await api.authenticateApiKey(token))) {
       return c.json({ error: "Invalid API key" }, 401);
     }
-    return next();
+
+    const lease = await api.tryAcquireApiUploadLease();
+    if (!lease) {
+      c.header("Retry-After", "5");
+      return c.json(
+        {
+          error: "Another API key upload is already in progress",
+          code: "api_upload_busy",
+        },
+        409,
+      );
+    }
+
+    try {
+      await next();
+    } finally {
+      try {
+        await api.releaseApiUploadLease(lease.owner);
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            message: "failed to release API upload lease",
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
+      }
+    }
   };
 }

@@ -47,6 +47,7 @@ class MemoryRepository implements MetadataRepository {
   readonly items = new Map<string, HtmlItem>();
   readonly apiKeys = new Map<string, { apiKey: ApiKey; tokenHash: string }>();
   readonly audits: AuditLogInput[] = [];
+  apiUploadLease: { owner: string; expiresAt: string } | null = null;
   apiKeyUsageWrites = 0;
 
   async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
@@ -85,6 +86,24 @@ class MemoryRepository implements MetadataRepository {
       apiKey: { ...entry.apiKey, revokedAt },
     });
     return true;
+  }
+
+  async tryAcquireApiUploadLease(
+    owner: string,
+    expiresAt: string,
+    now: string,
+  ): Promise<boolean> {
+    if (this.apiUploadLease && this.apiUploadLease.expiresAt > now) {
+      return false;
+    }
+    this.apiUploadLease = { owner, expiresAt };
+    return true;
+  }
+
+  async releaseApiUploadLease(owner: string): Promise<void> {
+    if (this.apiUploadLease?.owner === owner) {
+      this.apiUploadLease = null;
+    }
   }
 
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
@@ -291,9 +310,58 @@ describe("API keys", () => {
     await service.revokeApiKey(created.apiKey.id);
     await expect(service.authenticateApiKey(created.token)).resolves.toBeNull();
   });
+
+  it("uses an owner-safe global upload lease that can be reclaimed after expiry", async () => {
+    const { service } = createService();
+    const startedAt = new Date("2026-07-05T00:00:00.000Z");
+    const first = await service.tryAcquireApiUploadLease(startedAt);
+
+    expect(first?.expiresAt).toBe("2026-07-05T00:15:00.000Z");
+    await expect(
+      service.tryAcquireApiUploadLease(new Date("2026-07-05T00:14:59.999Z")),
+    ).resolves.toBeNull();
+
+    const replacement = await service.tryAcquireApiUploadLease(
+      new Date("2026-07-05T00:15:00.000Z"),
+    );
+    expect(replacement).not.toBeNull();
+    expect(replacement?.owner).not.toBe(first?.owner);
+
+    await service.releaseApiUploadLease(first?.owner ?? "");
+    await expect(
+      service.tryAcquireApiUploadLease(new Date("2026-07-05T00:15:01.000Z")),
+    ).resolves.toBeNull();
+
+    await service.releaseApiUploadLease(replacement?.owner ?? "");
+    await expect(
+      service.tryAcquireApiUploadLease(new Date("2026-07-05T00:15:01.000Z")),
+    ).resolves.not.toBeNull();
+  });
 });
 
 describe("upload", () => {
+  it("uses 15/30 day defaults while preserving explicit expiry values", async () => {
+    const { service } = createService();
+    const now = new Date("2026-07-05T00:00:00.000Z");
+    const defaults = await service.uploadHtml({
+      filename: "defaults.html",
+      body: new ArrayBuffer(1),
+      now,
+    });
+    const explicit = await service.uploadHtml({
+      filename: "explicit.html",
+      body: new ArrayBuffer(1),
+      urlExpireDays: 2,
+      fileExpireDays: 45,
+      now,
+    });
+
+    expect(defaults.item.urlExpiresAt).toBe("2026-07-20T00:00:00.000Z");
+    expect(defaults.item.fileExpiresAt).toBe("2026-08-04T00:00:00.000Z");
+    expect(explicit.item.urlExpiresAt).toBe("2026-07-07T00:00:00.000Z");
+    expect(explicit.item.fileExpiresAt).toBe("2026-08-19T00:00:00.000Z");
+  });
+
   it("stores supported file types with derived metadata", async () => {
     const { service, storage } = createService();
     const now = new Date("2026-07-05T00:00:00.000Z");

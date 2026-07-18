@@ -109,6 +109,36 @@ export class CloudflareD1Repository implements MetadataRepository {
     return result.meta.changes > 0;
   }
 
+  async tryAcquireApiUploadLease(
+    owner: string,
+    expiresAt: string,
+    now: string,
+  ): Promise<boolean> {
+    const result = await this.db
+      .prepare(
+        `
+          INSERT INTO api_upload_lock (name, owner, expires_at)
+          VALUES ('global', ?, ?)
+          ON CONFLICT(name) DO UPDATE SET
+            owner = excluded.owner,
+            expires_at = excluded.expires_at
+          WHERE api_upload_lock.expires_at <= ?
+        `,
+      )
+      .bind(owner, expiresAt, now)
+      .run();
+    return result.meta.changes > 0;
+  }
+
+  async releaseApiUploadLease(owner: string): Promise<void> {
+    await this.db
+      .prepare(
+        "DELETE FROM api_upload_lock WHERE name = 'global' AND owner = ?",
+      )
+      .bind(owner)
+      .run();
+  }
+
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
     await this.db
       .prepare(insertItemSql)

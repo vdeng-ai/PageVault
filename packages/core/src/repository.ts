@@ -17,6 +17,12 @@ export interface MetadataRepository {
   getActiveApiKeyByHash(tokenHash: string): Promise<ApiKey | null>;
   updateApiKeyLastUsedAt(id: string, lastUsedAt: string): Promise<void>;
   revokeApiKey(id: string, revokedAt: string): Promise<boolean>;
+  tryAcquireApiUploadLease(
+    owner: string,
+    expiresAt: string,
+    now: string,
+  ): Promise<boolean>;
+  releaseApiUploadLease(owner: string): Promise<void>;
   createItem(input: CreateItemInput): Promise<HtmlItem>;
   getItemById(id: string): Promise<HtmlItem | null>;
   getItemsByIds(ids: string[]): Promise<HtmlItem[]>;

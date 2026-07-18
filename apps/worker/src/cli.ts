@@ -9,7 +9,10 @@ if (command === "gc") {
   console.log(JSON.stringify(result));
 } else if (command === "migrate") {
   console.log(
-    JSON.stringify({ ok: true, migrations: ["0001_initial", "0002_api_keys"] }),
+    JSON.stringify({
+      ok: true,
+      migrations: ["0001_initial", "0002_api_keys", "0003_api_upload_lock"],
+    }),
   );
 } else {
   console.error("Usage: node apps/worker/dist/cli.js gc|migrate");

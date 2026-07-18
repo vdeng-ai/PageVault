@@ -37,8 +37,8 @@ PUBLIC_BASE_URL: https://h.example.com
 ADMIN_EMAIL: admin@example.com
 ADMIN_PASSWORD_HASH: replace-with-password-hash
 SESSION_SECRET: replace-with-long-random-secret
-DEFAULT_URL_EXPIRE_DAYS: "7"
-DEFAULT_FILE_EXPIRE_DAYS: "180"
+DEFAULT_URL_EXPIRE_DAYS: "15"
+DEFAULT_FILE_EXPIRE_DAYS: "30"
 MAX_UPLOAD_SIZE_MB: "10"
 PORT: "3000"
 ```

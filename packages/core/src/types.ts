@@ -53,6 +53,11 @@ export interface CreatedApiKey {
   token: string;
 }
 
+export interface ApiUploadLease {
+  owner: string;
+  expiresAt: string;
+}
+
 export interface UpdateItemInput {
   title?: string;
   visibility?: Visibility;

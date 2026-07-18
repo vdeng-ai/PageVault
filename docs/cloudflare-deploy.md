@@ -79,8 +79,8 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
    APP_ENV=production
    PUBLIC_BASE_URL=https://h.example.com
    ADMIN_BASE_URL=https://admin-html.example.com
-   DEFAULT_URL_EXPIRE_DAYS=7
-   DEFAULT_FILE_EXPIRE_DAYS=180
+   DEFAULT_URL_EXPIRE_DAYS=15
+   DEFAULT_FILE_EXPIRE_DAYS=30
    MAX_UPLOAD_SIZE_MB=10
    ADMIN_EMAIL=admin@example.com
    ADMIN_PASSWORD_HASH=replace-with-password-hash
@@ -88,6 +88,8 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
    ```
 
    Set `PUBLIC_BASE_URL` and `ADMIN_BASE_URL` to your two real HTTPS origins, without trailing slashes. Set `ADMIN_PASSWORD_HASH` to the output from `scripts/hash-password.ts` and `SESSION_SECRET` to the generated random secret. Do not commit the filled file.
+
+   Existing secrets override application defaults, so existing deployments must also update `DEFAULT_URL_EXPIRE_DAYS` to `15` and `DEFAULT_FILE_EXPIRE_DAYS` to `30`. Apply all D1 migrations, including `0003_api_upload_lock.sql`, before deploying this Worker version. Existing item expiry timestamps are left unchanged.
 
    See [Configuration](./configuration.md) for all supported runtime values and defaults.
 

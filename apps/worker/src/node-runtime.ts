@@ -43,10 +43,8 @@ export function createNodeRuntime(): NodeRuntime {
     ADMIN_BASE_URL:
       process.env.ADMIN_BASE_URL ?? "https://admin-html.example.com",
     PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL ?? "https://h.example.com",
-    DEFAULT_URL_EXPIRE_DAYS: String(numberEnv("DEFAULT_URL_EXPIRE_DAYS", 7)),
-    DEFAULT_FILE_EXPIRE_DAYS: String(
-      numberEnv("DEFAULT_FILE_EXPIRE_DAYS", 180),
-    ),
+    DEFAULT_URL_EXPIRE_DAYS: String(numberEnv("DEFAULT_URL_EXPIRE_DAYS", 15)),
+    DEFAULT_FILE_EXPIRE_DAYS: String(numberEnv("DEFAULT_FILE_EXPIRE_DAYS", 30)),
     MAX_UPLOAD_SIZE_MB: String(numberEnv("MAX_UPLOAD_SIZE_MB", 10)),
   };
   const service = new PageVaultService(
@@ -54,8 +52,8 @@ export function createNodeRuntime(): NodeRuntime {
     storage,
     createPageVaultConfig({
       publicBaseUrl: env.PUBLIC_BASE_URL,
-      defaultUrlExpireDays: numberEnv("DEFAULT_URL_EXPIRE_DAYS", 7),
-      defaultFileExpireDays: numberEnv("DEFAULT_FILE_EXPIRE_DAYS", 180),
+      defaultUrlExpireDays: numberEnv("DEFAULT_URL_EXPIRE_DAYS", 15),
+      defaultFileExpireDays: numberEnv("DEFAULT_FILE_EXPIRE_DAYS", 30),
       maxUploadSizeMb: numberEnv("MAX_UPLOAD_SIZE_MB", 10),
     }),
   );
@@ -69,6 +67,9 @@ export function createNodeRuntime(): NodeRuntime {
       );
       await repository.migrate(
         resolve(process.cwd(), "migrations/0002_api_keys.sql"),
+      );
+      await repository.migrate(
+        resolve(process.cwd(), "migrations/0003_api_upload_lock.sql"),
       );
     },
   };

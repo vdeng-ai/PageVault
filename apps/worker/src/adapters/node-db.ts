@@ -211,6 +211,34 @@ export class NodeSqliteRepository implements MetadataRepository {
     return Number(result.changes) > 0;
   }
 
+  async tryAcquireApiUploadLease(
+    owner: string,
+    expiresAt: string,
+    now: string,
+  ): Promise<boolean> {
+    const result = this.db
+      .prepare(
+        `
+          INSERT INTO api_upload_lock (name, owner, expires_at)
+          VALUES ('global', ?, ?)
+          ON CONFLICT(name) DO UPDATE SET
+            owner = excluded.owner,
+            expires_at = excluded.expires_at
+          WHERE api_upload_lock.expires_at <= ?
+        `,
+      )
+      .run(owner, expiresAt, now);
+    return Number(result.changes) > 0;
+  }
+
+  async releaseApiUploadLease(owner: string): Promise<void> {
+    this.db
+      .prepare(
+        "DELETE FROM api_upload_lock WHERE name = 'global' AND owner = ?",
+      )
+      .run(owner);
+  }
+
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
     this.db.prepare(insertItemSql).run(...itemToRowValues(input.item));
     return input.item;

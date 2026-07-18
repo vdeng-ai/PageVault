@@ -1,5 +1,5 @@
-export const DEFAULT_URL_EXPIRE_DAYS = 7;
-export const DEFAULT_FILE_EXPIRE_DAYS = 180;
+export const DEFAULT_URL_EXPIRE_DAYS = 15;
+export const DEFAULT_FILE_EXPIRE_DAYS = 30;
 export const DEFAULT_MAX_UPLOAD_SIZE_MB = 10;
 export const HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 export const MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8";

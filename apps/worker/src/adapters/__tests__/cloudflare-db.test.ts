@@ -26,12 +26,21 @@ class FakeD1Statement {
     this.db.allValues.push(this.values);
     return { results: this.db.rows as T[] };
   }
+
+  async run(): Promise<{ meta: { changes: number } }> {
+    this.db.runSqls.push(this.sql);
+    this.db.runValues.push(this.values);
+    return { meta: { changes: this.db.runChanges } };
+  }
 }
 
 class FakeD1Database {
   readonly firstSqls: string[] = [];
   readonly allSqls: string[] = [];
   readonly allValues: unknown[][] = [];
+  readonly runSqls: string[] = [];
+  readonly runValues: unknown[][] = [];
+  runChanges = 1;
 
   constructor(
     readonly rows: HtmlItemRow[],
@@ -111,5 +120,40 @@ describe("CloudflareD1Repository getItemsByIds", () => {
     expect(db.allSqls[0]).toContain("WHERE id IN (?, ?)");
     expect(db.allValues[0]).toEqual(["a", "b"]);
     expect(result.map((item) => item.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("CloudflareD1Repository API upload lease", () => {
+  it("uses affected-row counts for atomic acquire and owner-matched release", async () => {
+    const db = new FakeD1Database([], 0);
+    const repository = new CloudflareD1Repository(db.asD1());
+
+    await expect(
+      repository.tryAcquireApiUploadLease(
+        "owner-a",
+        "2026-07-05T00:15:00.000Z",
+        "2026-07-05T00:00:00.000Z",
+      ),
+    ).resolves.toBe(true);
+    expect(db.runSqls[0]).toContain("ON CONFLICT(name) DO UPDATE");
+    expect(db.runSqls[0]).toContain("api_upload_lock.expires_at <= ?");
+    expect(db.runValues[0]).toEqual([
+      "owner-a",
+      "2026-07-05T00:15:00.000Z",
+      "2026-07-05T00:00:00.000Z",
+    ]);
+
+    db.runChanges = 0;
+    await expect(
+      repository.tryAcquireApiUploadLease(
+        "owner-b",
+        "2026-07-05T00:16:00.000Z",
+        "2026-07-05T00:01:00.000Z",
+      ),
+    ).resolves.toBe(false);
+
+    await repository.releaseApiUploadLease("owner-a");
+    expect(db.runSqls[2]).toContain("name = 'global' AND owner = ?");
+    expect(db.runValues[2]).toEqual(["owner-a"]);
   });
 });

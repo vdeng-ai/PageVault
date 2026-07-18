@@ -34,12 +34,28 @@ import type { AppBindings } from "../bindings.js";
 class MemoryStorage implements StorageProvider {
   readonly objects = new Map<string, StoredObject>();
   getReads = 0;
+  nextPutGate: Promise<void> | null = null;
+  nextPutStarted: (() => void) | null = null;
+  nextPutError: Error | null = null;
 
   async putObject(
     key: string,
     body: ArrayBuffer,
     contentType: string,
   ): Promise<void> {
+    const gate = this.nextPutGate;
+    const started = this.nextPutStarted;
+    const error = this.nextPutError;
+    this.nextPutGate = null;
+    this.nextPutStarted = null;
+    this.nextPutError = null;
+    started?.();
+    if (gate) {
+      await gate;
+    }
+    if (error) {
+      throw error;
+    }
     this.objects.set(key, { body, contentType, size: body.byteLength });
   }
   async getObject(key: string): Promise<StoredObject | null> {
@@ -54,6 +70,8 @@ class MemoryStorage implements StorageProvider {
 class MemoryRepository implements MetadataRepository {
   readonly items = new Map<string, HtmlItem>();
   readonly apiKeys = new Map<string, { apiKey: ApiKey; tokenHash: string }>();
+  apiUploadLease: { owner: string; expiresAt: string } | null = null;
+  apiUploadLeaseAttempts = 0;
   accessWrites = 0;
 
   async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
@@ -87,6 +105,25 @@ class MemoryRepository implements MetadataRepository {
       apiKey: { ...entry.apiKey, revokedAt },
     });
     return true;
+  }
+
+  async tryAcquireApiUploadLease(
+    owner: string,
+    expiresAt: string,
+    now: string,
+  ): Promise<boolean> {
+    this.apiUploadLeaseAttempts += 1;
+    if (this.apiUploadLease && this.apiUploadLease.expiresAt > now) {
+      return false;
+    }
+    this.apiUploadLease = { owner, expiresAt };
+    return true;
+  }
+
+  async releaseApiUploadLease(owner: string): Promise<void> {
+    if (this.apiUploadLease?.owner === owner) {
+      this.apiUploadLease = null;
+    }
   }
 
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
@@ -234,6 +271,24 @@ async function adminSession(
   );
   const currentUser: { csrfToken: string } = await me.json();
   return { cookie, csrfToken: currentUser.csrfToken };
+}
+
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve = (): void => {};
+  const promise = new Promise<void>((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
+}
+
+function apiUploadRequest(token: string, filename: string): Request {
+  const form = new FormData();
+  form.set("file", new File(["<h1>API</h1>"], filename));
+  return new Request("https://admin.test/api/admin/items", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
 }
 
 describe("admin auth routes", () => {
@@ -510,6 +565,147 @@ describe("admin auth routes", () => {
     );
     expect(revokedUpload.status).toBe(401);
     expect(repo.items.size).toBe(1);
+  });
+
+  it("rejects concurrent uploads from different API keys and allows the next retry", async () => {
+    const { env, handle, service, storage } = await createFixture();
+    const firstKey = await service.createApiKey("First uploader");
+    const secondKey = await service.createApiKey("Second uploader");
+    const putStarted = deferred();
+    const releasePut = deferred();
+    storage.nextPutStarted = putStarted.resolve;
+    storage.nextPutGate = releasePut.promise;
+
+    const firstResponsePromise = handle(
+      apiUploadRequest(firstKey.token, "first.html"),
+      env,
+    );
+    await putStarted.promise;
+
+    const busy = await handle(
+      apiUploadRequest(secondKey.token, "second.html"),
+      env,
+    );
+    expect(busy.status).toBe(409);
+    expect(busy.headers.get("Retry-After")).toBe("5");
+    await expect(busy.json()).resolves.toEqual({
+      error: "Another API key upload is already in progress",
+      code: "api_upload_busy",
+    });
+
+    releasePut.resolve();
+    expect((await firstResponsePromise).status).toBe(200);
+    const retry = await handle(
+      apiUploadRequest(secondKey.token, "second-retry.html"),
+      env,
+    );
+    expect(retry.status).toBe(200);
+  });
+
+  it("applies the same concurrency limit to repeated use of one API key", async () => {
+    const { env, handle, service, storage } = await createFixture();
+    const created = await service.createApiKey("Single uploader");
+    const putStarted = deferred();
+    const releasePut = deferred();
+    storage.nextPutStarted = putStarted.resolve;
+    storage.nextPutGate = releasePut.promise;
+
+    const firstResponsePromise = handle(
+      apiUploadRequest(created.token, "same-first.html"),
+      env,
+    );
+    await putStarted.promise;
+    const busy = await handle(
+      apiUploadRequest(created.token, "same-second.html"),
+      env,
+    );
+
+    expect(busy.status).toBe(409);
+    expect(busy.headers.get("Retry-After")).toBe("5");
+    await expect(busy.json()).resolves.toMatchObject({
+      code: "api_upload_busy",
+    });
+    releasePut.resolve();
+    expect((await firstResponsePromise).status).toBe(200);
+  });
+
+  it("rejects invalid and revoked keys before attempting to acquire a lease", async () => {
+    const { env, handle, repo, service } = await createFixture();
+    const revoked = await service.createApiKey("Revoked uploader");
+    await service.revokeApiKey(revoked.apiKey.id);
+
+    const unknown = await handle(
+      apiUploadRequest(`pvk_${"0".repeat(64)}`, "unknown.html"),
+      env,
+    );
+    const revokedResponse = await handle(
+      apiUploadRequest(revoked.token, "revoked.html"),
+      env,
+    );
+
+    expect(unknown.status).toBe(401);
+    expect(revokedResponse.status).toBe(401);
+    expect(repo.apiUploadLeaseAttempts).toBe(0);
+  });
+
+  it("lets an administrator upload while an API key holds the global lease", async () => {
+    const { env, handle, service, storage } = await createFixture();
+    const { cookie, csrfToken } = await adminSession(env, handle);
+    const created = await service.createApiKey("Held uploader");
+    const putStarted = deferred();
+    const releasePut = deferred();
+    storage.nextPutStarted = putStarted.resolve;
+    storage.nextPutGate = releasePut.promise;
+
+    const keyResponsePromise = handle(
+      apiUploadRequest(created.token, "held.html"),
+      env,
+    );
+    await putStarted.promise;
+
+    const adminForm = new FormData();
+    adminForm.set("file", new File(["admin"], "admin.html"));
+    const adminResponse = await handle(
+      new Request("https://admin.test/api/admin/items", {
+        method: "POST",
+        headers: { Cookie: cookie, "X-CSRF-Token": csrfToken },
+        body: adminForm,
+      }),
+      env,
+    );
+    expect(adminResponse.status).toBe(200);
+
+    releasePut.resolve();
+    expect((await keyResponsePromise).status).toBe(200);
+  });
+
+  it("releases the API key lease after malformed input and upload failures", async () => {
+    const { env, handle, repo, service, storage } = await createFixture();
+    const created = await service.createApiKey("Failure uploader");
+    const malformed = await handle(
+      new Request("https://admin.test/api/admin/items", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${created.token}` },
+        body: new FormData(),
+      }),
+      env,
+    );
+    expect(malformed.status).toBe(400);
+    expect(repo.apiUploadLease).toBeNull();
+
+    storage.nextPutError = new Error("storage unavailable");
+    const failed = await handle(
+      apiUploadRequest(created.token, "failed.html"),
+      env,
+    );
+    expect(failed.status).toBe(500);
+    expect(repo.apiUploadLease).toBeNull();
+
+    const retry = await handle(
+      apiUploadRequest(created.token, "recovered.html"),
+      env,
+    );
+    expect(retry.status).toBe(200);
   });
 });
 

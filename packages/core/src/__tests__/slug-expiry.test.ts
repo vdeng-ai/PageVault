@@ -39,12 +39,12 @@ describe("slugifyFilename", () => {
 describe("expiry", () => {
   const now = new Date("2026-07-05T00:00:00.000Z");
 
-  it("defaults URL expiry to 7 days", () => {
-    expect(defaultUrlExpiresAt(now)).toBe("2026-07-12T00:00:00.000Z");
+  it("defaults URL expiry to 15 days", () => {
+    expect(defaultUrlExpiresAt(now)).toBe("2026-07-20T00:00:00.000Z");
   });
 
-  it("defaults file expiry to 180 days", () => {
-    expect(defaultFileExpiresAt(now)).toBe("2027-01-01T00:00:00.000Z");
+  it("defaults file expiry to 30 days", () => {
+    expect(defaultFileExpiresAt(now)).toBe("2026-08-04T00:00:00.000Z");
   });
 
   it("detects URL expiry", () => {

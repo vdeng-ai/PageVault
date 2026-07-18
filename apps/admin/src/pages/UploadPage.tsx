@@ -52,8 +52,8 @@ export function UploadPage({
   const { t } = useSettings();
   const { notify } = useFeedback();
   const [file, setFile] = useState<File | null>(null);
-  const [urlExpireDays, setUrlExpireDays] = useState("7");
-  const [fileExpireDays, setFileExpireDays] = useState("180");
+  const [urlExpireDays, setUrlExpireDays] = useState("15");
+  const [fileExpireDays, setFileExpireDays] = useState("30");
   const [visibility, setVisibility] = useState<Visibility>("public");
   const [result, setResult] = useState<UploadResult | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);

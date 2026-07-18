@@ -8,9 +8,9 @@ const actions: Array<{
   labelKey: "url" | "file" | "public" | "private" | "disable" | "delete";
   days?: number;
 }> = [
-  { action: "extend_url", labelKey: "url", icon: Clock3, days: 7 },
+  { action: "extend_url", labelKey: "url", icon: Clock3, days: 15 },
   { action: "extend_url", labelKey: "url", icon: Clock3, days: 30 },
-  { action: "extend_file", labelKey: "file", icon: RefreshCcw, days: 180 },
+  { action: "extend_file", labelKey: "file", icon: RefreshCcw, days: 30 },
   { action: "set_public", labelKey: "public", icon: Eye },
   { action: "set_private", labelKey: "private", icon: EyeOff },
   { action: "disable", labelKey: "disable", icon: Ban },
