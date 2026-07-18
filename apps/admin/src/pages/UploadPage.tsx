@@ -116,9 +116,9 @@ export function UploadPage({
   }
 
   return (
-    <section className="page-stack upload-page">
-      <div className="page-header page-header-hero">
-        <div>
+    <section className="page-stack upload-page upload-workspace">
+      <div className="page-header page-header-hero workspace-hero upload-workspace-hero">
+        <div className="workspace-hero-copy">
           <div className="page-eyebrow">
             <Rocket className="h-4 w-4" aria-hidden />
             {t("upload.eyebrow")}
@@ -126,8 +126,10 @@ export function UploadPage({
           <h1 className="page-title page-title-lg">{t("upload.title")}</h1>
           <p className="page-subtitle max-w-2xl">{t("upload.subtitle")}</p>
         </div>
-        <div className="hero-orbit" aria-hidden>
-          <UploadCloud className="h-7 w-7" />
+        <div className="hero-visual hero-visual-upload" aria-hidden>
+          <span className="hero-upload-sheet hero-upload-sheet-back" />
+          <span className="hero-upload-sheet hero-upload-sheet-front" />
+          <UploadCloud className="hero-visual-icon" />
         </div>
       </div>
 

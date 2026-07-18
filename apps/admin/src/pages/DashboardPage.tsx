@@ -114,7 +114,7 @@ function DonutChart({
 
 function MetricSkeleton() {
   return (
-    <div className="surface p-4">
+    <div className="surface dashboard-metric-card p-4">
       <div className="animate-pulse">
         <div className="skeleton mb-4 h-10 w-10 rounded-md" />
         <div className="skeleton h-8 w-20 rounded" />
@@ -304,9 +304,9 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
   ];
 
   return (
-    <section className="page-stack">
-      <div className="page-header page-header-hero">
-        <div>
+    <section className="page-stack dashboard-workspace">
+      <div className="page-header page-header-hero workspace-hero dashboard-hero">
+        <div className="workspace-hero-copy">
           <div className="page-eyebrow">
             <BarChart3 className="h-4 w-4" aria-hidden />
             {t("app.controlCenter")}
@@ -318,10 +318,17 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
             )}
           </p>
         </div>
-        <button className="btn btn-primary" type="button" onClick={onUpload}>
-          <UploadCloud className="h-4 w-4" aria-hidden />
-          {t("dashboard.uploadAction")}
-        </button>
+        <div className="workspace-hero-actions">
+          <div className="hero-visual hero-visual-dashboard" aria-hidden>
+            <span className="hero-visual-ring hero-visual-ring-outer" />
+            <span className="hero-visual-ring hero-visual-ring-inner" />
+            <BarChart3 className="hero-visual-icon" />
+          </div>
+          <button className="btn btn-primary" type="button" onClick={onUpload}>
+            <UploadCloud className="h-4 w-4" aria-hidden />
+            {t("dashboard.uploadAction")}
+          </button>
+        </div>
       </div>
       {error && (
         <div className="alert-error">
@@ -329,7 +336,7 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="dashboard-metric-grid">
         {isLoading
           ? Array.from({ length: 5 }, (_, index) => (
               <MetricSkeleton key={index} />
@@ -337,11 +344,12 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
           : metrics.map((metric) => {
               const Icon = metric.icon;
               return (
-                <div key={metric.label} className="surface p-4">
+                <div
+                  key={metric.label}
+                  className={`surface dashboard-metric-card ${metric.style} p-4`}
+                >
                   <div className="flex items-start justify-between gap-3">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-md ring-1 ${metric.style}`}
-                    >
+                    <div className="dashboard-metric-icon flex h-10 w-10 items-center justify-center rounded-md ring-1">
                       <Icon className="h-5 w-5" aria-hidden />
                     </div>
                     <span className="chip rounded-md px-2 py-1 text-xs font-semibold">
@@ -351,7 +359,7 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
                       %
                     </span>
                   </div>
-                  <div className="mt-5 text-3xl font-semibold tracking-normal text-primary">
+                  <div className="dashboard-metric-value mt-5 text-3xl font-semibold tracking-normal text-primary">
                     {formatNumber(metric.value, locale)}
                   </div>
                   <div className="mt-1 text-sm font-semibold text-secondary">
@@ -365,8 +373,8 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
             })}
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)]">
-        <div className="surface p-5">
+      <div className="dashboard-insight-grid">
+        <div className="surface dashboard-panel dashboard-distribution-panel p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="m-0 text-lg font-semibold tracking-normal text-primary">
@@ -407,7 +415,7 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
                 {distribution.map((segment) => (
                   <div
                     key={segment.label}
-                    className="panel-row rounded-lg border p-3"
+                    className="panel-row dashboard-distribution-row rounded-lg border p-3"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
@@ -440,7 +448,7 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
           </div>
         </div>
 
-        <div className="surface p-5">
+        <div className="surface dashboard-panel dashboard-signals-panel p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="m-0 text-lg font-semibold tracking-normal text-primary">
@@ -461,7 +469,7 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
             ) : (
               <div className="grid gap-4">
                 {signals.map((signal) => (
-                  <div key={signal.label}>
+                  <div key={signal.label} className="dashboard-signal-row">
                     <div className="mb-2 flex items-end justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-secondary">

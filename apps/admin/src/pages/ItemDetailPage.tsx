@@ -154,7 +154,7 @@ export function ItemDetailPage({
 
   if (!item) {
     return (
-      <section className="page-stack">
+      <section className="page-stack detail-workspace">
         <button
           className="btn btn-secondary btn-sm w-fit"
           type="button"
@@ -175,14 +175,14 @@ export function ItemDetailPage({
   }
 
   return (
-    <section className="page-stack">
+    <section className="page-stack detail-workspace">
       <button className="back-link" type="button" onClick={requestBack}>
         <ArrowLeft className="h-4 w-4" aria-hidden />
         {t("common.back")}
       </button>
 
-      <div className="page-header page-header-hero">
-        <div className="min-w-0">
+      <div className="page-header page-header-hero workspace-hero detail-hero">
+        <div className="workspace-hero-copy min-w-0">
           <div className="page-eyebrow">
             <FileCog className="h-4 w-4" aria-hidden />
             {t("detail.eyebrow")}
@@ -199,19 +199,26 @@ export function ItemDetailPage({
             )}
           </div>
         </div>
-        <a
-          className="btn btn-secondary"
-          href={item.publicUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <ExternalLink className="h-4 w-4" aria-hidden />
-          {t("common.preview")}
-        </a>
+        <div className="workspace-hero-actions">
+          <div className="hero-visual hero-visual-detail" aria-hidden>
+            <span className="hero-detail-line hero-detail-line-one" />
+            <span className="hero-detail-line hero-detail-line-two" />
+            <FileCog className="hero-visual-icon" />
+          </div>
+          <a
+            className="btn btn-secondary"
+            href={item.publicUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLink className="h-4 w-4" aria-hidden />
+            {t("common.preview")}
+          </a>
+        </div>
       </div>
 
       <div className="detail-layout">
-        <div className="surface feature-surface p-5 sm:p-6">
+        <div className="surface feature-surface detail-panel detail-settings-panel p-5 sm:p-6">
           <div className="section-heading">
             <span className="section-icon">
               <FileCog className="h-5 w-5" aria-hidden />
@@ -306,7 +313,7 @@ export function ItemDetailPage({
           </div>
         </div>
 
-        <div className="surface feature-surface detail-metadata-panel p-5 sm:p-6">
+        <div className="surface feature-surface detail-panel detail-metadata-panel p-5 sm:p-6">
           <div className="section-heading">
             <span className="section-icon">
               <Database className="h-5 w-5" aria-hidden />

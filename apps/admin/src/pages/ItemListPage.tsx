@@ -242,9 +242,9 @@ export function ItemListPage({
     confirmation?.kind === "batch-delete";
 
   return (
-    <section className="page-stack">
-      <div className="page-header page-header-hero">
-        <div>
+    <section className="page-stack library-workspace">
+      <div className="page-header page-header-hero workspace-hero library-hero">
+        <div className="workspace-hero-copy">
           <div className="page-eyebrow">
             <FileStack className="h-4 w-4" aria-hidden />
             {recordSummary}
@@ -252,27 +252,39 @@ export function ItemListPage({
           <h1 className="page-title">{t("files.title")}</h1>
           <p className="page-subtitle">{t("files.subtitle")}</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            className="btn btn-secondary"
-            type="button"
-            disabled={loading}
-            onClick={() => load()}
-          >
-            <RefreshCcw
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              aria-hidden
-            />
-            {t("common.refresh")}
-          </button>
-          <button className="btn btn-primary" type="button" onClick={onUpload}>
-            <UploadCloud className="h-4 w-4" aria-hidden />
-            {t("files.newUpload")}
-          </button>
+        <div className="workspace-hero-actions library-hero-actions">
+          <div className="hero-visual hero-visual-library" aria-hidden>
+            <span />
+            <span />
+            <span />
+            <FolderOpen className="hero-visual-icon" />
+          </div>
+          <div className="flex gap-2">
+            <button
+              className="btn btn-secondary"
+              type="button"
+              disabled={loading}
+              onClick={() => load()}
+            >
+              <RefreshCcw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                aria-hidden
+              />
+              {t("common.refresh")}
+            </button>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={onUpload}
+            >
+              <UploadCloud className="h-4 w-4" aria-hidden />
+              {t("files.newUpload")}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="surface filter-bar">
+      <div className="surface filter-bar library-filter-bar">
         <label className="relative min-w-0 flex-1 sm:min-w-64">
           <span className="sr-only">{t("common.search")}</span>
           <Search
