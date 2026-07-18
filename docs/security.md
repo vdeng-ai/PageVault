@@ -37,6 +37,10 @@ The session cookie is `pagevault_session` with `HttpOnly`, `Secure`, `SameSite=L
 
 All admin write operations require `X-CSRF-Token`. The token is returned by `GET /api/auth/me` and is bound to the signed session.
 
+Upload API keys are created and revoked from the authenticated admin interface. They are cryptographically random, are shown in plaintext only in the create response, and are stored as SHA-256 digests in D1 or SQLite. A key grants access only to the upload endpoint on the admin hostname. Bearer authentication does not use CSRF protection because the key is supplied explicitly in the `Authorization` header rather than sent automatically by a browser.
+
+Revoked keys remain as metadata for administrative history but cannot authenticate. The `last used` timestamp is updated at most once per hour per key to limit database write usage.
+
 External access controls may be added in front of the admin hostname, but they must not match the public hostname. Generated URLs under `PUBLIC_BASE_URL`, for example `https://h.example.com/p/report-ed559a5f`, are intended to be reachable without an admin session.
 
 ## HTML Content

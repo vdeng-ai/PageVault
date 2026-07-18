@@ -9,7 +9,9 @@ import {
 import { addDays } from "@pagevault/core";
 import type {
   AccessCountInput,
+  ApiKey,
   AuditLogInput,
+  CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
   HtmlItem,
@@ -51,7 +53,41 @@ class MemoryStorage implements StorageProvider {
 
 class MemoryRepository implements MetadataRepository {
   readonly items = new Map<string, HtmlItem>();
+  readonly apiKeys = new Map<string, { apiKey: ApiKey; tokenHash: string }>();
   accessWrites = 0;
+
+  async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
+    this.apiKeys.set(input.apiKey.id, input);
+    return input.apiKey;
+  }
+  async listApiKeys(): Promise<ApiKey[]> {
+    return Array.from(this.apiKeys.values()).map((entry) => entry.apiKey);
+  }
+  async getActiveApiKeyByHash(tokenHash: string): Promise<ApiKey | null> {
+    return (
+      Array.from(this.apiKeys.values()).find(
+        (entry) =>
+          entry.tokenHash === tokenHash && entry.apiKey.revokedAt === null,
+      )?.apiKey ?? null
+    );
+  }
+  async updateApiKeyLastUsedAt(id: string, lastUsedAt: string): Promise<void> {
+    const entry = this.apiKeys.get(id);
+    if (!entry) return;
+    this.apiKeys.set(id, {
+      ...entry,
+      apiKey: { ...entry.apiKey, lastUsedAt },
+    });
+  }
+  async revokeApiKey(id: string, revokedAt: string): Promise<boolean> {
+    const entry = this.apiKeys.get(id);
+    if (!entry || entry.apiKey.revokedAt) return false;
+    this.apiKeys.set(id, {
+      ...entry,
+      apiKey: { ...entry.apiKey, revokedAt },
+    });
+    return true;
+  }
 
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
     this.items.set(input.item.id, input.item);
@@ -172,6 +208,32 @@ function item(overrides: Partial<HtmlItem> = {}): HtmlItem {
     deletedAt: null,
     ...overrides,
   };
+}
+
+async function adminSession(
+  env: AppBindings,
+  handle: ReturnType<typeof createRequestHandler>,
+): Promise<{ cookie: string; csrfToken: string }> {
+  const login = await handle(
+    new Request("https://admin.test/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "admin@example.com",
+        password: "secret",
+      }),
+    }),
+    env,
+  );
+  const cookie = login.headers.get("Set-Cookie") ?? "";
+  const me = await handle(
+    new Request("https://admin.test/api/auth/me", {
+      headers: { Cookie: cookie },
+    }),
+    env,
+  );
+  const currentUser: { csrfToken: string } = await me.json();
+  return { cookie, csrfToken: currentUser.csrfToken };
 }
 
 describe("admin auth routes", () => {
@@ -359,6 +421,95 @@ describe("admin auth routes", () => {
       env,
     );
     expect(response.status).toBe(403);
+  });
+
+  it("creates, lists, uses, and revokes an upload-only API key", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const { cookie, csrfToken } = await adminSession(env, handle);
+
+    const createResponse = await handle(
+      new Request("https://admin.test/api/admin/api-keys", {
+        method: "POST",
+        headers: {
+          Cookie: cookie,
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
+        body: JSON.stringify({ name: "CI uploader" }),
+      }),
+      env,
+    );
+    expect(createResponse.status).toBe(201);
+    const created: {
+      apiKey: ApiKey;
+      token: string;
+    } = await createResponse.json();
+    expect(created.token).toMatch(/^pvk_[0-9a-f]{64}$/);
+
+    const listResponse = await handle(
+      new Request("https://admin.test/api/admin/api-keys", {
+        headers: { Cookie: cookie },
+      }),
+      env,
+    );
+    expect(listResponse.status).toBe(200);
+    const listBody = await listResponse.text();
+    expect(listBody).toContain("CI uploader");
+    expect(listBody).not.toContain(created.token);
+    expect(listBody).not.toContain("tokenHash");
+
+    const form = new FormData();
+    form.set(
+      "file",
+      new File(["<h1>API</h1>"], "api-upload.html", {
+        type: "text/html",
+      }),
+    );
+    form.set("visibility", "private");
+    const uploadResponse = await handle(
+      new Request("https://admin.test/api/admin/items", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${created.token}` },
+        body: form,
+      }),
+      env,
+    );
+    expect(uploadResponse.status).toBe(200);
+    expect(repo.items.size).toBe(1);
+    expect(storage.objects.size).toBe(1);
+
+    const forbiddenList = await handle(
+      new Request("https://admin.test/api/admin/items", {
+        headers: { Authorization: `Bearer ${created.token}` },
+      }),
+      env,
+    );
+    expect(forbiddenList.status).toBe(401);
+
+    const revokeResponse = await handle(
+      new Request(
+        `https://admin.test/api/admin/api-keys/${created.apiKey.id}`,
+        {
+          method: "DELETE",
+          headers: { Cookie: cookie, "X-CSRF-Token": csrfToken },
+        },
+      ),
+      env,
+    );
+    expect(revokeResponse.status).toBe(200);
+
+    const revokedForm = new FormData();
+    revokedForm.set("file", new File(["x"], "revoked.html"));
+    const revokedUpload = await handle(
+      new Request("https://admin.test/api/admin/items", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${created.token}` },
+        body: revokedForm,
+      }),
+      env,
+    );
+    expect(revokedUpload.status).toBe(401);
+    expect(repo.items.size).toBe(1);
   });
 });
 

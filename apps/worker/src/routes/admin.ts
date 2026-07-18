@@ -9,7 +9,11 @@ import { getDerivedStatus } from "@pagevault/core";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import type { HonoRuntime, ServiceFactory } from "../bindings.js";
-import { requireAdmin, requireAdminWrite } from "../middleware/admin-auth.js";
+import {
+  requireAdmin,
+  requireAdminWrite,
+  requireAdminWriteOrApiKey,
+} from "../middleware/admin-auth.js";
 import { purgePublicHtmlCache } from "../public-cache.js";
 
 const isoDate = z
@@ -40,6 +44,10 @@ const batchSchema = z.object({
   days: z.number().positive().optional(),
   urlExpiresAt: isoDate.optional(),
   fileExpiresAt: isoDate.optional(),
+});
+
+const createApiKeySchema = z.object({
+  name: z.string().trim().min(1).max(100),
 });
 
 function service(
@@ -133,6 +141,26 @@ export function registerAdminRoutes(
     return c.json(await service(c, createService).getDashboardStats());
   });
 
+  app.get("/api/admin/api-keys", requireAdmin, async (c) => {
+    return c.json({ apiKeys: await service(c, createService).listApiKeys() });
+  });
+
+  app.post("/api/admin/api-keys", requireAdminWrite, async (c) => {
+    const parsed = createApiKeySchema.safeParse(await readJson(c));
+    if (!parsed.success) {
+      return c.json({ error: "Invalid API key name" }, 400);
+    }
+    return c.json(
+      await service(c, createService).createApiKey(parsed.data.name),
+      201,
+    );
+  });
+
+  app.delete("/api/admin/api-keys/:id", requireAdminWrite, async (c) => {
+    await service(c, createService).revokeApiKey(c.req.param("id"));
+    return c.json({ ok: true });
+  });
+
   app.get("/api/admin/items", requireAdmin, async (c) => {
     const api = service(c, createService);
     const result = await api.listItems(listInput(c));
@@ -142,37 +170,41 @@ export function registerAdminRoutes(
     });
   });
 
-  app.post("/api/admin/items", requireAdminWrite, async (c) => {
-    const body = await c.req.formData();
-    const file = body.get("file");
-    if (!(file instanceof File)) {
-      return c.json({ error: "HTML file is required" }, 400);
-    }
-    if (file.size > maxUploadBytes(c)) {
-      return c.json({ error: "Uploaded file is too large" }, 413);
-    }
+  app.post(
+    "/api/admin/items",
+    requireAdminWriteOrApiKey(createService),
+    async (c) => {
+      const body = await c.req.formData();
+      const file = body.get("file");
+      if (!(file instanceof File)) {
+        return c.json({ error: "HTML file is required" }, 400);
+      }
+      if (file.size > maxUploadBytes(c)) {
+        return c.json({ error: "Uploaded file is too large" }, 413);
+      }
 
-    const api = service(c, createService);
-    const urlExpireDays = formNumber(body.get("urlExpireDays"));
-    const fileExpireDays = formNumber(body.get("fileExpireDays"));
-    const nextVisibility = formVisibility(body.get("visibility"));
-    const result = await api.uploadHtml({
-      filename: file.name,
-      body: await file.arrayBuffer(),
-      ...(urlExpireDays === undefined ? {} : { urlExpireDays }),
-      ...(fileExpireDays === undefined ? {} : { fileExpireDays }),
-      ...(nextVisibility === undefined ? {} : { visibility: nextVisibility }),
-    });
+      const api = service(c, createService);
+      const urlExpireDays = formNumber(body.get("urlExpireDays"));
+      const fileExpireDays = formNumber(body.get("fileExpireDays"));
+      const nextVisibility = formVisibility(body.get("visibility"));
+      const result = await api.uploadHtml({
+        filename: file.name,
+        body: await file.arrayBuffer(),
+        ...(urlExpireDays === undefined ? {} : { urlExpireDays }),
+        ...(fileExpireDays === undefined ? {} : { fileExpireDays }),
+        ...(nextVisibility === undefined ? {} : { visibility: nextVisibility }),
+      });
 
-    return c.json({
-      id: result.item.id,
-      title: result.item.title,
-      slug: result.item.slug,
-      publicUrl: result.publicUrl,
-      urlExpiresAt: result.item.urlExpiresAt,
-      fileExpiresAt: result.item.fileExpiresAt,
-    });
-  });
+      return c.json({
+        id: result.item.id,
+        title: result.item.title,
+        slug: result.item.slug,
+        publicUrl: result.publicUrl,
+        urlExpiresAt: result.item.urlExpiresAt,
+        fileExpiresAt: result.item.fileExpiresAt,
+      });
+    },
+  );
 
   app.get("/api/admin/items/:id", requireAdmin, async (c) => {
     const api = service(c, createService);

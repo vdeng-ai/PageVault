@@ -1,6 +1,8 @@
 import type {
   AccessCountInput,
+  ApiKey,
   AuditLogInput,
+  CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
   HtmlItem,
@@ -10,6 +12,11 @@ import type {
 } from "./types.js";
 
 export interface MetadataRepository {
+  createApiKey(input: CreateApiKeyInput): Promise<ApiKey>;
+  listApiKeys(): Promise<ApiKey[]>;
+  getActiveApiKeyByHash(tokenHash: string): Promise<ApiKey | null>;
+  updateApiKeyLastUsedAt(id: string, lastUsedAt: string): Promise<void>;
+  revokeApiKey(id: string, revokedAt: string): Promise<boolean>;
   createItem(input: CreateItemInput): Promise<HtmlItem>;
   getItemById(id: string): Promise<HtmlItem | null>;
   getItemsByIds(ids: string[]): Promise<HtmlItem[]>;

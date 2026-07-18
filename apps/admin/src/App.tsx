@@ -1,6 +1,7 @@
 import {
   BarChart3,
   FileText,
+  KeyRound,
   Languages,
   LogOut,
   Monitor,
@@ -12,6 +13,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { logout, me, type CurrentUser } from "./api/client.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
+import { ApiKeysPage } from "./pages/ApiKeysPage.js";
 import { ItemDetailPage } from "./pages/ItemDetailPage.js";
 import { ItemListPage } from "./pages/ItemListPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
@@ -22,6 +24,7 @@ export type Route =
   | { name: "upload" }
   | { name: "items" }
   | { name: "dashboard" }
+  | { name: "apiKeys" }
   | { name: "detail"; id: string };
 
 export function parseRouteHash(hash: string): Route {
@@ -34,6 +37,9 @@ export function parseRouteHash(hash: string): Route {
   }
   if (route === "dashboard") {
     return { name: "dashboard" };
+  }
+  if (route === "api-keys") {
+    return { name: "apiKeys" };
   }
   const detail = /^items\/(.+)$/.exec(route);
   if (detail?.[1]) {
@@ -132,6 +138,12 @@ export function App() {
         label: t("nav.dashboard"),
         icon: BarChart3,
         path: "/dashboard",
+      },
+      {
+        route: "apiKeys",
+        label: t("nav.apiKeys"),
+        icon: KeyRound,
+        path: "/api-keys",
       },
     ],
     [t],
@@ -243,6 +255,7 @@ export function App() {
         {route.name === "dashboard" && (
           <DashboardPage onUpload={() => navigate("/")} />
         )}
+        {route.name === "apiKeys" && <ApiKeysPage />}
         {route.name === "detail" && (
           <ItemDetailPage id={route.id} onBack={() => navigate("/items")} />
         )}

@@ -5,7 +5,9 @@ import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
 import { AppError, type MetadataRepository } from "@pagevault/core";
 import type {
   AccessCountInput,
+  ApiKey,
   AuditLogInput,
+  CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
   HtmlItem,
@@ -35,10 +37,7 @@ interface DashboardStatsRow {
   deleted: number;
 }
 
-function stringField(
-  row: Record<string, SQLOutputValue>,
-  key: keyof HtmlItemRow,
-): string {
+function stringField(row: Record<string, SQLOutputValue>, key: string): string {
   const value = row[key];
   if (typeof value !== "string") {
     throw new AppError(
@@ -52,7 +51,7 @@ function stringField(
 
 function nullableStringField(
   row: Record<string, SQLOutputValue>,
-  key: keyof HtmlItemRow,
+  key: string,
 ): string | null {
   const value = row[key];
   if (value === null || value === undefined) {
@@ -68,10 +67,7 @@ function nullableStringField(
   return value;
 }
 
-function numberField(
-  row: Record<string, SQLOutputValue>,
-  key: keyof HtmlItemRow,
-): number {
+function numberField(row: Record<string, SQLOutputValue>, key: string): number {
   const value = row[key];
   if (typeof value !== "number") {
     throw new AppError(
@@ -117,7 +113,7 @@ function countRow(
   if (!row) {
     return undefined;
   }
-  return { total: numberField(row, "total" as keyof HtmlItemRow) };
+  return { total: numberField(row, "total") };
 }
 
 function dashboardStatsRow(
@@ -127,14 +123,22 @@ function dashboardStatsRow(
     return undefined;
   }
   return {
-    total: numberField(row, "total" as keyof HtmlItemRow),
-    public_count: numberField(row, "public_count" as keyof HtmlItemRow),
-    url_expired: numberField(row, "url_expired" as keyof HtmlItemRow),
-    file_deleting_soon: numberField(
-      row,
-      "file_deleting_soon" as keyof HtmlItemRow,
-    ),
-    deleted: numberField(row, "deleted" as keyof HtmlItemRow),
+    total: numberField(row, "total"),
+    public_count: numberField(row, "public_count"),
+    url_expired: numberField(row, "url_expired"),
+    file_deleting_soon: numberField(row, "file_deleting_soon"),
+    deleted: numberField(row, "deleted"),
+  };
+}
+
+function apiKeyRow(row: Record<string, SQLOutputValue>): ApiKey {
+  return {
+    id: stringField(row, "id"),
+    name: stringField(row, "name"),
+    prefix: stringField(row, "key_prefix"),
+    createdAt: stringField(row, "created_at"),
+    lastUsedAt: nullableStringField(row, "last_used_at"),
+    revokedAt: nullableStringField(row, "revoked_at"),
   };
 }
 
@@ -152,6 +156,59 @@ export class NodeSqliteRepository implements MetadataRepository {
   async migrate(migrationPath: string): Promise<void> {
     const sql = await readFile(migrationPath, "utf8");
     this.db.exec(sql);
+  }
+
+  async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
+    const { apiKey } = input;
+    this.db
+      .prepare(
+        "INSERT INTO api_keys (id, name, key_prefix, token_hash, created_at, last_used_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      )
+      .run(
+        apiKey.id,
+        apiKey.name,
+        apiKey.prefix,
+        input.tokenHash,
+        apiKey.createdAt,
+        apiKey.lastUsedAt,
+        apiKey.revokedAt,
+      );
+    return apiKey;
+  }
+
+  async listApiKeys(): Promise<ApiKey[]> {
+    return this.db
+      .prepare(
+        "SELECT id, name, key_prefix, created_at, last_used_at, revoked_at FROM api_keys ORDER BY created_at DESC",
+      )
+      .all()
+      .map(apiKeyRow);
+  }
+
+  async getActiveApiKeyByHash(tokenHash: string): Promise<ApiKey | null> {
+    const row = this.db
+      .prepare(
+        "SELECT id, name, key_prefix, created_at, last_used_at, revoked_at FROM api_keys WHERE token_hash = ? AND revoked_at IS NULL LIMIT 1",
+      )
+      .get(tokenHash);
+    return row ? apiKeyRow(row) : null;
+  }
+
+  async updateApiKeyLastUsedAt(id: string, lastUsedAt: string): Promise<void> {
+    this.db
+      .prepare(
+        "UPDATE api_keys SET last_used_at = ? WHERE id = ? AND revoked_at IS NULL",
+      )
+      .run(lastUsedAt, id);
+  }
+
+  async revokeApiKey(id: string, revokedAt: string): Promise<boolean> {
+    const result = this.db
+      .prepare(
+        "UPDATE api_keys SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL",
+      )
+      .run(revokedAt, id);
+    return Number(result.changes) > 0;
   }
 
   async createItem(input: CreateItemInput): Promise<HtmlItem> {

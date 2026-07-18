@@ -21,10 +21,12 @@ import type { MetadataRepository } from "./repository.js";
 import { buildPublicSlug } from "./slug.js";
 import type { StorageProvider, StoredObject } from "./storage.js";
 import type {
+  ApiKey,
   BatchInput,
   BatchResult,
   AccessCountInput,
   DashboardStats,
+  CreatedApiKey,
   GcResult,
   PageVaultConfig,
   HtmlItem,
@@ -39,6 +41,9 @@ import type {
 } from "./types.js";
 
 const ID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const API_KEY_TOKEN_PREFIX = "pvk_";
+const API_KEY_TOKEN_PATTERN = /^pvk_[0-9a-f]{64}$/;
+const API_KEY_USAGE_WRITE_INTERVAL_MS = 60 * 60 * 1000;
 
 function encodeTimePart(timeMs: number): string {
   let value = BigInt(timeMs);
@@ -104,6 +109,78 @@ export class PageVaultService {
     private readonly storage: StorageProvider,
     private readonly config: PageVaultConfig,
   ) {}
+
+  async createApiKey(name: string, now = new Date()): Promise<CreatedApiKey> {
+    const normalizedName = name.trim();
+    if (normalizedName.length === 0 || normalizedName.length > 100) {
+      throw new AppError(
+        "API key name must be between 1 and 100 characters",
+        400,
+        "invalid_api_key_name",
+      );
+    }
+
+    const token = `${API_KEY_TOKEN_PREFIX}${randomHex(32)}`;
+    const apiKey: ApiKey = {
+      id: createId(now),
+      name: normalizedName,
+      prefix: token.slice(0, 12),
+      createdAt: now.toISOString(),
+      lastUsedAt: null,
+      revokedAt: null,
+    };
+    const created = await this.repository.createApiKey({
+      apiKey,
+      tokenHash: await sha256Hex(token),
+    });
+    await this.audit(
+      null,
+      "api_key_create",
+      JSON.stringify({ id: created.id, name: created.name }),
+      now,
+    );
+    return { apiKey: created, token };
+  }
+
+  async listApiKeys(): Promise<ApiKey[]> {
+    return this.repository.listApiKeys();
+  }
+
+  async authenticateApiKey(
+    token: string,
+    now = new Date(),
+  ): Promise<ApiKey | null> {
+    const normalizedToken = token.trim();
+    if (!API_KEY_TOKEN_PATTERN.test(normalizedToken)) {
+      return null;
+    }
+    const apiKey = await this.repository.getActiveApiKeyByHash(
+      await sha256Hex(normalizedToken),
+    );
+    if (!apiKey) {
+      return null;
+    }
+
+    const lastUsedMs = apiKey.lastUsedAt ? Date.parse(apiKey.lastUsedAt) : 0;
+    if (
+      !Number.isFinite(lastUsedMs) ||
+      now.getTime() - lastUsedMs >= API_KEY_USAGE_WRITE_INTERVAL_MS
+    ) {
+      await this.repository.updateApiKeyLastUsedAt(
+        apiKey.id,
+        now.toISOString(),
+      );
+      return { ...apiKey, lastUsedAt: now.toISOString() };
+    }
+    return apiKey;
+  }
+
+  async revokeApiKey(id: string, now = new Date()): Promise<void> {
+    if (!(await this.repository.revokeApiKey(id, now.toISOString()))) {
+      throw new AppError("API key not found", 404, "api_key_not_found");
+    }
+    await this.audit(null, "api_key_revoke", JSON.stringify({ id }), now);
+  }
 
   async uploadHtml(input: UploadHtmlInput): Promise<UploadResult> {
     const fileType = assertSupportedFilename(input.filename);

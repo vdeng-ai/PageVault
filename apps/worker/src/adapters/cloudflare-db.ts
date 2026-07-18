@@ -1,7 +1,9 @@
 import { AppError, type MetadataRepository } from "@pagevault/core";
 import type {
   AccessCountInput,
+  ApiKey,
   AuditLogInput,
+  CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
   HtmlItem,
@@ -27,8 +29,85 @@ interface DashboardStatsRow {
   deleted: number;
 }
 
+interface ApiKeyRow {
+  id: string;
+  name: string;
+  key_prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+function mapApiKeyRow(row: ApiKeyRow): ApiKey {
+  return {
+    id: row.id,
+    name: row.name,
+    prefix: row.key_prefix,
+    createdAt: row.created_at,
+    lastUsedAt: row.last_used_at,
+    revokedAt: row.revoked_at,
+  };
+}
+
 export class CloudflareD1Repository implements MetadataRepository {
   constructor(private readonly db: D1Database) {}
+
+  async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
+    const { apiKey } = input;
+    await this.db
+      .prepare(
+        "INSERT INTO api_keys (id, name, key_prefix, token_hash, created_at, last_used_at, revoked_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      )
+      .bind(
+        apiKey.id,
+        apiKey.name,
+        apiKey.prefix,
+        input.tokenHash,
+        apiKey.createdAt,
+        apiKey.lastUsedAt,
+        apiKey.revokedAt,
+      )
+      .run();
+    return apiKey;
+  }
+
+  async listApiKeys(): Promise<ApiKey[]> {
+    const rows = await this.db
+      .prepare(
+        "SELECT id, name, key_prefix, created_at, last_used_at, revoked_at FROM api_keys ORDER BY created_at DESC",
+      )
+      .all<ApiKeyRow>();
+    return rows.results.map(mapApiKeyRow);
+  }
+
+  async getActiveApiKeyByHash(tokenHash: string): Promise<ApiKey | null> {
+    const row = await this.db
+      .prepare(
+        "SELECT id, name, key_prefix, created_at, last_used_at, revoked_at FROM api_keys WHERE token_hash = ? AND revoked_at IS NULL LIMIT 1",
+      )
+      .bind(tokenHash)
+      .first<ApiKeyRow>();
+    return row ? mapApiKeyRow(row) : null;
+  }
+
+  async updateApiKeyLastUsedAt(id: string, lastUsedAt: string): Promise<void> {
+    await this.db
+      .prepare(
+        "UPDATE api_keys SET last_used_at = ? WHERE id = ? AND revoked_at IS NULL",
+      )
+      .bind(lastUsedAt, id)
+      .run();
+  }
+
+  async revokeApiKey(id: string, revokedAt: string): Promise<boolean> {
+    const result = await this.db
+      .prepare(
+        "UPDATE api_keys SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL",
+      )
+      .bind(revokedAt, id)
+      .run();
+    return result.meta.changes > 0;
+  }
 
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
     await this.db

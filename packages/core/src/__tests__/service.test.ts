@@ -12,7 +12,9 @@ import { PageVaultService, createPageVaultConfig } from "../service.js";
 import type { StorageProvider, StoredObject } from "../storage.js";
 import type {
   AccessCountInput,
+  ApiKey,
   AuditLogInput,
+  CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
   HtmlItem,
@@ -43,7 +45,47 @@ class MemoryStorage implements StorageProvider {
 
 class MemoryRepository implements MetadataRepository {
   readonly items = new Map<string, HtmlItem>();
+  readonly apiKeys = new Map<string, { apiKey: ApiKey; tokenHash: string }>();
   readonly audits: AuditLogInput[] = [];
+  apiKeyUsageWrites = 0;
+
+  async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
+    this.apiKeys.set(input.apiKey.id, input);
+    return input.apiKey;
+  }
+
+  async listApiKeys(): Promise<ApiKey[]> {
+    return Array.from(this.apiKeys.values()).map((entry) => entry.apiKey);
+  }
+
+  async getActiveApiKeyByHash(tokenHash: string): Promise<ApiKey | null> {
+    return (
+      Array.from(this.apiKeys.values()).find(
+        (entry) =>
+          entry.tokenHash === tokenHash && entry.apiKey.revokedAt === null,
+      )?.apiKey ?? null
+    );
+  }
+
+  async updateApiKeyLastUsedAt(id: string, lastUsedAt: string): Promise<void> {
+    const entry = this.apiKeys.get(id);
+    if (!entry) return;
+    this.apiKeyUsageWrites += 1;
+    this.apiKeys.set(id, {
+      ...entry,
+      apiKey: { ...entry.apiKey, lastUsedAt },
+    });
+  }
+
+  async revokeApiKey(id: string, revokedAt: string): Promise<boolean> {
+    const entry = this.apiKeys.get(id);
+    if (!entry || entry.apiKey.revokedAt) return false;
+    this.apiKeys.set(id, {
+      ...entry,
+      apiKey: { ...entry.apiKey, revokedAt },
+    });
+    return true;
+  }
 
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
     this.items.set(input.item.id, input.item);
@@ -210,6 +252,44 @@ describe("access counting", () => {
       "2026-07-05T00:01:00.000Z",
     );
     expect((await repo.getItemById("b"))?.accessCount).toBe(2);
+  });
+});
+
+describe("API keys", () => {
+  it("stores only a token hash and throttles last-used writes", async () => {
+    const { service, repo } = createService();
+    const createdAt = new Date("2026-07-05T00:00:00.000Z");
+    const created = await service.createApiKey("Automation", createdAt);
+
+    expect(created.token).toMatch(/^pvk_[0-9a-f]{64}$/);
+    expect(created.apiKey).toMatchObject({
+      name: "Automation",
+      prefix: created.token.slice(0, 12),
+      lastUsedAt: null,
+      revokedAt: null,
+    });
+    const stored = repo.apiKeys.get(created.apiKey.id);
+    expect(stored?.tokenHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored?.tokenHash).not.toContain(created.token);
+
+    const firstUse = new Date("2026-07-05T01:00:00.000Z");
+    await expect(
+      service.authenticateApiKey(created.token, firstUse),
+    ).resolves.toMatchObject({ id: created.apiKey.id });
+    await service.authenticateApiKey(
+      created.token,
+      new Date("2026-07-05T01:30:00.000Z"),
+    );
+    expect(repo.apiKeyUsageWrites).toBe(1);
+  });
+
+  it("rejects malformed and revoked keys", async () => {
+    const { service } = createService();
+    const created = await service.createApiKey("CI");
+
+    await expect(service.authenticateApiKey("not-a-key")).resolves.toBeNull();
+    await service.revokeApiKey(created.apiKey.id);
+    await expect(service.authenticateApiKey(created.token)).resolves.toBeNull();
   });
 });
 

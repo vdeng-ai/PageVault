@@ -34,6 +34,25 @@ export interface CreateItemInput {
   item: HtmlItem;
 }
 
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface CreateApiKeyInput {
+  apiKey: ApiKey;
+  tokenHash: string;
+}
+
+export interface CreatedApiKey {
+  apiKey: ApiKey;
+  token: string;
+}
+
 export interface UpdateItemInput {
   title?: string;
   visibility?: Visibility;

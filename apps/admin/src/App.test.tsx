@@ -9,13 +9,16 @@ import { SettingsProvider } from "./settings.js";
 
 vi.mock("./api/client.js", () => ({
   batchItems: vi.fn(),
+  createApiKey: vi.fn(),
   dashboard: vi.fn(),
   deleteItem: vi.fn(),
   getItem: vi.fn(),
   listItems: vi.fn(),
+  listApiKeys: vi.fn(),
   login: vi.fn(),
   logout: vi.fn(),
   me: vi.fn(),
+  revokeApiKey: vi.fn(),
   updateItem: vi.fn(),
   uploadHtml: vi.fn(),
 }));
@@ -36,6 +39,7 @@ describe("admin routing", () => {
     expect(parseRouteHash("")).toEqual({ name: "upload" });
     expect(parseRouteHash("#/upload")).toEqual({ name: "upload" });
     expect(parseRouteHash("#/dashboard")).toEqual({ name: "dashboard" });
+    expect(parseRouteHash("#/api-keys")).toEqual({ name: "apiKeys" });
     expect(parseRouteHash("#/items/item-1")).toEqual({
       name: "detail",
       id: "item-1",
@@ -72,7 +76,7 @@ describe("App navigation", () => {
     await waitFor(() => {
       expect(
         container.querySelectorAll(".desktop-top-nav [data-route]"),
-      ).toHaveLength(3);
+      ).toHaveLength(4);
     });
 
     expect(container.querySelector("aside")).toBeNull();
@@ -82,14 +86,14 @@ describe("App navigation", () => {
           ".desktop-top-nav [data-route]",
         ),
       ).map((element) => element.dataset.route),
-    ).toEqual(["upload", "items", "dashboard"]);
+    ).toEqual(["upload", "items", "dashboard", "apiKeys"]);
     expect(
       Array.from(
         container.querySelectorAll<HTMLElement>(
           ".mobile-bottom-nav [data-route]",
         ),
       ).map((element) => element.dataset.route),
-    ).toEqual(["upload", "items", "dashboard"]);
+    ).toEqual(["upload", "items", "dashboard", "apiKeys"]);
     expect(vi.mocked(dashboard)).not.toHaveBeenCalled();
   });
 

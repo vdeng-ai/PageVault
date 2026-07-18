@@ -46,6 +46,20 @@ export interface DashboardStats {
   deleted: number;
 }
 
+export interface ApiKey {
+  id: string;
+  name: string;
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface CreatedApiKey {
+  apiKey: ApiKey;
+  token: string;
+}
+
 export interface UploadResult {
   id: string;
   title: string;
@@ -125,6 +139,24 @@ export async function me(): Promise<CurrentUser> {
 
 export function dashboard(): Promise<DashboardStats> {
   return request<DashboardStats>("/api/admin/dashboard");
+}
+
+export async function listApiKeys(): Promise<ApiKey[]> {
+  const result = await request<{ apiKeys: ApiKey[] }>("/api/admin/api-keys");
+  return result.apiKeys;
+}
+
+export function createApiKey(name: string): Promise<CreatedApiKey> {
+  return request<CreatedApiKey>("/api/admin/api-keys", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function revokeApiKey(id: string): Promise<{ ok: true }> {
+  return request<{ ok: true }>(`/api/admin/api-keys/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export function listItems(

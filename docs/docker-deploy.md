@@ -55,7 +55,7 @@ Build the image and start the service from the repository root:
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-The container entrypoint applies the current SQLite migration before starting the Node.js server.
+The container entrypoint applies the current SQLite migrations before starting the Node.js server.
 
 Check the service state and logs:
 
@@ -102,7 +102,7 @@ After updating the repository, rebuild and restart:
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-The current startup migration is idempotent. Keep the backup until login, upload, and public retrieval have been verified on the new container.
+The startup migrations are idempotent. Keep the backup until login, upload, and public retrieval have been verified on the new container.
 
 ## Troubleshooting
 

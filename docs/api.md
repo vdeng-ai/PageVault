@@ -22,6 +22,18 @@ JSON error responses use an `error` message and may include a stable `code`. Unl
 
 Successful login creates the signed `pagevault_session` cookie. All authenticated write requests require the `X-CSRF-Token` value returned by `GET /api/auth/me`.
 
+Upload API keys use `Authorization: Bearer <key>` and are accepted only by `POST /api/admin/items`. They cannot read items or call other admin endpoints, and they do not require a CSRF token.
+
+## API Keys
+
+API key management requires an authenticated admin session:
+
+- `GET /api/admin/api-keys`
+- `POST /api/admin/api-keys` with `{ "name": "CI uploader" }`
+- `DELETE /api/admin/api-keys/:id`
+
+The create response contains the plaintext `token` once. Later list responses return only the key name, prefix, timestamps, and revocation state. Deleting a key revokes it immediately while retaining its management record.
+
 ## Dashboard
 
 `GET /api/admin/dashboard`
@@ -42,6 +54,17 @@ By default, the list response uses lightweight pagination, returns `total: null`
 - `visibility`, either `public` or `private`
 
 Supported file extensions are `.html`, `.htm`, `.md`, `.markdown`, `.jpg`, `.jpeg`, `.png`, and `.webp`. The upload limit defaults to 10 MiB and is controlled by `MAX_UPLOAD_SIZE_MB`.
+
+An external client can upload with a key created in the admin interface:
+
+```bash
+curl "$ADMIN_BASE_URL/api/admin/items" \
+  -H "Authorization: Bearer $PAGEVAULT_API_KEY" \
+  -F "file=@report.html" \
+  -F "visibility=private" \
+  -F "urlExpireDays=7" \
+  -F "fileExpireDays=180"
+```
 
 `GET /api/admin/items/:id`
 
