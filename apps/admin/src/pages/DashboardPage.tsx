@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { dashboard, type DashboardStats } from "../api/client.js";
+import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
 
@@ -327,31 +328,20 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
 
   return (
     <section className="page-stack dashboard-workspace">
-      <div className="page-header page-header-hero workspace-hero dashboard-hero">
-        <div className="workspace-hero-copy">
-          <div className="page-eyebrow">
-            <BarChart3 className="h-4 w-4" aria-hidden />
-            {t("app.controlCenter")}
-          </div>
-          <h1 className="page-title">{t("dashboard.title")}</h1>
-          <p className="page-subtitle">
-            {new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(
-              new Date(),
-            )}
-          </p>
-        </div>
-        <div className="workspace-hero-actions">
-          <div className="hero-visual hero-visual-dashboard" aria-hidden>
-            <span className="hero-visual-ring hero-visual-ring-outer" />
-            <span className="hero-visual-ring hero-visual-ring-inner" />
-            <BarChart3 className="hero-visual-icon" />
-          </div>
+      <WorkspaceHero
+        icon={BarChart3}
+        eyebrow={t("app.controlCenter")}
+        title={t("dashboard.title")}
+        subtitle={new Intl.DateTimeFormat(locale, {
+          dateStyle: "full",
+        }).format(new Date())}
+        actions={
           <button className="btn btn-primary" type="button" onClick={onUpload}>
             <UploadCloud className="h-4 w-4" aria-hidden />
             {t("dashboard.uploadAction")}
           </button>
-        </div>
-      </div>
+        }
+      />
       {error && (
         <div className="alert-error">
           {error === "load-failed" ? t("common.loadFailed") : error}

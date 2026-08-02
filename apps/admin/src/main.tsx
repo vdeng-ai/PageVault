@@ -4,6 +4,7 @@ import { App } from "./App.js";
 import { FeedbackProvider } from "./components/Feedback.js";
 import { SettingsProvider } from "./settings.js";
 import "./styles.css";
+import "./precision.css";
 
 createRoot(document.getElementById("root") as HTMLElement).render(
   <StrictMode>

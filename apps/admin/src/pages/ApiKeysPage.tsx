@@ -25,6 +25,7 @@ import {
   type CreatedApiKey,
 } from "../api/client.js";
 import { ConfirmDialog, useFeedback } from "../components/Feedback.js";
+import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { useSettings } from "../settings.js";
 
 function ApiKeyDialog({
@@ -291,39 +292,37 @@ export function ApiKeysPage() {
 
   return (
     <section className="page-stack api-keys-workspace">
-      <div className="page-header page-header-hero">
-        <div>
-          <div className="page-eyebrow">
-            <KeyRound className="h-4 w-4" aria-hidden />
-            {t("apiKeys.activeSummary", { count: activeCount })}
+      <WorkspaceHero
+        icon={KeyRound}
+        eyebrow={t("apiKeys.activeSummary", { count: activeCount })}
+        title={t("apiKeys.title")}
+        subtitle={t("apiKeys.subtitle")}
+        actions={
+          <div className="workspace-action-row api-key-header-actions">
+            <button
+              className="icon-button"
+              type="button"
+              title={t("common.refresh")}
+              aria-label={t("common.refresh")}
+              disabled={loading}
+              onClick={() => void load()}
+            >
+              <RefreshCcw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                aria-hidden
+              />
+            </button>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={() => setDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              {t("apiKeys.new")}
+            </button>
           </div>
-          <h1 className="page-title">{t("apiKeys.title")}</h1>
-          <p className="page-subtitle">{t("apiKeys.subtitle")}</p>
-        </div>
-        <div className="api-key-header-actions">
-          <button
-            className="icon-button"
-            type="button"
-            title={t("common.refresh")}
-            aria-label={t("common.refresh")}
-            disabled={loading}
-            onClick={() => void load()}
-          >
-            <RefreshCcw
-              className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              aria-hidden
-            />
-          </button>
-          <button
-            className="btn btn-primary"
-            type="button"
-            onClick={() => setDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            {t("apiKeys.new")}
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {error ? (
         <div className="alert-error" role="alert">

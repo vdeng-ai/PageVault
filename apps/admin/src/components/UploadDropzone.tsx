@@ -136,7 +136,6 @@ export function UploadDropzone({
           }
         }}
       >
-        <span className="dropzone-glow" aria-hidden />
         <span className="dropzone-icon">
           <UploadCloud className="h-7 w-7" aria-hidden />
         </span>

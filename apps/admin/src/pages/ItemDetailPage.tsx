@@ -19,6 +19,7 @@ import {
 import { ExpiryEditor } from "../components/ExpiryEditor.js";
 import { ConfirmDialog, useFeedback } from "../components/Feedback.js";
 import { StatusBadge } from "../components/StatusBadge.js";
+import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { useSettings } from "../settings.js";
 
 type EditableFields = {
@@ -181,15 +182,13 @@ export function ItemDetailPage({
         {t("common.back")}
       </button>
 
-      <div className="page-header page-header-hero workspace-hero detail-hero">
-        <div className="workspace-hero-copy min-w-0">
-          <div className="page-eyebrow">
-            <FileCog className="h-4 w-4" aria-hidden />
-            {t("detail.eyebrow")}
-          </div>
-          <h1 className="page-title truncate">{item.title}</h1>
-          <p className="page-subtitle">{t("detail.subtitle")}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+      <WorkspaceHero
+        icon={FileCog}
+        eyebrow={t("detail.eyebrow")}
+        title={item.title}
+        subtitle={t("detail.subtitle")}
+        meta={
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={item.derivedStatus} />
             <span className="chip rounded-lg px-2.5 py-1 font-mono text-xs">
               /{item.slug}
@@ -198,13 +197,8 @@ export function ItemDetailPage({
               <span className="unsaved-chip">{t("detail.unsaved")}</span>
             )}
           </div>
-        </div>
-        <div className="workspace-hero-actions">
-          <div className="hero-visual hero-visual-detail" aria-hidden>
-            <span className="hero-detail-line hero-detail-line-one" />
-            <span className="hero-detail-line hero-detail-line-two" />
-            <FileCog className="hero-visual-icon" />
-          </div>
+        }
+        actions={
           <a
             className="btn btn-secondary"
             href={item.publicUrl}
@@ -214,11 +208,11 @@ export function ItemDetailPage({
             <ExternalLink className="h-4 w-4" aria-hidden />
             {t("common.preview")}
           </a>
-        </div>
-      </div>
+        }
+      />
 
       <div className="detail-layout">
-        <div className="surface feature-surface detail-panel detail-settings-panel p-5 sm:p-6">
+        <div className="surface detail-panel detail-settings-panel p-5 sm:p-6">
           <div className="section-heading">
             <span className="section-icon">
               <FileCog className="h-5 w-5" aria-hidden />
@@ -313,7 +307,7 @@ export function ItemDetailPage({
           </div>
         </div>
 
-        <div className="surface feature-surface detail-panel detail-metadata-panel p-5 sm:p-6">
+        <div className="surface detail-panel detail-metadata-panel p-5 sm:p-6">
           <div className="section-heading">
             <span className="section-icon">
               <Database className="h-5 w-5" aria-hidden />

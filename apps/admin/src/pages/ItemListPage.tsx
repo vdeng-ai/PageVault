@@ -19,6 +19,7 @@ import {
 import { BatchToolbar } from "../components/BatchToolbar.js";
 import { ConfirmDialog, useFeedback } from "../components/Feedback.js";
 import { ItemTable } from "../components/ItemTable.js";
+import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { useSettings } from "../settings.js";
 
 const SEARCH_DEBOUNCE_MS = 400;
@@ -243,23 +244,13 @@ export function ItemListPage({
 
   return (
     <section className="page-stack library-workspace">
-      <div className="page-header page-header-hero workspace-hero library-hero">
-        <div className="workspace-hero-copy">
-          <div className="page-eyebrow">
-            <FileStack className="h-4 w-4" aria-hidden />
-            {recordSummary}
-          </div>
-          <h1 className="page-title">{t("files.title")}</h1>
-          <p className="page-subtitle">{t("files.subtitle")}</p>
-        </div>
-        <div className="workspace-hero-actions library-hero-actions">
-          <div className="hero-visual hero-visual-library" aria-hidden>
-            <span />
-            <span />
-            <span />
-            <FolderOpen className="hero-visual-icon" />
-          </div>
-          <div className="flex gap-2">
+      <WorkspaceHero
+        icon={FileStack}
+        eyebrow={recordSummary}
+        title={t("files.title")}
+        subtitle={t("files.subtitle")}
+        actions={
+          <div className="workspace-action-row">
             <button
               className="btn btn-secondary"
               type="button"
@@ -281,8 +272,8 @@ export function ItemListPage({
               {t("files.newUpload")}
             </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="surface filter-bar library-filter-bar">
         <label className="relative min-w-0 flex-1 sm:min-w-64">
