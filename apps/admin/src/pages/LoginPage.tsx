@@ -24,6 +24,14 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
           <h1>PageVault</h1>
           <p>{t("login.subtitle")}</p>
         </div>
+        <div className="login-liquid-visual" aria-hidden>
+          <img
+            src="/assets/pagevault-login-liquid.png"
+            alt=""
+            width="1024"
+            height="1024"
+          />
+        </div>
       </section>
 
       <form

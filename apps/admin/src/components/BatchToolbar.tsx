@@ -52,7 +52,7 @@ export function BatchToolbar({
   }
 
   return (
-    <div className="surface batch-toolbar">
+    <div className="surface batch-toolbar" data-liquid="g3">
       <div className="batch-count">
         {t("batch.selected", { count: selectedCount })}
       </div>

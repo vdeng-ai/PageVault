@@ -79,6 +79,7 @@ export function FeedbackProvider({ children }: PropsWithChildren) {
               key={toast.id}
               className={`toast toast-${toast.tone}`}
               role="status"
+              data-liquid="g3"
             >
               <Icon className="h-5 w-5 shrink-0" aria-hidden />
               <span className="min-w-0 flex-1 text-sm font-semibold">
@@ -187,6 +188,7 @@ export function ConfirmDialog({
       <div
         ref={panelRef}
         className="dialog-panel"
+        data-liquid="g3"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"

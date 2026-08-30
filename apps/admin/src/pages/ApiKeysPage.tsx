@@ -114,6 +114,7 @@ function ApiKeyDialog({
       <div
         ref={panelRef}
         className="dialog-panel api-key-dialog"
+        data-liquid="g3"
         role="dialog"
         aria-modal="true"
         aria-labelledby="api-key-dialog-title"

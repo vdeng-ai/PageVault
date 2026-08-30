@@ -148,6 +148,10 @@ export function App() {
     ],
     [t],
   );
+  const activeNavRoute = route.name === "detail" ? "items" : route.name;
+  const activeNavIndex = navItems.findIndex(
+    (item) => item.route === activeNavRoute,
+  );
 
   if (!user) {
     return (
@@ -174,7 +178,7 @@ export function App() {
 
   return (
     <div className="app-shell min-h-screen">
-      <header className="app-header">
+      <header className="app-header" data-liquid="g1">
         <div className="app-header-inner">
           <div className="app-brand">
             <div className="brand-mark app-brand-mark">
@@ -194,6 +198,8 @@ export function App() {
           <nav
             className="desktop-top-nav"
             aria-label={t("app.primaryNavigation")}
+            data-active-index={activeNavIndex}
+            data-liquid="g1"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -206,6 +212,7 @@ export function App() {
                   className={`top-nav-button ${active ? "top-nav-button-active" : ""}`}
                   type="button"
                   data-route={item.route}
+                  data-liquid={active ? "g2" : "g1"}
                   aria-current={active ? "page" : undefined}
                   onClick={() => navigate(item.path)}
                 >
@@ -264,6 +271,7 @@ export function App() {
       <nav
         className="mobile-bottom-nav"
         aria-label={t("app.primaryNavigation")}
+        data-liquid="g1"
       >
         {navItems.map((item) => {
           const Icon = item.icon;

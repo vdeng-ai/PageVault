@@ -269,7 +269,10 @@ export function ItemDetailPage({
                 {error}
               </div>
             )}
-            <div className="detail-action-bar">
+            <div
+              className="detail-action-bar"
+              data-liquid={dirty ? "g3" : undefined}
+            >
               <div className="flex flex-wrap gap-2">
                 <button
                   className="btn btn-primary"
