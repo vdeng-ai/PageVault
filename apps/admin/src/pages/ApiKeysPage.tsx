@@ -11,6 +11,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -26,6 +27,8 @@ import {
 } from "../api/client.js";
 import { ConfirmDialog, useFeedback } from "../components/Feedback.js";
 import { WorkspaceHero } from "../components/WorkspaceHero.js";
+import { GlassDialog } from "../components/Glass.js";
+import { useExitPresence } from "../hooks/useExitPresence.js";
 import { useSettings } from "../settings.js";
 
 function ApiKeyDialog({
@@ -46,18 +49,28 @@ function ApiKeyDialog({
   const [name, setName] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const copyRef = useRef<HTMLButtonElement>(null);
+  const presence = useExitPresence(open, 220);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) {
       setName("");
       return;
     }
     const previous = document.activeElement as HTMLElement | null;
-    window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => previous?.focus();
   }, [open]);
 
-  if (!open) {
+  useLayoutEffect(() => {
+    if (!open || !presence.present) return;
+    if (created) {
+      copyRef.current?.focus();
+    } else {
+      inputRef.current?.focus();
+    }
+  }, [created, open, presence.present]);
+
+  if (!presence.present) {
     return null;
   }
 
@@ -105,18 +118,20 @@ function ApiKeyDialog({
   return (
     <div
       className="dialog-backdrop"
+      data-state={presence.state}
       onMouseDown={(event) => {
         if (event.currentTarget === event.target && !creating && !created) {
           onClose();
         }
       }}
     >
-      <div
+      <GlassDialog
         ref={panelRef}
         className="dialog-panel api-key-dialog"
-        data-liquid="g3"
+        data-state={presence.state}
         role="dialog"
         aria-modal="true"
+        aria-hidden={!open}
         aria-labelledby="api-key-dialog-title"
         aria-describedby="api-key-dialog-description"
         onKeyDown={handleKeyDown}
@@ -151,10 +166,11 @@ function ApiKeyDialog({
         {created ? (
           <div className="api-key-token-wrap">
             <code className="api-key-token">{created.token}</code>
-            <button
-              className="btn btn-primary"
-              type="button"
-              onClick={copyToken}
+          <button
+            ref={copyRef}
+            className="btn btn-primary"
+            type="button"
+            onClick={copyToken}
             >
               <Copy className="h-4 w-4" aria-hidden />
               {t("apiKeys.copy")}
@@ -194,7 +210,7 @@ function ApiKeyDialog({
             </div>
           </form>
         )}
-      </div>
+      </GlassDialog>
     </div>
   );
 }
@@ -353,8 +369,9 @@ export function ApiKeysPage() {
           </button>
         </div>
       ) : (
-        <div className="surface api-key-table-wrap">
-          <table className="api-key-table">
+        <>
+          <div className="surface api-key-table-wrap api-key-table-desktop">
+            <table className="api-key-table">
             <thead>
               <tr>
                 <th>{t("apiKeys.name")}</th>
@@ -407,8 +424,56 @@ export function ApiKeysPage() {
                 );
               })}
             </tbody>
-          </table>
-        </div>
+            </table>
+          </div>
+          <div className="api-key-mobile-list">
+            {apiKeys.map((apiKey) => {
+              const revoked = apiKey.revokedAt !== null;
+              return (
+                <article className="surface api-key-mobile-card" key={apiKey.id}>
+                  <div className="api-key-mobile-heading">
+                    <div>
+                      <strong className="api-key-name">{apiKey.name}</strong>
+                      <code className="api-key-prefix">{apiKey.prefix}...</code>
+                    </div>
+                    <span
+                      className={`api-key-status ${
+                        revoked
+                          ? "api-key-status-revoked"
+                          : "api-key-status-active"
+                      }`}
+                    >
+                      {revoked ? t("apiKeys.revoked") : t("apiKeys.active")}
+                    </span>
+                  </div>
+                  <dl className="api-key-mobile-meta">
+                    <div>
+                      <dt>{t("apiKeys.scope")}</dt>
+                      <dd>{t("apiKeys.uploadScope")}</dd>
+                    </div>
+                    <div>
+                      <dt>{t("apiKeys.created")}</dt>
+                      <dd>{formatDate(apiKey.createdAt)}</dd>
+                    </div>
+                    <div>
+                      <dt>{t("apiKeys.lastUsed")}</dt>
+                      <dd>{formatDate(apiKey.lastUsedAt)}</dd>
+                    </div>
+                  </dl>
+                  <button
+                    className="btn btn-danger api-key-mobile-revoke"
+                    type="button"
+                    disabled={revoked}
+                    onClick={() => setRevokeTarget(apiKey)}
+                  >
+                    <Ban className="h-4 w-4" aria-hidden />
+                    {t("apiKeys.revoke")}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <ApiKeyDialog

@@ -9,12 +9,20 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import type { HtmlItem } from "../api/client.js";
 import { formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
+import { useExitPresence } from "../hooks/useExitPresence.js";
 import { StatusBadge } from "./StatusBadge.js";
+import { GlassPopover } from "./Glass.js";
 
 function formatDate(value: string | null, locale: string): string {
   if (!value) {
@@ -50,7 +58,12 @@ function ItemActionMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  const [menuPosition, setMenuPosition] = useState({
+    top: 0,
+    right: 0,
+    transformOrigin: "top right",
+  });
+  const menuPresence = useExitPresence(open, 160);
 
   useEffect(() => {
     if (!open) {
@@ -75,6 +88,13 @@ function ItemActionMenu({
     };
   }, [open]);
 
+  useLayoutEffect(() => {
+    if (!open || !menuPresence.present) return;
+    menuRef.current
+      ?.querySelector<HTMLElement>('[role="menuitem"]')
+      ?.focus();
+  }, [menuPresence.present, open]);
+
   function toggleMenu(): void {
     if (open) {
       setOpen(false);
@@ -91,6 +111,7 @@ function ItemActionMenu({
           ? Math.max(8, rect.top - estimatedHeight - 6)
           : rect.bottom + 6,
         right: Math.max(8, window.innerWidth - rect.right),
+        transformOrigin: opensUp ? "bottom right" : "top right",
       });
     }
     setOpen(true);
@@ -98,7 +119,35 @@ function ItemActionMenu({
 
   function run(action: () => void): void {
     setOpen(false);
+    buttonRef.current?.focus();
     action();
+  }
+
+  function handleMenuKey(event: KeyboardEvent<HTMLDivElement>): void {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      buttonRef.current?.focus();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      return;
+    }
+    const menuItems = Array.from(
+      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [],
+    );
+    if (menuItems.length === 0) return;
+    event.preventDefault();
+    const currentIndex = menuItems.indexOf(document.activeElement as HTMLElement);
+    const nextIndex =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? menuItems.length - 1
+          : event.key === "ArrowUp"
+            ? (currentIndex - 1 + menuItems.length) % menuItems.length
+            : (currentIndex + 1) % menuItems.length;
+    menuItems[nextIndex]?.focus();
   }
 
   return (
@@ -120,19 +169,16 @@ function ItemActionMenu({
           <MoreHorizontal className="h-5 w-5" aria-hidden />
         )}
       </button>
-      {open &&
+      {menuPresence.present &&
         createPortal(
-          <div
+          <GlassPopover
             ref={menuRef}
             className="action-menu action-menu-portal"
             role="menu"
+            data-state={menuPresence.state}
+            aria-hidden={!open}
             style={menuPosition}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                setOpen(false);
-                buttonRef.current?.focus();
-              }
-            }}
+            onKeyDown={handleMenuKey}
           >
             <button
               type="button"
@@ -203,7 +249,7 @@ function ItemActionMenu({
               <Trash2 className="h-4 w-4" aria-hidden />
               {t("common.delete")}
             </button>
-          </div>,
+          </GlassPopover>,
           document.body,
         )}
     </div>

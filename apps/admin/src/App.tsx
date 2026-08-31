@@ -19,6 +19,10 @@ import { ItemListPage } from "./pages/ItemListPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { UploadPage } from "./pages/UploadPage.js";
 import { useSettings, type ThemePreference } from "./settings.js";
+import {
+  GlassNav,
+  GlassSegmentedControl,
+} from "./components/Glass.js";
 
 export type Route =
   | { name: "upload" }
@@ -73,11 +77,15 @@ function SettingsControls({ compact = false }: { compact?: boolean }) {
     <div
       className={`settings-controls ${compact ? "settings-controls-compact" : ""}`}
     >
-      <div className="segmented-control" aria-label={t("settings.language")}>
+      <GlassSegmentedControl
+        className="segmented-control"
+        aria-label={t("settings.language")}
+      >
         <button
-          className={`segment-button ${language === "en" ? "segment-button-active" : ""}`}
-          type="button"
-          title={t("settings.english")}
+            className={`segment-button ${language === "en" ? "segment-button-active" : ""}`}
+            type="button"
+            aria-pressed={language === "en"}
+            title={t("settings.english")}
           onClick={() => setLanguage("en")}
         >
           <Languages className="h-4 w-4" aria-hidden />
@@ -86,31 +94,36 @@ function SettingsControls({ compact = false }: { compact?: boolean }) {
           </span>
         </button>
         <button
-          className={`segment-button ${language === "zh-CN" ? "segment-button-active" : ""}`}
-          type="button"
-          title={t("settings.chinese")}
+            className={`segment-button ${language === "zh-CN" ? "segment-button-active" : ""}`}
+            type="button"
+            aria-pressed={language === "zh-CN"}
+            title={t("settings.chinese")}
           onClick={() => setLanguage("zh-CN")}
         >
           {t("settings.chinese")}
         </button>
-      </div>
-      <div className="segmented-control" aria-label={t("settings.theme")}>
+      </GlassSegmentedControl>
+      <GlassSegmentedControl
+        className="segmented-control"
+        aria-label={t("settings.theme")}
+      >
         {themeOptions.map((option) => {
           const Icon = option.icon;
           return (
             <button
               key={option.value}
-              className={`segment-button ${themePreference === option.value ? "segment-button-active" : ""}`}
-              title={option.label}
-              type="button"
-              onClick={() => setThemePreference(option.value)}
+                className={`segment-button ${themePreference === option.value ? "segment-button-active" : ""}`}
+                title={option.label}
+                type="button"
+                aria-pressed={themePreference === option.value}
+                onClick={() => setThemePreference(option.value)}
             >
               <Icon className="h-4 w-4" aria-hidden />
               <span className={compact ? "sr-only" : ""}>{option.label}</span>
             </button>
           );
         })}
-      </div>
+      </GlassSegmentedControl>
     </div>
   );
 }
@@ -178,7 +191,10 @@ export function App() {
 
   return (
     <div className="app-shell min-h-screen">
-      <header className="app-header" data-liquid="g1">
+      <header
+        className="app-header glass-surface glass-standard"
+        data-glass="standard"
+      >
         <div className="app-header-inner">
           <div className="app-brand">
             <div className="brand-mark app-brand-mark">
@@ -195,11 +211,11 @@ export function App() {
             </div>
           </div>
 
-          <nav
+          <GlassNav
+            material="standard"
             className="desktop-top-nav"
             aria-label={t("app.primaryNavigation")}
             data-active-index={activeNavIndex}
-            data-liquid="g1"
           >
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -212,7 +228,7 @@ export function App() {
                   className={`top-nav-button ${active ? "top-nav-button-active" : ""}`}
                   type="button"
                   data-route={item.route}
-                  data-liquid={active ? "g2" : "g1"}
+                  data-glass={active ? "optical" : undefined}
                   aria-current={active ? "page" : undefined}
                   onClick={() => navigate(item.path)}
                 >
@@ -221,7 +237,7 @@ export function App() {
                 </button>
               );
             })}
-          </nav>
+          </GlassNav>
 
           <div className="app-header-actions">
             <SettingsControls compact />
@@ -268,10 +284,10 @@ export function App() {
         )}
       </main>
 
-      <nav
+      <GlassNav
+        material="standard"
         className="mobile-bottom-nav"
         aria-label={t("app.primaryNavigation")}
-        data-liquid="g1"
       >
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -294,7 +310,7 @@ export function App() {
             </button>
           );
         })}
-      </nav>
+      </GlassNav>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -11,6 +12,8 @@ import {
   type ReactNode,
 } from "react";
 import { useSettings } from "../settings.js";
+import { useExitPresence } from "../hooks/useExitPresence.js";
+import { GlassDialog, GlassSurface } from "./Glass.js";
 
 export type ToastTone = "success" | "error" | "info";
 
@@ -18,6 +21,7 @@ type Toast = {
   id: number;
   message: string;
   tone: ToastTone;
+  closing?: boolean;
 };
 
 type FeedbackContextValue = {
@@ -36,9 +40,17 @@ export function FeedbackProvider({ children }: PropsWithChildren) {
     const timer = timers.current.get(id);
     if (timer !== undefined) {
       window.clearTimeout(timer);
-      timers.current.delete(id);
     }
-    setToasts((current) => current.filter((toast) => toast.id !== id));
+    setToasts((current) =>
+      current.map((toast) =>
+        toast.id === id ? { ...toast, closing: true } : toast,
+      ),
+    );
+    const exitTimer = window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+      timers.current.delete(id);
+    }, 200);
+    timers.current.set(id, exitTimer);
   }, []);
 
   const notify = useCallback(
@@ -75,11 +87,12 @@ export function FeedbackProvider({ children }: PropsWithChildren) {
                 ? XCircle
                 : Info;
           return (
-            <div
+            <GlassSurface
               key={toast.id}
+              material="elevated"
               className={`toast toast-${toast.tone}`}
+              data-state={toast.closing ? "closing" : "open"}
               role="status"
-              data-liquid="g3"
             >
               <Icon className="h-5 w-5 shrink-0" aria-hidden />
               <span className="min-w-0 flex-1 text-sm font-semibold">
@@ -93,7 +106,7 @@ export function FeedbackProvider({ children }: PropsWithChildren) {
               >
                 <X className="h-4 w-4" aria-hidden />
               </button>
-            </div>
+            </GlassSurface>
           );
         })}
       </div>
@@ -134,17 +147,18 @@ export function ConfirmDialog({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const presence = useExitPresence(open, 220);
 
-  useEffect(() => {
-    if (!open) {
+  useLayoutEffect(() => {
+    if (!open || !presence.present) {
       return;
     }
     const previous = document.activeElement as HTMLElement | null;
-    window.setTimeout(() => cancelRef.current?.focus(), 0);
+    cancelRef.current?.focus();
     return () => previous?.focus();
-  }, [open]);
+  }, [open, presence.present]);
 
-  if (!open) {
+  if (!presence.present) {
     return null;
   }
 
@@ -179,18 +193,20 @@ export function ConfirmDialog({
   return (
     <div
       className="dialog-backdrop"
+      data-state={presence.state}
       onMouseDown={(event) => {
         if (event.currentTarget === event.target && !busy) {
           onClose();
         }
       }}
     >
-      <div
+      <GlassDialog
         ref={panelRef}
         className="dialog-panel"
-        data-liquid="g3"
+        data-state={presence.state}
         role="dialog"
         aria-modal="true"
+        aria-hidden={!open}
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-description"
         onKeyDown={handleKeyDown}
@@ -223,7 +239,7 @@ export function ConfirmDialog({
             {confirmLabel}
           </button>
         </div>
-      </div>
+      </GlassDialog>
     </div>
   );
 }

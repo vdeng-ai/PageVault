@@ -33,11 +33,11 @@ function percent(value: number, total: number): number {
   return total > 0 ? Math.round((value / total) * 100) : 0;
 }
 
-function barWidth(value: number, total: number): string {
+function barScale(value: number, total: number): number {
   if (value <= 0 || total <= 0) {
-    return "0%";
+    return 0;
   }
-  return `${Math.max(3, Math.min(100, (value / total) * 100))}%`;
+  return Math.max(0.03, Math.min(1, value / total));
 }
 
 type Segment = {
@@ -500,13 +500,13 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
                         </span>
                       </div>
                     </div>
-                    <div className="progress-track h-3 overflow-hidden rounded-full">
-                      <div
-                        className="h-full rounded-full transition-[width]"
-                        style={{
-                          width: barWidth(signal.value, signal.total),
-                          backgroundColor: signal.color,
-                        }}
+              <div className="progress-track h-3 overflow-hidden rounded-full">
+                <div
+                  className="h-full origin-left rounded-full transition-transform"
+                  style={{
+                    transform: `scaleX(${barScale(signal.value, signal.total)})`,
+                    backgroundColor: signal.color,
+                  }}
                       />
                     </div>
                   </div>

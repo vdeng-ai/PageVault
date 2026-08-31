@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -82,6 +82,9 @@ describe("ApiKeysPage", () => {
 
     expect(await screen.findByText("API key created")).toBeTruthy();
     expect(screen.getByText(`pvk_${"a".repeat(64)}`)).toBeTruthy();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Copy key" }),
+    );
     expect(vi.mocked(createApiKey)).toHaveBeenCalledWith("CI uploader");
   });
 
@@ -91,16 +94,17 @@ describe("ApiKeysPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await screen.findByText("CI uploader");
+    await screen.findAllByText("CI uploader");
     await user.click(
       screen.getByRole("button", { name: "Revoke CI uploader" }),
     );
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: "Revoke" }));
 
     await waitFor(() => {
       expect(vi.mocked(revokeApiKey)).toHaveBeenCalledWith("key-1");
-      expect(screen.getByText("Revoked")).toBeTruthy();
+      expect(screen.getAllByText("Revoked")).toHaveLength(2);
     });
   });
 });

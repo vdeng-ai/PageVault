@@ -20,6 +20,7 @@ import { ExpiryEditor } from "../components/ExpiryEditor.js";
 import { ConfirmDialog, useFeedback } from "../components/Feedback.js";
 import { StatusBadge } from "../components/StatusBadge.js";
 import { WorkspaceHero } from "../components/WorkspaceHero.js";
+import { GlassToolbar } from "../components/Glass.js";
 import { useSettings } from "../settings.js";
 
 type EditableFields = {
@@ -269,9 +270,9 @@ export function ItemDetailPage({
                 {error}
               </div>
             )}
-            <div
+            <GlassToolbar
+              material={dirty ? "elevated" : "thin"}
               className="detail-action-bar"
-              data-liquid={dirty ? "g3" : undefined}
             >
               <div className="flex flex-wrap gap-2">
                 <button
@@ -306,7 +307,7 @@ export function ItemDetailPage({
                 <Trash2 className="h-4 w-4" aria-hidden />
                 {t("common.delete")}
               </button>
-            </div>
+            </GlassToolbar>
           </div>
         </div>
 

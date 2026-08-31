@@ -19,6 +19,7 @@ import {
 import { BatchToolbar } from "../components/BatchToolbar.js";
 import { ConfirmDialog, useFeedback } from "../components/Feedback.js";
 import { ItemTable } from "../components/ItemTable.js";
+import { GlassToolbar } from "../components/Glass.js";
 import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { useSettings } from "../settings.js";
 
@@ -275,7 +276,10 @@ export function ItemListPage({
         }
       />
 
-      <div className="surface filter-bar library-filter-bar">
+      <GlassToolbar
+        material="standard"
+        className="surface filter-bar library-filter-bar"
+      >
         <label className="relative min-w-0 flex-1 sm:min-w-64">
           <span className="sr-only">{t("common.search")}</span>
           <Search
@@ -339,7 +343,7 @@ export function ItemListPage({
             {t("files.clearFilters")}
           </button>
         )}
-      </div>
+      </GlassToolbar>
 
       <BatchToolbar
         selectedCount={selectedIds.size}

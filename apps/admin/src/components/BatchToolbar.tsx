@@ -1,6 +1,7 @@
 import { Ban, Clock3, Eye, EyeOff, RefreshCcw, Trash2 } from "lucide-react";
 import type { BatchAction } from "../api/client.js";
 import { useSettings } from "../settings.js";
+import { GlassToolbar } from "./Glass.js";
 
 const actions: Array<{
   action: BatchAction;
@@ -52,7 +53,7 @@ export function BatchToolbar({
   }
 
   return (
-    <div className="surface batch-toolbar" data-liquid="g3">
+    <GlassToolbar material="elevated" className="surface batch-toolbar">
       <div className="batch-count">
         {t("batch.selected", { count: selectedCount })}
       </div>
@@ -75,6 +76,6 @@ export function BatchToolbar({
           </button>
         );
       })}
-    </div>
+    </GlassToolbar>
   );
 }
