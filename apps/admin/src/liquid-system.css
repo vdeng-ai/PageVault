@@ -1844,7 +1844,7 @@ body {
 }
 
 .login-brand-panel {
-  min-height: calc(100vh - 2rem);
+  min-height: 0;
   margin: 1rem 0 1rem 1rem;
   border-radius: var(--radius-2xl);
   overflow: hidden;
@@ -1961,6 +1961,25 @@ body {
 .settings-subpanel + .settings-subpanel {
   border-top: 0.5px solid var(--border);
   padding-top: 1.25rem;
+}
+
+.expiry-fields {
+  align-items: start;
+}
+
+.expiry-fields .field-label {
+  grid-template-rows: auto auto minmax(2.1rem, auto);
+  align-content: start;
+}
+
+.expiry-fields .number-control > span {
+  width: 4.5rem;
+  right: 0;
+  text-align: center;
+}
+
+.expiry-fields .number-control .control {
+  padding-right: 4.5rem;
 }
 
 .visibility-selector {
