@@ -18,7 +18,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { HtmlItem } from "../api/client.js";
-import { formatFileSize } from "../format.js";
+import { encodeShareUrl, formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
 import { useExitPresence } from "../hooks/useExitPresence.js";
 import { StatusBadge } from "./StatusBadge.js";
@@ -195,6 +195,14 @@ function ItemActionMenu({
             >
               <Copy className="h-4 w-4" aria-hidden />
               {t("table.copyUrl")}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => run(() => onCopy(encodeShareUrl(item.publicUrl)))}
+            >
+              <Copy className="h-4 w-4" aria-hidden />
+              {t("table.copyEncodedUrl")}
             </button>
             <a
               href={item.publicUrl}

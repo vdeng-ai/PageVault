@@ -88,7 +88,7 @@ describe("UploadPage", () => {
       id: "item-1",
       title: "page",
       slug: "page-ab12",
-      publicUrl: "https://html.example/page-ab12",
+      publicUrl: "https://html.example/中文-page-ab12",
       urlExpiresAt: "2026-08-01T00:00:00.000Z",
       fileExpiresAt: "2027-01-01T00:00:00.000Z",
     });
@@ -113,6 +113,16 @@ describe("UploadPage", () => {
       fileExpireDays: 30,
       visibility: "public",
     });
+
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+    await user.click(
+      screen.getByRole("button", { name: "Copy encoded URL" }),
+    );
+    expect(writeText).toHaveBeenCalledWith(
+      "https://html.example/%E4%B8%AD%E6%96%87-page-ab12",
+    );
 
     await user.click(screen.getByRole("button", { name: /View details/ }));
     expect(onViewItem).toHaveBeenCalledWith("item-1");

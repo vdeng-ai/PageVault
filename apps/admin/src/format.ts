@@ -1,5 +1,13 @@
 const FILE_SIZE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 
+export function encodeShareUrl(value: string): string {
+  try {
+    return new URL(value).href;
+  } catch {
+    return encodeURI(value);
+  }
+}
+
 export function formatFileSize(bytes: number, locale: string): string {
   const value = Math.max(0, bytes);
   const unitIndex =

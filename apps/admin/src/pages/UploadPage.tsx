@@ -17,6 +17,7 @@ import {
   type Visibility,
 } from "../api/client.js";
 import { useFeedback } from "../components/Feedback.js";
+import { encodeShareUrl } from "../format.js";
 import { UploadDropzone } from "../components/UploadDropzone.js";
 import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { useSettings } from "../settings.js";
@@ -77,13 +78,19 @@ export function UploadPage({
     setFileError(null);
   }
 
-  function copyUrl(): void {
+  function copyUrl(encoded = false): void {
     if (!result) {
       return;
     }
+    const url = encoded ? encodeShareUrl(result.publicUrl) : result.publicUrl;
     void navigator.clipboard
-      .writeText(result.publicUrl)
-      .then(() => notify(t("common.copied"), "success"))
+      .writeText(url)
+      .then(() =>
+        notify(
+          t(encoded ? "common.encodedCopied" : "common.copied"),
+          "success",
+        ),
+      )
       .catch(() => notify(t("common.copyFailed"), "error"));
   }
 
@@ -318,7 +325,7 @@ export function UploadPage({
             <button
               className="success-url"
               type="button"
-              onClick={copyUrl}
+              onClick={() => copyUrl(false)}
               title={result.publicUrl}
             >
               <span>{result.publicUrl}</span>
@@ -328,10 +335,18 @@ export function UploadPage({
               <button
                 className="btn btn-primary"
                 type="button"
-                onClick={copyUrl}
+                onClick={() => copyUrl(false)}
               >
                 <Clipboard className="h-4 w-4" aria-hidden />
                 {t("upload.copyUrl")}
+              </button>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => copyUrl(true)}
+              >
+                <Clipboard className="h-4 w-4" aria-hidden />
+                {t("upload.copyEncodedUrl")}
               </button>
               <a
                 className="btn btn-secondary"
