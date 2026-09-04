@@ -1,11 +1,33 @@
 import type { HtmlItem, StoredObject } from "@pagevault/core";
 import MarkdownIt from "markdown-it";
 
+type MarkdownRenderEnv = {
+  headingSlugs?: Set<string>;
+};
+
 const markdown = new MarkdownIt({
   html: false,
   linkify: true,
   typographer: true,
 });
+
+markdown.renderer.rules.heading_open = (tokens, index, options, env, self) => {
+  const inline = tokens[index + 1];
+  const headingText =
+    inline?.type === "inline" ? inlineTextContent(inline.children ?? []) : "";
+  const baseSlug = headingSlug(headingText) || "section";
+  const renderEnv = env as MarkdownRenderEnv;
+  const usedSlugs = (renderEnv.headingSlugs ??= new Set<string>());
+  let slug = baseSlug;
+  let suffix = 1;
+  while (usedSlugs.has(slug)) {
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+  usedSlugs.add(slug);
+  tokens[index]?.attrSet("id", slug);
+  return self.renderToken(tokens, index, options);
+};
 
 export function isMarkdownContentType(contentType: string): boolean {
   return /^text\/markdown(?:\s*;|$)/i.test(contentType.trim());
@@ -17,7 +39,7 @@ export async function renderPublicMarkdownDocument(input: {
 }): Promise<ArrayBuffer> {
   const body = await objectBodyToArrayBuffer(input.object.body);
   const source = new TextDecoder().decode(body);
-  const rendered = markdown.render(source);
+  const rendered = markdown.render(source, { headingSlugs: new Set<string>() });
   const title = escapeHtml(input.item.title || "Markdown");
   const html = `<!doctype html>
 <html>
@@ -61,6 +83,24 @@ export async function renderPublicMarkdownDocument(input: {
 </body>
 </html>`;
   return new TextEncoder().encode(html).buffer;
+}
+
+function inlineTextContent(tokens: Array<{ type: string; content: string }>): string {
+  return tokens
+    .filter((token) =>
+      ["text", "code_inline", "image"].includes(token.type),
+    )
+    .map((token) => token.content)
+    .join("");
+}
+
+function headingSlug(value: string): string {
+  return value
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M}\s_-]/gu, "")
+    .replace(/\s+/g, "-");
 }
 
 async function objectBodyToArrayBuffer(

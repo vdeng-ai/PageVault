@@ -824,7 +824,7 @@ describe("public routes", () => {
     await storage.putObject(
       active.objectKey,
       new TextEncoder().encode(
-        "# Release Notes\n\n**Shipped**\n\n<script>alert(1)</script>",
+        "# Release Notes\n\n- [Install](#install)\n- [中文章节](#中文章节)\n\n## Install\n\n**Shipped**\n\n## 中文章节\n\n## Install\n\n<script>alert(1)</script>",
       ).buffer,
       MARKDOWN_CONTENT_TYPE,
     );
@@ -837,7 +837,12 @@ describe("public routes", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
-    expect(html).toContain("<h1>Release Notes</h1>");
+    expect(html).toContain('<h1 id="release-notes">Release Notes</h1>');
+    expect(html).toContain('<a href="#install">Install</a>');
+    expect(html).toContain('<a href="#%E4%B8%AD%E6%96%87%E7%AB%A0%E8%8A%82">中文章节</a>');
+    expect(html).toContain('<h2 id="install">Install</h2>');
+    expect(html).toContain('<h2 id="中文章节">中文章节</h2>');
+    expect(html).toContain('<h2 id="install-1">Install</h2>');
     expect(html).toContain("<strong>Shipped</strong>");
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert(1)</script>");
