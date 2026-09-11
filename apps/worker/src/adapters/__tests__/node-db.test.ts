@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { HTML_CONTENT_TYPE } from "@pagevault/core";
 import { describe, expect, it } from "vitest";
@@ -8,9 +8,8 @@ describe("NodeSqliteRepository API upload lease", () => {
   it("applies the migration idempotently and preserves lease ownership", async () => {
     const db = new DatabaseSync(":memory:");
     const repository = new NodeSqliteRepository(db);
-    const migrationPath = resolve(
-      process.cwd(),
-      "migrations/0003_api_upload_lock.sql",
+    const migrationPath = fileURLToPath(
+      new URL("../../../../../migrations/0003_api_upload_lock.sql", import.meta.url),
     );
 
     try {
@@ -66,7 +65,9 @@ describe("NodeSqliteRepository dashboard stats", () => {
   it("sums bytes for records that have not been deleted", async () => {
     const db = new DatabaseSync(":memory:");
     const repository = new NodeSqliteRepository(db);
-    const migrationPath = resolve(process.cwd(), "migrations/0001_initial.sql");
+    const migrationPath = fileURLToPath(
+      new URL("../../../../../migrations/0001_initial.sql", import.meta.url),
+    );
     const now = "2026-07-05T00:00:00.000Z";
 
     try {

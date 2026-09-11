@@ -1,6 +1,7 @@
 import type { AppBindings, WaitUntilContext } from "./bindings.js";
 
 const DEFAULT_PUBLIC_HTML_CACHE_SECONDS = 3600;
+const PUBLIC_HTML_CACHE_VERSION = "2";
 const CACHE_ITEM_ID_HEADER = "X-PageVault-Cache-Item-Id";
 
 export interface CachedPublicHtml {
@@ -48,9 +49,12 @@ function defaultCache(): Cache | null {
 
 function publicHtmlCacheRequest(env: AppBindings, slug: string): Request {
   const baseUrl = env.PUBLIC_BASE_URL.replace(/\/+$/g, "");
-  return new Request(`${baseUrl}/p/${encodeURIComponent(slug)}`, {
-    method: "GET",
-  });
+  return new Request(
+    `${baseUrl}/p/${encodeURIComponent(slug)}?pv-cache=${PUBLIC_HTML_CACHE_VERSION}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
 function logCacheFailure(error: unknown, action: string, slug: string): void {

@@ -3,6 +3,7 @@ import MarkdownIt from "markdown-it";
 
 type MarkdownRenderEnv = {
   headingSlugs?: Set<string>;
+  explicitHeadingAnchors?: Map<number, string>;
 };
 
 const markdown = new MarkdownIt({
@@ -15,8 +16,13 @@ markdown.renderer.rules.heading_open = (tokens, index, options, env, self) => {
   const inline = tokens[index + 1];
   const headingText =
     inline?.type === "inline" ? inlineTextContent(inline.children ?? []) : "";
-  const baseSlug = headingSlug(headingText) || "section";
   const renderEnv = env as MarkdownRenderEnv;
+  const headingLine = tokens[index]?.map?.[0];
+  const explicitSlug =
+    headingLine === undefined || headingLine === null
+      ? undefined
+      : renderEnv.explicitHeadingAnchors?.get(headingLine);
+  const baseSlug = (explicitSlug ?? headingSlug(headingText)) || "section";
   const usedSlugs = (renderEnv.headingSlugs ??= new Set<string>());
   let slug = baseSlug;
   let suffix = 1;
@@ -39,7 +45,11 @@ export async function renderPublicMarkdownDocument(input: {
 }): Promise<ArrayBuffer> {
   const body = await objectBodyToArrayBuffer(input.object.body);
   const source = new TextDecoder().decode(body);
-  const rendered = markdown.render(source, { headingSlugs: new Set<string>() });
+  const prepared = prepareMarkdownSource(source);
+  const rendered = markdown.render(prepared.source, {
+    headingSlugs: new Set<string>(),
+    explicitHeadingAnchors: prepared.explicitHeadingAnchors,
+  });
   const title = escapeHtml(input.item.title || "Markdown");
   const html = `<!doctype html>
 <html>
@@ -83,6 +93,57 @@ export async function renderPublicMarkdownDocument(input: {
 </body>
 </html>`;
   return new TextEncoder().encode(html).buffer;
+}
+
+function prepareMarkdownSource(source: string): {
+  source: string;
+  explicitHeadingAnchors: Map<number, string>;
+} {
+  const lines = source.split(/\r?\n/);
+  const explicitHeadingAnchors = new Map<number, string>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const anchorId = explicitAnchorId(lines[index] ?? "");
+    if (!anchorId) {
+      continue;
+    }
+
+    let headingLine = index + 1;
+    while (headingLine < lines.length && (lines[headingLine] ?? "").trim() === "") {
+      headingLine += 1;
+    }
+    if (!isHeadingAtLine(lines, headingLine)) {
+      continue;
+    }
+
+    explicitHeadingAnchors.set(headingLine, anchorId);
+    lines[index] = "";
+  }
+
+  return {
+    source: lines.join("\n"),
+    explicitHeadingAnchors,
+  };
+}
+
+function explicitAnchorId(line: string): string | null {
+  const match = line.match(
+    /^\s*<a\s+id\s*=\s*(?:"([^"]+)"|'([^']+)'|“([^”]+)”|‘([^’]+)’)\s*>\s*<\/a>\s*$/i,
+  );
+  const value = match?.slice(1).find((candidate) => candidate !== undefined);
+  if (!value || !/^[\p{L}\p{N}\p{M}._:-]+$/u.test(value)) {
+    return null;
+  }
+  return value;
+}
+
+function isHeadingAtLine(lines: string[], line: number): boolean {
+  const value = lines[line] ?? "";
+  if (/^ {0,3}#{1,6}(?:\s+|$)/.test(value)) {
+    return true;
+  }
+  const underline = lines[line + 1] ?? "";
+  return /^ {0,3}(?:=+|-+)\s*$/.test(underline) && value.trim().length > 0;
 }
 
 function inlineTextContent(tokens: Array<{ type: string; content: string }>): string {
