@@ -824,7 +824,7 @@ describe("public routes", () => {
     await storage.putObject(
       active.objectKey,
       new TextEncoder().encode(
-        "# Release Notes\n\n- [Install](#install)\n- [中文章节](#中文章节)\n- [Section 3](#section-3)\n\n## Install\n\n**Shipped**\n\n## 中文章节\n\n## Install\n\n<a id=“section-3”></a>\n\n## 3. Principal model\n\n<script>alert(1)</script>",
+        "# Release Notes\n\n- [Install](#install)\n- [中文章节](#中文章节)\n- [Section 3](#section-3)\n- [Section 0.4](#section-0-4)\n\n## Install\n\n**Shipped**\n\n## 中文章节\n\n## Install\n\n<a id=“section-3”></a>\n\n## 3. Principal model\n\n<a id=“section-0-4”></a>\n\nStandalone anchor target.\n\n<script>alert(1)</script>",
       ).buffer,
       MARKDOWN_CONTENT_TYPE,
     );
@@ -846,6 +846,10 @@ describe("public routes", () => {
     expect(html).toContain('<a href="#section-3">Section 3</a>');
     expect(html).toContain('<h2 id="section-3">3. Principal model</h2>');
     expect(html).not.toContain("&lt;a id=“section-3”&gt;&lt;/a&gt;");
+    expect(html).toContain('<a href="#section-0-4">Section 0.4</a>');
+    expect(html).toContain('<a id="section-0-4"></a>');
+    expect(html).not.toContain("&lt;a id=“section-0-4”&gt;&lt;/a&gt;");
+    expect(html).toContain("<p>Standalone anchor target.</p>");
     expect(html).toContain("<strong>Shipped</strong>");
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert(1)</script>");

@@ -12,6 +12,32 @@ const markdown = new MarkdownIt({
   typographer: true,
 });
 
+markdown.block.ruler.before(
+  "paragraph",
+  "pagevault_explicit_anchor",
+  (state, startLine, _endLine, silent) => {
+    const line = state.src.slice(state.bMarks[startLine], state.eMarks[startLine]);
+    const anchorId = explicitAnchorId(line);
+    if (!anchorId) {
+      return false;
+    }
+    if (silent) {
+      return true;
+    }
+
+    const token = state.push("pagevault_explicit_anchor", "", 0);
+    token.map = [startLine, startLine + 1];
+    token.attrSet("id", anchorId);
+    state.line = startLine + 1;
+    return true;
+  },
+);
+
+markdown.renderer.rules.pagevault_explicit_anchor = (tokens, index) => {
+  const anchorId = tokens[index]?.attrGet("id");
+  return anchorId ? `<a id="${escapeHtml(anchorId)}"></a>\n` : "";
+};
+
 markdown.renderer.rules.heading_open = (tokens, index, options, env, self) => {
   const inline = tokens[index + 1];
   const headingText =
@@ -112,12 +138,10 @@ function prepareMarkdownSource(source: string): {
     while (headingLine < lines.length && (lines[headingLine] ?? "").trim() === "") {
       headingLine += 1;
     }
-    if (!isHeadingAtLine(lines, headingLine)) {
-      continue;
+    if (isHeadingAtLine(lines, headingLine)) {
+      explicitHeadingAnchors.set(headingLine, anchorId);
+      lines[index] = "";
     }
-
-    explicitHeadingAnchors.set(headingLine, anchorId);
-    lines[index] = "";
   }
 
   return {
