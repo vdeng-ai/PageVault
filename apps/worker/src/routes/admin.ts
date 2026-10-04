@@ -5,7 +5,7 @@ import type {
   UpdateItemInput,
   Visibility,
 } from "@pagevault/core";
-import { getDerivedStatus } from "@pagevault/core";
+import { getDerivedStatus, HTML_CONTENT_TYPE } from "@pagevault/core";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import type { HonoRuntime, ServiceFactory } from "../bindings.js";
@@ -15,6 +15,11 @@ import {
   requireAdminWriteOrApiKey,
 } from "../middleware/admin-auth.js";
 import { purgePublicHtmlCache } from "../public-cache.js";
+import { publicErrorPage } from "../middleware/security-headers.js";
+import {
+  isMarkdownContentType,
+  renderPublicMarkdownDocument,
+} from "../public-markdown.js";
 
 const isoDate = z
   .string()
@@ -91,6 +96,9 @@ async function existingItemSlugs(
 }
 
 function purgeSlugs(c: Context<HonoRuntime>, slugs: string[]): void {
+  // Node has no Worker Cache API or ExecutionContext. Accessing Hono's
+  // executionCtx there would throw after a successful database write.
+  if (typeof caches === "undefined") return;
   for (const slug of slugs) {
     purgePublicHtmlCache(c.env, c.executionCtx, slug);
   }
@@ -209,6 +217,34 @@ export function registerAdminRoutes(
   app.get("/api/admin/items/:id", requireAdmin, async (c) => {
     const api = service(c, createService);
     return c.json(itemDto(api, await api.getItem(c.req.param("id"))));
+  });
+
+  app.get("/api/admin/items/:id/preview", requireAdmin, async (c) => {
+    const api = service(c, createService);
+    const item = await api.getItem(c.req.param("id"));
+    if (item.status === "deleted") return publicErrorPage(404);
+    const now = new Date();
+    if (Date.parse(item.fileExpiresAt) <= now.getTime()) {
+      return publicErrorPage(410);
+    }
+    const object = await api.getPublicObject(item, now);
+    if (!object) return publicErrorPage(404);
+    const contentType =
+      object.contentType ?? item.contentType ?? HTML_CONTENT_TYPE;
+    const markdown = isMarkdownContentType(contentType);
+    const body = markdown
+      ? await renderPublicMarkdownDocument({ item, object })
+      : object.body;
+    return new Response(body, {
+      headers: {
+        "Content-Type": markdown ? HTML_CONTENT_TYPE : contentType,
+        "Cache-Control": "no-store",
+        // Uploaded HTML can run in an opaque origin, without access to the
+        // administrator's cookies, local storage, or parent window.
+        "Content-Security-Policy":
+          "sandbox allow-scripts; frame-ancestors 'self'",
+      },
+    });
   });
 
   app.patch("/api/admin/items/:id", requireAdminWrite, async (c) => {

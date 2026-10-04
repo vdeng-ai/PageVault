@@ -13,7 +13,8 @@ function fromLocalDateTime(value: string): string {
   if (value.length === 0) {
     return "";
   }
-  return new Date(value).toISOString();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
 export function ExpiryEditor({
@@ -44,6 +45,7 @@ export function ExpiryEditor({
             onUrlChange(fromLocalDateTime(event.target.value))
           }
         />
+        <small className="field-hint">{t("upload.urlDaysHint")}</small>
       </label>
       <label className="field-label">
         {t("common.fileExpiry")}
@@ -59,6 +61,7 @@ export function ExpiryEditor({
             onFileChange(fromLocalDateTime(event.target.value))
           }
         />
+        <small className="field-hint">{t("upload.fileDaysHint")}</small>
       </label>
     </div>
   );

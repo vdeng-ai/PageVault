@@ -166,10 +166,22 @@ class MemoryRepository implements MetadataRepository {
       deleted: 0,
     };
   }
-  async updateItem(_id: string, _patch: UpdateItemInput): Promise<HtmlItem> {
-    throw new Error("not implemented");
+  async updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem> {
+    const current = this.items.get(id);
+    if (!current) throw new Error("Item not found");
+    const updated = {
+      ...current,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
+    this.items.set(id, updated);
+    return updated;
   }
-  async markDeleted(_id: string, _deletedAt: string): Promise<void> {}
+  async markDeleted(id: string, deletedAt: string): Promise<void> {
+    const current = this.items.get(id);
+    if (current)
+      this.items.set(id, { ...current, status: "deleted", deletedAt });
+  }
   async incrementAccess(id: string, accessedAt: string): Promise<void> {
     await this.incrementAccessBatch([{ id, count: 1, accessedAt }]);
   }
@@ -293,6 +305,160 @@ function apiUploadRequest(token: string, filename: string): Request {
 }
 
 describe("admin auth routes", () => {
+  it("saves, batches, and deletes items without a Worker ExecutionContext in Node", async () => {
+    const { env, handle, repo } = await createFixture();
+    const savedItem = item();
+    repo.items.set(savedItem.id, savedItem);
+    const { cookie, csrfToken } = await adminSession(env, handle);
+    const headers = {
+      Cookie: cookie,
+      "X-CSRF-Token": csrfToken,
+      "Content-Type": "application/json",
+    };
+    const updated = await handle(
+      new Request(`https://admin.test/api/admin/items/${savedItem.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ visibility: "private" }),
+      }),
+      env,
+    );
+    expect(updated.status).toBe(200);
+    await expect(updated.json()).resolves.toMatchObject({
+      visibility: "private",
+    });
+    const batch = await handle(
+      new Request("https://admin.test/api/admin/items/batch", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ids: [savedItem.id], action: "set_public" }),
+      }),
+      env,
+    );
+    expect(batch.status).toBe(200);
+    expect(repo.items.get(savedItem.id)?.visibility).toBe("public");
+    const deleted = await handle(
+      new Request(`https://admin.test/api/admin/items/${savedItem.id}`, {
+        method: "DELETE",
+        headers,
+      }),
+      env,
+    );
+    expect(deleted.status).toBe(200);
+    expect(repo.items.get(savedItem.id)?.status).toBe("deleted");
+  });
+
+  it("requires an admin session to preview private content, including with an upload API key", async () => {
+    const { env, handle, repo, service, storage } = await createFixture();
+    const privateItem = item({ visibility: "private" });
+    repo.items.set(privateItem.id, privateItem);
+    await storage.putObject(
+      privateItem.objectKey,
+      new TextEncoder().encode("<h1>Private</h1>").buffer,
+      HTML_CONTENT_TYPE,
+    );
+    const key = await service.createApiKey("Upload only");
+    for (const headers of [{}, { Authorization: `Bearer ${key.token}` }]) {
+      const response = await handle(
+        new Request(
+          `https://admin.test/api/admin/items/${privateItem.id}/preview`,
+          { headers },
+        ),
+        env,
+      );
+      expect(response.status).toBe(401);
+    }
+    expect(storage.getReads).toBe(0);
+  });
+
+  it("previews private HTML in an opaque sandbox without making its public URL accessible", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const privateItem = item({ visibility: "private" });
+    repo.items.set(privateItem.id, privateItem);
+    const html =
+      "<h1>Private</h1><script>document.body.dataset.test='works'</script>";
+    await storage.putObject(
+      privateItem.objectKey,
+      new TextEncoder().encode(html).buffer,
+      HTML_CONTENT_TYPE,
+    );
+    const { cookie } = await adminSession(env, handle);
+    const preview = await handle(
+      new Request(
+        `https://admin.test/api/admin/items/${privateItem.id}/preview`,
+        { headers: { Cookie: cookie } },
+      ),
+      env,
+    );
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get("Cache-Control")).toBe("no-store");
+    expect(preview.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
+    expect(preview.headers.get("Content-Security-Policy")).toBe(
+      "sandbox allow-scripts; frame-ancestors 'self'",
+    );
+    expect(preview.headers.get("Content-Security-Policy")).not.toContain(
+      "allow-same-origin",
+    );
+    expect(await preview.text()).toBe(html);
+    const publicResponse = await handle(
+      new Request(`https://public.test/p/${privateItem.slug}`, {
+        headers: { Cookie: cookie },
+      }),
+      env,
+    );
+    expect(publicResponse.status).toBe(404);
+  });
+
+  it("renders private Markdown with its anchors for an authenticated preview", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const privateItem = item({
+      visibility: "private",
+      contentType: MARKDOWN_CONTENT_TYPE,
+    });
+    repo.items.set(privateItem.id, privateItem);
+    await storage.putObject(
+      privateItem.objectKey,
+      new TextEncoder().encode(
+        '# Private\n\n<a id="start"></a>\n## Getting started\n\n<script>unsafe()</script>',
+      ).buffer,
+      MARKDOWN_CONTENT_TYPE,
+    );
+    const { cookie } = await adminSession(env, handle);
+    const preview = await handle(
+      new Request(
+        `https://admin.test/api/admin/items/${privateItem.id}/preview`,
+        { headers: { Cookie: cookie } },
+      ),
+      env,
+    );
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
+    const html = await preview.text();
+    expect(html).toContain('id="start"');
+    expect(html).toContain('href="#start"');
+    expect(html).not.toContain("<script>unsafe()");
+  });
+
+  it("does not read deleted or expired files when previewing as an admin", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const { cookie } = await adminSession(env, handle);
+    for (const [privateItem, status] of [
+      [item({ status: "deleted" }), 404],
+      [item({ fileExpiresAt: addDays(new Date(), -1).toISOString() }), 410],
+    ] as const) {
+      repo.items.set(privateItem.id, privateItem);
+      const preview = await handle(
+        new Request(
+          `https://admin.test/api/admin/items/${privateItem.id}/preview`,
+          { headers: { Cookie: cookie } },
+        ),
+        env,
+      );
+      expect(preview.status).toBe(status);
+    }
+    expect(storage.getReads).toBe(0);
+  });
+
   it("returns 401 for unauthenticated admin API requests", async () => {
     const { env, handle } = await createFixture();
     const response = await handle(
@@ -839,7 +1005,9 @@ describe("public routes", () => {
     expect(response.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
     expect(html).toContain('<h1 id="release-notes">Release Notes</h1>');
     expect(html).toContain('<a href="#install">Install</a>');
-    expect(html).toContain('<a href="#%E4%B8%AD%E6%96%87%E7%AB%A0%E8%8A%82">中文章节</a>');
+    expect(html).toContain(
+      '<a href="#%E4%B8%AD%E6%96%87%E7%AB%A0%E8%8A%82">中文章节</a>',
+    );
     expect(html).toContain('<h2 id="install">Install</h2>');
     expect(html).toContain('<h2 id="中文章节">中文章节</h2>');
     expect(html).toContain('<h2 id="install-1">Install</h2>');

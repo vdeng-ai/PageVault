@@ -280,7 +280,7 @@ export function ItemListPage({
         material="standard"
         className="surface filter-bar library-filter-bar"
       >
-        <label className="relative min-w-0 flex-1 sm:min-w-64">
+        <label className="filter-search relative min-w-0 flex-1 sm:min-w-64">
           <span className="sr-only">{t("common.search")}</span>
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle"
@@ -329,7 +329,7 @@ export function ItemListPage({
           <option value="public">{t("common.public")}</option>
           <option value="private">{t("common.private")}</option>
         </select>
-        {hasFilters && (
+        {
           <button
             className="btn btn-ghost"
             type="button"
@@ -342,7 +342,7 @@ export function ItemListPage({
           >
             {t("files.clearFilters")}
           </button>
-        )}
+        }
       </GlassToolbar>
 
       <BatchToolbar
@@ -442,6 +442,7 @@ export function ItemListPage({
 
       {(items.length > 0 || page > 1) && (
         <div className="pagination-bar">
+          <span className="record-summary">{recordSummary}</span>
           <button
             className="btn btn-secondary btn-sm"
             type="button"

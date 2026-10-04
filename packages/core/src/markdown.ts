@@ -1,0 +1,166 @@
+import MarkdownIt from "markdown-it";
+
+export type MarkdownHeading = { id: string; text: string; level: number };
+
+export function renderMarkdown(source: string): {
+  html: string;
+  headings: MarkdownHeading[];
+} {
+  const prepared = prepareMarkdownSource(source);
+  const env: MarkdownRenderEnv = {
+    headingSlugs: new Set<string>(),
+    explicitHeadingAnchors: prepared.explicitHeadingAnchors,
+    headings: [],
+  };
+  return {
+    html: markdown.render(prepared.source, env),
+    headings: env.headings ?? [],
+  };
+}
+
+type MarkdownRenderEnv = {
+  headingSlugs?: Set<string>;
+  explicitHeadingAnchors?: Map<number, string>;
+  headings?: MarkdownHeading[];
+};
+
+const markdown = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true,
+});
+
+markdown.block.ruler.before(
+  "paragraph",
+  "pagevault_explicit_anchor",
+  (state, startLine, _endLine, silent) => {
+    const line = state.src.slice(
+      state.bMarks[startLine],
+      state.eMarks[startLine],
+    );
+    const anchorId = explicitAnchorId(line);
+    if (!anchorId) {
+      return false;
+    }
+    if (silent) {
+      return true;
+    }
+
+    const token = state.push("pagevault_explicit_anchor", "", 0);
+    token.map = [startLine, startLine + 1];
+    token.attrSet("id", anchorId);
+    state.line = startLine + 1;
+    return true;
+  },
+);
+
+markdown.renderer.rules.pagevault_explicit_anchor = (tokens, index) => {
+  const anchorId = tokens[index]?.attrGet("id");
+  return anchorId ? `<a id="${escapeHtml(anchorId)}"></a>\n` : "";
+};
+
+markdown.renderer.rules.heading_open = (tokens, index, options, env, self) => {
+  const inline = tokens[index + 1];
+  const headingText =
+    inline?.type === "inline" ? inlineTextContent(inline.children ?? []) : "";
+  const renderEnv = env as MarkdownRenderEnv;
+  const headingLine = tokens[index]?.map?.[0];
+  const explicitSlug =
+    headingLine === undefined || headingLine === null
+      ? undefined
+      : renderEnv.explicitHeadingAnchors?.get(headingLine);
+  const baseSlug = (explicitSlug ?? headingSlug(headingText)) || "section";
+  const usedSlugs = (renderEnv.headingSlugs ??= new Set<string>());
+  let slug = baseSlug;
+  let suffix = 1;
+  while (usedSlugs.has(slug)) {
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+  usedSlugs.add(slug);
+  tokens[index]?.attrSet("id", slug);
+  (renderEnv.headings ??= []).push({
+    id: slug,
+    text: headingText,
+    level: Number(tokens[index]?.tag.slice(1)),
+  });
+  return self.renderToken(tokens, index, options);
+};
+
+function prepareMarkdownSource(source: string): {
+  source: string;
+  explicitHeadingAnchors: Map<number, string>;
+} {
+  const lines = source.split(/\r?\n/);
+  const explicitHeadingAnchors = new Map<number, string>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const anchorId = explicitAnchorId(lines[index] ?? "");
+    if (!anchorId) {
+      continue;
+    }
+
+    let headingLine = index + 1;
+    while (
+      headingLine < lines.length &&
+      (lines[headingLine] ?? "").trim() === ""
+    ) {
+      headingLine += 1;
+    }
+    if (isHeadingAtLine(lines, headingLine)) {
+      explicitHeadingAnchors.set(headingLine, anchorId);
+      lines[index] = "";
+    }
+  }
+
+  return {
+    source: lines.join("\n"),
+    explicitHeadingAnchors,
+  };
+}
+
+function explicitAnchorId(line: string): string | null {
+  const match = line.match(
+    /^\s*<a\s+id\s*=\s*(?:"([^"]+)"|'([^']+)'|“([^”]+)”|‘([^’]+)’)\s*>\s*<\/a>\s*$/i,
+  );
+  const value = match?.slice(1).find((candidate) => candidate !== undefined);
+  if (!value || !/^[\p{L}\p{N}\p{M}._:-]+$/u.test(value)) {
+    return null;
+  }
+  return value;
+}
+
+function isHeadingAtLine(lines: string[], line: number): boolean {
+  const value = lines[line] ?? "";
+  if (/^ {0,3}#{1,6}(?:\s+|$)/.test(value)) {
+    return true;
+  }
+  const underline = lines[line + 1] ?? "";
+  return /^ {0,3}(?:=+|-+)\s*$/.test(underline) && value.trim().length > 0;
+}
+
+function inlineTextContent(
+  tokens: Array<{ type: string; content: string }>,
+): string {
+  return tokens
+    .filter((token) => ["text", "code_inline", "image"].includes(token.type))
+    .map((token) => token.content)
+    .join("");
+}
+
+function headingSlug(value: string): string {
+  return value
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M}\s_-]/gu, "")
+    .replace(/\s+/g, "-");
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

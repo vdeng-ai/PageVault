@@ -18,19 +18,24 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { HtmlItem } from "../api/client.js";
-import { encodeShareUrl, formatFileSize } from "../format.js";
+import { itemPreviewUrl, encodeShareUrl, formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
 import { useExitPresence } from "../hooks/useExitPresence.js";
+import { FileIcon } from "./FileIcon.js";
 import { StatusBadge } from "./StatusBadge.js";
 import { GlassPopover } from "./Glass.js";
 
-function formatDate(value: string | null, locale: string): string {
+function formatDate(
+  value: string | null,
+  locale: string,
+  compact = false,
+): string {
   if (!value) {
     return "-";
   }
   return new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
+    dateStyle: compact ? "short" : "medium",
+    ...(compact ? {} : { timeStyle: "short" }),
   }).format(new Date(value));
 }
 
@@ -90,9 +95,7 @@ function ItemActionMenu({
 
   useLayoutEffect(() => {
     if (!open || !menuPresence.present) return;
-    menuRef.current
-      ?.querySelector<HTMLElement>('[role="menuitem"]')
-      ?.focus();
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
   }, [menuPresence.present, open]);
 
   function toggleMenu(): void {
@@ -138,7 +141,9 @@ function ItemActionMenu({
     );
     if (menuItems.length === 0) return;
     event.preventDefault();
-    const currentIndex = menuItems.indexOf(document.activeElement as HTMLElement);
+    const currentIndex = menuItems.indexOf(
+      document.activeElement as HTMLElement,
+    );
     const nextIndex =
       event.key === "Home"
         ? 0
@@ -205,7 +210,7 @@ function ItemActionMenu({
               {t("table.copyEncodedUrl")}
             </button>
             <a
-              href={item.publicUrl}
+              href={itemPreviewUrl(item)}
               target="_blank"
               rel="noreferrer"
               role="menuitem"
@@ -306,7 +311,7 @@ export function ItemTable({
   return (
     <>
       <div className="surface item-table-desktop hidden xl:block">
-        <table className="w-full min-w-[1040px] text-left text-sm">
+        <table className="w-full text-left text-sm">
           <thead className="table-head border-b text-xs uppercase">
             <tr>
               <th className="w-11 px-4 py-3.5">
@@ -327,9 +332,7 @@ export function ItemTable({
               <th className="min-w-40 px-3 py-3.5">{t("common.fileExpiry")}</th>
               <th className="px-3 py-3.5">{t("table.size")}</th>
               <th className="px-3 py-3.5">{t("table.access")}</th>
-              <th className="w-14 px-3 py-3.5 text-right">
-                {t("table.actions")}
-              </th>
+              <th className="px-3 py-3.5 text-right">{t("table.actions")}</th>
             </tr>
           </thead>
           <tbody className="table-body divide-y">
@@ -351,15 +354,18 @@ export function ItemTable({
                   />
                 </td>
                 <td className="max-w-64 px-3 py-4">
-                  <button
-                    className="link-button block max-w-full truncate text-left font-bold"
-                    type="button"
-                    title={item.originalFilename}
-                    onClick={() => onEdit(item.id)}
-                  >
-                    {item.originalFilename}
-                  </button>
-                  <div className="mt-1 truncate text-xs text-muted">
+                  <div className="table-file">
+                    <FileIcon filename={item.originalFilename} />
+                    <button
+                      className="link-button block max-w-full truncate text-left font-bold"
+                      type="button"
+                      title={item.originalFilename}
+                      onClick={() => onEdit(item.id)}
+                    >
+                      {item.originalFilename}
+                    </button>
+                  </div>
+                  <div className="row-created mt-1 truncate text-xs text-muted">
                     {formatDate(item.createdAt, locale)}
                   </div>
                 </td>
@@ -377,10 +383,10 @@ export function ItemTable({
                   </button>
                 </td>
                 <td className="px-3 py-4 text-xs text-secondary">
-                  {formatDate(item.urlExpiresAt, locale)}
+                  {formatDate(item.urlExpiresAt, locale, true)}
                 </td>
                 <td className="px-3 py-4 text-xs text-secondary">
-                  {formatDate(item.fileExpiresAt, locale)}
+                  {formatDate(item.fileExpiresAt, locale, true)}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-secondary">
                   {formatFileSize(item.sizeBytes, locale)}
@@ -389,11 +395,32 @@ export function ItemTable({
                   {numberFormatter.format(item.accessCount)}
                 </td>
                 <td className="px-3 py-4 text-right">
-                  <ItemActionMenu
-                    item={item}
-                    disabled={busyId === item.id}
-                    {...actionProps}
-                  />
+                  <div className="row-actions">
+                    <button
+                      className="icon-button"
+                      type="button"
+                      aria-label={`${t("table.copyUrl")} ${item.originalFilename}`}
+                      title={t("table.copyUrl")}
+                      onClick={() => onCopy(item.publicUrl)}
+                    >
+                      <Copy size={18} aria-hidden />
+                    </button>
+                    <a
+                      className="icon-button"
+                      href={itemPreviewUrl(item)}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`${t("table.openPreview")} ${item.originalFilename}`}
+                      title={t("table.openPreview")}
+                    >
+                      <ExternalLink size={18} aria-hidden />
+                    </a>
+                    <ItemActionMenu
+                      item={item}
+                      disabled={busyId === item.id}
+                      {...actionProps}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -470,7 +497,7 @@ export function ItemTable({
               </button>
               <a
                 className="btn btn-secondary btn-sm"
-                href={item.publicUrl}
+                href={itemPreviewUrl(item)}
                 target="_blank"
                 rel="noreferrer"
               >

@@ -1,14 +1,14 @@
 import {
   ArrowRight,
   CheckCircle2,
-  Clock3,
-  Clipboard,
+  Copy,
   ExternalLink,
-  Eye,
+  FileText,
+  Globe,
+  Link2,
   LockKeyhole,
-  RotateCcw,
-  Rocket,
-  UploadCloud,
+  Plus,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -17,9 +17,9 @@ import {
   type Visibility,
 } from "../api/client.js";
 import { useFeedback } from "../components/Feedback.js";
-import { encodeShareUrl } from "../format.js";
+import { itemPreviewUrl, encodeShareUrl } from "../format.js";
 import { UploadDropzone } from "../components/UploadDropzone.js";
-import { WorkspaceHero } from "../components/WorkspaceHero.js";
+import { ContentPreview } from "../components/ContentPreview.js";
 import { useSettings } from "../settings.js";
 
 const supportedExtensions = new Set([
@@ -32,26 +32,76 @@ const supportedExtensions = new Set([
   "png",
   "webp",
 ]);
-
-function isSupportedFile(file: File): boolean {
-  const extension = file.name.split(".").pop()?.toLowerCase();
-  return extension !== undefined && supportedExtensions.has(extension);
+function positiveInteger(value: string): number | null {
+  if (!/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function positiveInteger(value: string): number | null {
-  if (!/^\d+$/.test(value)) {
-    return null;
-  }
-  const parsed = Number.parseInt(value, 10);
-  return parsed > 0 ? parsed : null;
+function DurationField({
+  label,
+  value,
+  onChange,
+  hint,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint: string;
+  disabled: boolean;
+}) {
+  const { t } = useSettings();
+  const [custom, setCustom] = useState(false);
+  return (
+    <div className="field-label">
+      <label>
+        {label}
+        <select
+          className="control mt-2"
+          value={custom ? "custom" : value}
+          disabled={disabled}
+          onChange={(event) => {
+            const next = event.target.value;
+            setCustom(next === "custom");
+            if (next !== "custom") onChange(next);
+          }}
+        >
+          {[7, 15, 30, 90, 365].map((days) => (
+            <option key={days} value={days}>
+              {days} {t("upload.days")}
+            </option>
+          ))}
+          <option value="custom">{t("upload.customDays")}</option>
+        </select>
+      </label>
+      {custom && (
+        <input
+          className="control expiry-custom"
+          type="number"
+          min={1}
+          step={1}
+          inputMode="numeric"
+          aria-label={`${label} (${t("upload.customDays")})`}
+          value={value}
+          disabled={disabled}
+          aria-invalid={positiveInteger(value) === null}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
+      <small className="field-hint">{hint}</small>
+    </div>
+  );
 }
 
 export function UploadPage({
   onViewItem,
+  onBack,
 }: {
   onViewItem: (id: string) => void;
+  onBack?: () => void;
 }) {
-  const { t } = useSettings();
+  const { t, locale } = useSettings();
   const { notify } = useFeedback();
   const [file, setFile] = useState<File | null>(null);
   const [urlExpireDays, setUrlExpireDays] = useState("15");
@@ -61,15 +111,23 @@ export function UploadPage({
   const [fileError, setFileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
   const parsedUrlDays = positiveInteger(urlExpireDays);
   const parsedFileDays = positiveInteger(fileExpireDays);
   const expiryValid = parsedUrlDays !== null && parsedFileDays !== null;
-
-  function chooseFile(nextFile: File): void {
+  function clear() {
+    setFile(null);
+    setFileError(null);
     setResult(null);
     setError(null);
-    if (!isSupportedFile(nextFile)) {
+  }
+  function chooseFile(nextFile: File) {
+    setResult(null);
+    setError(null);
+    if (
+      !supportedExtensions.has(
+        nextFile.name.split(".").pop()?.toLowerCase() ?? "",
+      )
+    ) {
       setFile(null);
       setFileError(t("upload.invalidType"));
       return;
@@ -77,14 +135,10 @@ export function UploadPage({
     setFile(nextFile);
     setFileError(null);
   }
-
-  function copyUrl(encoded = false): void {
-    if (!result) {
-      return;
-    }
-    const url = encoded ? encodeShareUrl(result.publicUrl) : result.publicUrl;
+  function copyUrl(encoded = false) {
+    if (!result) return;
     void navigator.clipboard
-      .writeText(url)
+      .writeText(encoded ? encodeShareUrl(result.publicUrl) : result.publicUrl)
       .then(() =>
         notify(
           t(encoded ? "common.encodedCopied" : "common.copied"),
@@ -93,19 +147,14 @@ export function UploadPage({
       )
       .catch(() => notify(t("common.copyFailed"), "error"));
   }
-
-  function submit(): void {
-    if (!file) {
-      setFileError(t("upload.chooseFile"));
-      return;
-    }
+  function submit() {
+    if (!file || busy) return;
     if (parsedUrlDays === null || parsedFileDays === null) {
       setError(t("upload.invalidDays"));
       return;
     }
     setBusy(true);
     setError(null);
-    setResult(null);
     void uploadHtml({
       file,
       urlExpireDays: parsedUrlDays,
@@ -122,222 +171,76 @@ export function UploadPage({
       )
       .finally(() => setBusy(false));
   }
-
+  const date = (value: string) =>
+    new Intl.DateTimeFormat(locale, {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(new Date(value));
   return (
-    <section className="page-stack upload-page upload-workspace">
-      <WorkspaceHero
-        icon={Rocket}
-        eyebrow={t("upload.eyebrow")}
-        title={t("upload.title")}
-        subtitle={t("upload.subtitle")}
-      />
-
-      <div className="upload-layout">
-        <section
-          className="upload-step upload-step-file"
-          aria-labelledby="upload-file-heading"
-        >
-          <header className="upload-step-header">
-            <div className="section-heading">
-              <span className="section-step" aria-hidden>
-                1
-              </span>
-              <div>
-                <h2 id="upload-file-heading">{t("upload.file")}</h2>
-                <p>{t("upload.acceptedTypes")}</p>
-              </div>
-            </div>
-          </header>
-          <div className="upload-step-body">
-            <UploadDropzone
-              file={file}
-              error={fileError}
-              onFile={chooseFile}
-              onClear={() => {
-                setFile(null);
-                setFileError(null);
-                setResult(null);
-              }}
-            />
+    <section className="page-stack upload-page">
+      <header className="page-header">
+        <div>
+          <div className={result ? "success-heading" : ""}>
+            {result && <CheckCircle2 aria-hidden />}
+            <h1 className="page-title">
+              {t(result ? "upload.successTitle" : "upload.title")}
+            </h1>
           </div>
-        </section>
-
+          <p className="page-subtitle" role={result ? "status" : undefined}>
+            {t(
+              result
+                ? visibility === "private"
+                  ? "upload.privateSuccess"
+                  : "upload.successSubtitle"
+                : "upload.subtitle",
+            )}
+          </p>
+        </div>
+      </header>
+      <UploadDropzone
+        file={file}
+        error={fileError}
+        onFile={chooseFile}
+        onClear={clear}
+        disabled={busy}
+        published={result ? visibility : undefined}
+      />
+      <div className="upload-preview-layout">
+        <ContentPreview file={file} published={result !== null} />
         <section
-          className="upload-step upload-step-settings"
+          className="upload-settings-column"
           aria-labelledby="upload-settings-heading"
         >
-          <header className="upload-step-header">
-            <div className="section-heading">
-              <span className="section-step" aria-hidden>
-                2
-              </span>
-              <div>
-                <h2 id="upload-settings-heading">
-                  {t("upload.publishSettings")}
-                </h2>
-                <p>{t("upload.publishHint")}</p>
-              </div>
-            </div>
+          <header className="section-heading">
+            {result ? <Link2 aria-hidden /> : <Settings aria-hidden />}
+            <h2 id="upload-settings-heading">
+              {t(result ? "upload.shareLink" : "upload.publishSettings")}
+            </h2>
           </header>
-
-          <div className="upload-step-body">
-            <div className="upload-settings-grid">
-              <div
-                className="settings-subpanel settings-subpanel-access"
-                role="group"
-                aria-labelledby="upload-visibility-heading"
-              >
-                <div className="settings-subpanel-heading">
-                  <span className="settings-subpanel-icon" aria-hidden>
-                    <Eye className="h-5 w-5" />
-                  </span>
-                  <h3 id="upload-visibility-heading">
-                    {t("common.visibility")}
-                  </h3>
-                </div>
-                <div className="visibility-selector">
-                  <button
-                    className={`visibility-option ${visibility === "public" ? "visibility-option-active" : ""}`}
-                    type="button"
-                    aria-pressed={visibility === "public"}
-                    onClick={() => setVisibility("public")}
-                  >
-                    <span className="visibility-icon">
-                      <Eye className="h-5 w-5" aria-hidden />
-                    </span>
-                    <span>
-                      <strong>{t("common.public")}</strong>
-                      <small>{t("upload.publicHint")}</small>
-                    </span>
-                  </button>
-                  <button
-                    className={`visibility-option ${visibility === "private" ? "visibility-option-active" : ""}`}
-                    type="button"
-                    aria-pressed={visibility === "private"}
-                    onClick={() => setVisibility("private")}
-                  >
-                    <span className="visibility-icon">
-                      <LockKeyhole className="h-5 w-5" aria-hidden />
-                    </span>
-                    <span>
-                      <strong>{t("common.private")}</strong>
-                      <small>{t("upload.privateHint")}</small>
-                    </span>
-                  </button>
-                </div>
+          {result ? (
+            <div className="share-controls">
+              <div className="copy-field">
+                <input
+                  aria-label={t("upload.shareLink")}
+                  readOnly
+                  value={result.publicUrl}
+                  onFocus={(event) => event.target.select()}
+                />
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={t("upload.copyUrl")}
+                  onClick={() => copyUrl()}
+                >
+                  <Copy size={21} aria-hidden />
+                </button>
               </div>
-
-              <div
-                className="settings-subpanel settings-subpanel-expiry"
-                role="group"
-                aria-labelledby="upload-expiry-heading"
-              >
-                <div className="settings-subpanel-heading">
-                  <span className="settings-subpanel-icon" aria-hidden>
-                    <Clock3 className="h-5 w-5" />
-                  </span>
-                  <h3 id="upload-expiry-heading">
-                    {t("upload.expirySettings")}
-                  </h3>
-                </div>
-                <div className="expiry-fields">
-                  <label className="field-label">
-                    <span>{t("upload.urlDays")}</span>
-                    <span className="number-control">
-                      <input
-                        className="control"
-                        type="number"
-                        min={1}
-                        inputMode="numeric"
-                        value={urlExpireDays}
-                        aria-invalid={positiveInteger(urlExpireDays) === null}
-                        onChange={(event) =>
-                          setUrlExpireDays(event.target.value)
-                        }
-                      />
-                      <span>{t("upload.urlDays")}</span>
-                    </span>
-                    <small className="field-hint">
-                      {t("upload.urlDaysHint")}
-                    </small>
-                  </label>
-                  <label className="field-label">
-                    <span>{t("upload.fileDays")}</span>
-                    <span className="number-control">
-                      <input
-                        className="control"
-                        type="number"
-                        min={1}
-                        inputMode="numeric"
-                        value={fileExpireDays}
-                        aria-invalid={positiveInteger(fileExpireDays) === null}
-                        onChange={(event) =>
-                          setFileExpireDays(event.target.value)
-                        }
-                      />
-                      <span>{t("upload.fileDays")}</span>
-                    </span>
-                    <small className="field-hint">
-                      {t("upload.fileDaysHint")}
-                    </small>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="upload-submit-bar">
-              <div className="upload-feedback" aria-live="polite">
-                {!expiryValid && (
-                  <div className="field-error">{t("upload.invalidDays")}</div>
-                )}
-                {error && <div className="alert-error">{error}</div>}
-              </div>
-              <button
-                className="btn btn-primary btn-lg upload-submit-button"
-                type="button"
-                disabled={!file || !expiryValid || busy}
-                aria-busy={busy}
-                onClick={submit}
-              >
-                {busy ? (
-                  <span className="spinner" aria-hidden />
-                ) : (
-                  <UploadCloud className="h-5 w-5" aria-hidden />
-                )}
-                {busy ? t("upload.uploading") : t("upload.action")}
-                {!busy && (
-                  <ArrowRight className="ml-auto h-5 w-5" aria-hidden />
-                )}
-              </button>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {result && (
-        <div className="success-panel" role="status">
-          <div className="success-icon">
-            <CheckCircle2 className="h-7 w-7" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2>{t("upload.successTitle")}</h2>
-            <p>{t("upload.successSubtitle")}</p>
-            <button
-              className="success-url"
-              type="button"
-              onClick={() => copyUrl(false)}
-              title={result.publicUrl}
-            >
-              <span>{result.publicUrl}</span>
-              <Clipboard className="h-4 w-4 shrink-0" aria-hidden />
-            </button>
-            <div className="mt-4 flex flex-wrap gap-2">
               <button
                 className="btn btn-primary"
                 type="button"
-                onClick={() => copyUrl(false)}
+                onClick={() => copyUrl()}
               >
-                <Clipboard className="h-4 w-4" aria-hidden />
+                <Copy aria-hidden />
                 {t("upload.copyUrl")}
               </button>
               <button
@@ -345,43 +248,151 @@ export function UploadPage({
                 type="button"
                 onClick={() => copyUrl(true)}
               >
-                <Clipboard className="h-4 w-4" aria-hidden />
+                <Copy aria-hidden />
                 {t("upload.copyEncodedUrl")}
               </button>
-              <a
-                className="btn btn-secondary"
-                href={result.publicUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <ExternalLink className="h-4 w-4" aria-hidden />
-                {t("upload.openPreview")}
-              </a>
+              <p className="field-hint m-0">{t("upload.encodedHint")}</p>
+              <div className="share-secondary-actions">
+                <a
+                  className="btn btn-secondary"
+                  href={itemPreviewUrl({ ...result, visibility })}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink aria-hidden />
+                  {t("upload.openPreview")}
+                </a>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => onViewItem(result.id)}
+                >
+                  <FileText aria-hidden />
+                  {t("upload.viewDetails")}
+                </button>
+              </div>
+              <dl className="share-expiry">
+                <div>
+                  <dt>{t("common.urlExpiry")}</dt>
+                  <dd>{date(result.urlExpiresAt)}</dd>
+                </div>
+                <div>
+                  <dt>{t("common.fileExpiry")}</dt>
+                  <dd>{date(result.fileExpiresAt)}</dd>
+                </div>
+              </dl>
               <button
                 className="btn btn-secondary"
                 type="button"
-                onClick={() => onViewItem(result.id)}
+                onClick={clear}
               >
-                {t("upload.viewDetails")}
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </button>
-              <button
-                className="btn btn-ghost"
-                type="button"
-                onClick={() => {
-                  setFile(null);
-                  setResult(null);
-                  setError(null);
-                  setFileError(null);
-                }}
-              >
-                <RotateCcw className="h-4 w-4" aria-hidden />
+                <Plus aria-hidden />
                 {t("upload.uploadAnother")}
               </button>
+              <p className="field-hint m-0 mt-1">{t("upload.manageHint")}</p>
             </div>
-          </div>
-        </div>
-      )}
+          ) : (
+            <>
+              <fieldset
+                className="visibility-selector"
+                disabled={busy}
+                aria-label={t("common.visibility")}
+              >
+                {(["public", "private"] as const).map((value) => (
+                  <label
+                    key={value}
+                    className={`visibility-option ${visibility === value ? "visibility-option-active" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value={value}
+                      checked={visibility === value}
+                      onChange={() => setVisibility(value)}
+                    />
+                    {value === "public" ? (
+                      <Globe aria-hidden />
+                    ) : (
+                      <LockKeyhole aria-hidden />
+                    )}
+                    <span>
+                      <strong>
+                        {t(
+                          value === "public"
+                            ? "upload.publicLabel"
+                            : "upload.privateLabel",
+                        )}
+                      </strong>
+                      <small>
+                        {t(
+                          value === "public"
+                            ? "upload.publicHint"
+                            : "upload.privateHint",
+                        )}
+                      </small>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+              <div
+                className="expiry-fields"
+                role="group"
+                aria-label={t("upload.expirySettings")}
+              >
+                <DurationField
+                  label={t("upload.urlDays")}
+                  value={urlExpireDays}
+                  onChange={setUrlExpireDays}
+                  hint={t("upload.urlDaysHint")}
+                  disabled={busy}
+                />
+                <DurationField
+                  label={t("upload.fileDays")}
+                  value={fileExpireDays}
+                  onChange={setFileExpireDays}
+                  hint={t("upload.fileDaysHint")}
+                  disabled={busy}
+                />
+              </div>
+              <div className="upload-submit-bar">
+                {!expiryValid && (
+                  <div className="field-error" role="alert">
+                    {t("upload.invalidDays")}
+                  </div>
+                )}
+                {error && (
+                  <div className="alert-error" role="alert">
+                    {error}
+                  </div>
+                )}
+                <button
+                  className="btn btn-primary btn-lg"
+                  type="button"
+                  disabled={!file || !expiryValid || busy}
+                  aria-busy={busy}
+                  onClick={submit}
+                >
+                  {busy && <span className="spinner" aria-hidden />}
+                  {t(busy ? "upload.uploading" : "upload.action")}
+                  {!busy && <ArrowRight aria-hidden />}
+                </button>
+                <button
+                  className="back-link upload-back"
+                  type="button"
+                  onClick={
+                    onBack ??
+                    (() => {
+                      window.location.hash = "/items";
+                    })
+                  }
+                >
+                  {t("upload.backToFiles")}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      </div>
     </section>
   );
 }

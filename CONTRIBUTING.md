@@ -44,6 +44,7 @@ Create the local D1 schema and build the initial admin assets:
 
 ```bash
 pnpm wrangler d1 migrations apply pagevault-db --local
+pnpm --filter @pagevault/core run build
 pnpm --filter @pagevault/admin run build
 ```
 

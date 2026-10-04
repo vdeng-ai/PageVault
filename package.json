@@ -11,7 +11,7 @@
     "format": "prettier --check .",
     "lint": "pnpm --filter @pagevault/core run build && eslint . --max-warnings=0",
     "test": "pnpm --filter @pagevault/core run build && vitest run",
-    "typecheck": "pnpm -r run typecheck",
+    "typecheck": "pnpm --filter @pagevault/core run build && pnpm -r run typecheck",
     "wrangler": "pnpm --filter @pagevault/worker exec wrangler"
   },
   "devDependencies": {

@@ -70,6 +70,12 @@ curl "$ADMIN_BASE_URL/api/admin/items" \
 
 `GET /api/admin/items/:id`
 
+`GET /api/admin/items/:id/preview`
+
+Returns the stored content for an authenticated administrator, including private files. Markdown is rendered to HTML. Deleted records return `404`, expired file retention returns `410`, and missing object bytes return `404`. The response is not cached. Upload API keys cannot access this endpoint. URL expiry and disabled public sharing do not prevent an administrator from previewing a retained file.
+
+HTML previews run under a CSP sandbox with an opaque origin. Public links keep their existing access rules and original HTML behavior.
+
 `PATCH /api/admin/items/:id`
 
 ```json

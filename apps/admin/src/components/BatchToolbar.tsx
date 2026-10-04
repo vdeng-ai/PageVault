@@ -1,20 +1,27 @@
-import { Ban, Clock3, Eye, EyeOff, RefreshCcw, Trash2 } from "lucide-react";
+import {
+  FileText,
+  Globe,
+  Link2,
+  LockKeyhole,
+  PauseCircle,
+  Trash2,
+} from "lucide-react";
 import type { BatchAction } from "../api/client.js";
 import { useSettings } from "../settings.js";
 import { GlassToolbar } from "./Glass.js";
 
 const actions: Array<{
   action: BatchAction;
-  icon: typeof Clock3;
+  icon: typeof Link2;
   labelKey: "url" | "file" | "public" | "private" | "disable" | "delete";
   days?: number;
 }> = [
-  { action: "extend_url", labelKey: "url", icon: Clock3, days: 15 },
-  { action: "extend_url", labelKey: "url", icon: Clock3, days: 30 },
-  { action: "extend_file", labelKey: "file", icon: RefreshCcw, days: 30 },
-  { action: "set_public", labelKey: "public", icon: Eye },
-  { action: "set_private", labelKey: "private", icon: EyeOff },
-  { action: "disable", labelKey: "disable", icon: Ban },
+  { action: "extend_url", labelKey: "url", icon: Link2, days: 15 },
+  { action: "extend_url", labelKey: "url", icon: Link2, days: 30 },
+  { action: "extend_file", labelKey: "file", icon: FileText, days: 30 },
+  { action: "set_public", labelKey: "public", icon: Globe },
+  { action: "set_private", labelKey: "private", icon: LockKeyhole },
+  { action: "disable", labelKey: "disable", icon: PauseCircle },
   { action: "delete", labelKey: "delete", icon: Trash2 },
 ];
 

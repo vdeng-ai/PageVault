@@ -1,9 +1,12 @@
+import { itemPreviewUrl } from "../format.js";
 import {
   ArrowLeft,
   Database,
   ExternalLink,
   FileCog,
-  Hash,
+  Copy,
+  Link2,
+  ChevronDown,
   RotateCcw,
   Save,
   Trash2,
@@ -21,6 +24,8 @@ import { ConfirmDialog, useFeedback } from "../components/Feedback.js";
 import { StatusBadge } from "../components/StatusBadge.js";
 import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { GlassToolbar } from "../components/Glass.js";
+import { formatFileSize } from "../format.js";
+import { fileKind } from "../components/FileIcon.js";
 import { useSettings } from "../settings.js";
 
 type EditableFields = {
@@ -50,7 +55,7 @@ export function ItemDetailPage({
   id: string;
   onBack: () => void;
 }) {
-  const { t } = useSettings();
+  const { t, locale } = useSettings();
   const { notify } = useFeedback();
   const [item, setItem] = useState<HtmlItem | null>(null);
   const [initial, setInitial] = useState<EditableFields | null>(null);
@@ -146,6 +151,13 @@ export function ItemDetailPage({
       .finally(() => setBusy(false));
   }
 
+  function copy(value: string): void {
+    void navigator.clipboard
+      .writeText(value)
+      .then(() => notify(t("detail.copied"), "success"))
+      .catch(() => notify(t("common.copyFailed"), "error"));
+  }
+
   function requestBack(): void {
     if (dirty) {
       setConfirmation("discard");
@@ -163,7 +175,7 @@ export function ItemDetailPage({
           onClick={onBack}
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          {t("common.back")}
+          {t("upload.backToFiles")}
         </button>
         <div className="surface p-6 text-sm text-muted" role="status">
           {error
@@ -180,20 +192,19 @@ export function ItemDetailPage({
     <section className="page-stack detail-workspace">
       <button className="back-link" type="button" onClick={requestBack}>
         <ArrowLeft className="h-4 w-4" aria-hidden />
-        {t("common.back")}
+        {t("upload.backToFiles")}
       </button>
 
       <WorkspaceHero
         icon={FileCog}
         eyebrow={t("detail.eyebrow")}
-        title={item.title}
+        title={item.originalFilename}
         subtitle={t("detail.subtitle")}
         meta={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={item.derivedStatus} />
-            <span className="chip rounded-lg px-2.5 py-1 font-mono text-xs">
-              /{item.slug}
-            </span>
+            <span className="detail-slug">/{item.slug}</span>
+            <span>{formatFileSize(item.sizeBytes, locale)}</span>
             {dirty && (
               <span className="unsaved-chip">{t("detail.unsaved")}</span>
             )}
@@ -202,7 +213,7 @@ export function ItemDetailPage({
         actions={
           <a
             className="btn btn-secondary"
-            href={item.publicUrl}
+            href={itemPreviewUrl(item)}
             target="_blank"
             rel="noreferrer"
           >
@@ -239,7 +250,7 @@ export function ItemDetailPage({
                 }
               />
             </label>
-            <label className="field-label sm:max-w-sm">
+            <label className="field-label">
               {t("common.visibility")}
               <select
                 className="control px-3"
@@ -254,6 +265,7 @@ export function ItemDetailPage({
                 <option value="public">{t("common.public")}</option>
                 <option value="private">{t("common.private")}</option>
               </select>
+              <small className="field-hint">{t("detail.visibilityHint")}</small>
             </label>
             <ExpiryEditor
               urlExpiresAt={fields.urlExpiresAt}
@@ -308,36 +320,77 @@ export function ItemDetailPage({
                 {t("common.delete")}
               </button>
             </GlassToolbar>
+            {dirty && (
+              <p className="field-hint m-0">{t("detail.saveBeforeLeaving")}</p>
+            )}
           </div>
         </div>
 
-        <div className="surface detail-panel detail-metadata-panel p-5 sm:p-6">
+        <aside className="detail-panel detail-metadata-panel">
           <div className="section-heading">
-            <span className="section-icon">
-              <Database className="h-5 w-5" aria-hidden />
-            </span>
-            <div>
-              <h2>{t("detail.metadataTitle")}</h2>
-              <p>{t("detail.metadataSubtitle")}</p>
-            </div>
+            <Link2 aria-hidden />
+            <h2>{t("upload.shareLink")}</h2>
           </div>
-          <dl className="metadata-grid mt-6">
-            <div>
-              <dt>
-                <Hash className="h-4 w-4" aria-hidden />
-                {t("detail.sha256")}
-              </dt>
-              <dd>{item.sha256}</dd>
-            </div>
-            <div>
-              <dt>
-                <Database className="h-4 w-4" aria-hidden />
-                {t("detail.objectKey")}
-              </dt>
-              <dd>{item.objectKey}</dd>
-            </div>
-          </dl>
-        </div>
+          <div className="copy-field">
+            <input
+              aria-label={t("upload.shareLink")}
+              value={item.publicUrl}
+              readOnly
+              onFocus={(event) => event.target.select()}
+            />
+            <button
+              className="icon-button"
+              type="button"
+              aria-label={t("upload.copyUrl")}
+              onClick={() => copy(item.publicUrl)}
+            >
+              <Copy size={20} aria-hidden />
+            </button>
+          </div>
+          <p className="detail-share-meta">
+            {t(
+              item.visibility === "public"
+                ? "dashboard.publicAccess"
+                : "upload.privateLabel",
+            )}{" "}
+            · {fileKind(item.originalFilename)} ·{" "}
+            {formatFileSize(item.sizeBytes, locale)}
+          </p>
+          <details className="metadata-section" open>
+            <summary>
+              <div className="section-heading">
+                <Database aria-hidden />
+                <h2>{t("detail.metadataTitle")}</h2>
+              </div>
+              <ChevronDown size={20} aria-hidden />
+            </summary>
+            <dl className="metadata-grid mt-6">
+              {(
+                [
+                  ["detail.objectKey", item.objectKey],
+                  ["detail.sha256", item.sha256],
+                ] as const
+              ).map(([key, value]) => (
+                <div key={key}>
+                  <dt>{t(key)}</dt>
+                  <dd>
+                    <div className="copy-field">
+                      <code>{value}</code>
+                      <button
+                        className="icon-button"
+                        type="button"
+                        aria-label={`${t("detail.copyValue")} ${t(key)}`}
+                        onClick={() => copy(value)}
+                      >
+                        <Copy size={19} aria-hidden />
+                      </button>
+                    </div>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        </aside>
       </div>
 
       <ConfirmDialog
