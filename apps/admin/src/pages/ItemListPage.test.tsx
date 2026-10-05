@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -119,4 +125,57 @@ describe("ItemListPage request behavior", () => {
     await waitFor(() => expect(vi.mocked(deleteItem)).toHaveBeenCalledTimes(1));
     expect(vi.mocked(listItems)).toHaveBeenCalledTimes(1);
   });
+
+  async function openMenu() {
+    const user = userEvent.setup();
+    render(
+      <SettingsProvider>
+        <FeedbackProvider>
+          <ItemListPage onEdit={vi.fn()} onUpload={vi.fn()} />
+        </FeedbackProvider>
+      </SettingsProvider>,
+    );
+    const triggers = await screen.findAllByRole("button", {
+      name: "More actions",
+    });
+    const trigger = triggers[0]!;
+    await user.click(trigger);
+    return { user, trigger, menu: screen.getByRole("menu") };
+  }
+
+  it.each([false, true])(
+    "keeps arrow navigation and lets Tab close the action menu (shift: %s)",
+    async (shift) => {
+      const { user, trigger, menu } = await openMenu();
+      expect(document.activeElement).toBe(
+        screen.getByRole("menuitem", { name: "Edit" }),
+      );
+      await user.keyboard("{End}");
+      expect(document.activeElement).toBe(
+        screen.getByRole("menuitem", { name: "Delete" }),
+      );
+      await user.keyboard("{Home}{ArrowUp}");
+      expect(document.activeElement).toBe(
+        screen.getByRole("menuitem", { name: "Delete" }),
+      );
+      await user.tab({ shift });
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(menu.contains(document.activeElement)).toBe(false);
+    },
+  );
+
+  it.each(["Escape", "resize", "scroll"])(
+    "restores focus and disables the closing menu after %s",
+    async (reason) => {
+      const { trigger, menu } = await openMenu();
+      if (reason === "Escape") fireEvent.keyDown(menu, { key: "Escape" });
+      else if (reason === "resize") fireEvent.resize(window);
+      else fireEvent.scroll(window);
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(trigger);
+      expect(menu.getAttribute("aria-hidden")).toBe("true");
+      expect(menu.hasAttribute("inert")).toBe(true);
+    },
+  );
 });

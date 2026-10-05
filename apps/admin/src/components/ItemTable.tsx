@@ -82,7 +82,12 @@ function ItemActionMenu({
         setOpen(false);
       }
     };
-    const closeOnViewportChange = () => setOpen(false);
+    const closeOnViewportChange = () => {
+      if (menuRef.current?.contains(document.activeElement)) {
+        buttonRef.current?.focus();
+      }
+      setOpen(false);
+    };
     document.addEventListener("pointerdown", close);
     window.addEventListener("resize", closeOnViewportChange);
     window.addEventListener("scroll", closeOnViewportChange, true);
@@ -127,6 +132,11 @@ function ItemActionMenu({
   }
 
   function handleMenuKey(event: KeyboardEvent<HTMLDivElement>): void {
+    if (event.key === "Tab") {
+      setOpen(false);
+      buttonRef.current?.focus();
+      return;
+    }
     if (event.key === "Escape") {
       event.preventDefault();
       setOpen(false);
@@ -182,12 +192,14 @@ function ItemActionMenu({
             role="menu"
             data-state={menuPresence.state}
             aria-hidden={!open}
+            inert={!open}
             style={menuPosition}
             onKeyDown={handleMenuKey}
           >
             <button
               type="button"
               role="menuitem"
+              tabIndex={-1}
               onClick={() => run(() => onEdit(item.id))}
             >
               <Pencil className="h-4 w-4" aria-hidden />
@@ -196,6 +208,7 @@ function ItemActionMenu({
             <button
               type="button"
               role="menuitem"
+              tabIndex={-1}
               onClick={() => run(() => onCopy(item.publicUrl))}
             >
               <Copy className="h-4 w-4" aria-hidden />
@@ -204,6 +217,7 @@ function ItemActionMenu({
             <button
               type="button"
               role="menuitem"
+              tabIndex={-1}
               onClick={() => run(() => onCopy(encodeShareUrl(item.publicUrl)))}
             >
               <Copy className="h-4 w-4" aria-hidden />
@@ -214,6 +228,7 @@ function ItemActionMenu({
               target="_blank"
               rel="noreferrer"
               role="menuitem"
+              tabIndex={-1}
               onClick={() => setOpen(false)}
             >
               <ExternalLink className="h-4 w-4" aria-hidden />
@@ -223,6 +238,7 @@ function ItemActionMenu({
             <button
               type="button"
               role="menuitem"
+              tabIndex={-1}
               onClick={() => run(() => onVisibility(item))}
             >
               {item.visibility === "public" ? (
@@ -238,6 +254,7 @@ function ItemActionMenu({
               <button
                 type="button"
                 role="menuitem"
+                tabIndex={-1}
                 onClick={() => run(() => onRestore(item))}
               >
                 <RotateCcw className="h-4 w-4" aria-hidden />
@@ -247,6 +264,7 @@ function ItemActionMenu({
               <button
                 type="button"
                 role="menuitem"
+                tabIndex={-1}
                 onClick={() => run(() => onDisable(item))}
               >
                 <Ban className="h-4 w-4" aria-hidden />
@@ -257,6 +275,7 @@ function ItemActionMenu({
               className="action-menu-danger"
               type="button"
               role="menuitem"
+              tabIndex={-1}
               onClick={() => run(() => onDelete(item))}
             >
               <Trash2 className="h-4 w-4" aria-hidden />
