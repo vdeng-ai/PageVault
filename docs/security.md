@@ -49,4 +49,8 @@ Uploaded HTML is stored and returned as original bytes. PageVault does not sanit
 
 Markdown is stored as original bytes and rendered with raw HTML disabled. JPEG, PNG, and WebP files are returned as uploaded bytes with their corresponding image content type.
 
+The administration interface previews selected files locally before publishing. HTML and Markdown previews use an iframe with an empty `sandbox` attribute; scripts, form submissions, and access to the admin origin are disabled. An image preview uses a temporary object URL that is revoked when the selected file changes.
+
+Private files can be opened through `GET /api/admin/items/:id/preview` after administrator session authentication. Upload API keys cannot read them. The response uses `Cache-Control: no-store` and `Content-Security-Policy: sandbox allow-scripts; frame-ancestors 'self'`. Omitting `allow-same-origin` gives uploaded HTML an opaque origin, preventing access to administrator cookies, local storage, and the parent window. Deleted or retention-expired files are not returned. This preview does not turn on public access or increment public visit counts.
+
 For privately reporting a vulnerability in PageVault itself, follow the repository [Security Policy](../SECURITY.md).

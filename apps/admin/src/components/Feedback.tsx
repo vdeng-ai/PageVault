@@ -147,16 +147,28 @@ export function ConfirmDialog({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const presence = useExitPresence(open, 220);
+
+  useLayoutEffect(() => {
+    if (open) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+    } else {
+      returnFocusRef.current?.focus();
+      returnFocusRef.current = null;
+    }
+  }, [open]);
 
   useLayoutEffect(() => {
     if (!open || !presence.present) {
       return;
     }
-    const previous = document.activeElement as HTMLElement | null;
-    cancelRef.current?.focus();
-    return () => previous?.focus();
-  }, [open, presence.present]);
+    if (busy) {
+      panelRef.current?.focus();
+    } else {
+      cancelRef.current?.focus();
+    }
+  }, [busy, open, presence.present]);
 
   if (!presence.present) {
     return null;
@@ -177,6 +189,8 @@ export function ConfirmDialog({
       ) ?? [],
     );
     if (focusable.length === 0) {
+      event.preventDefault();
+      panelRef.current?.focus();
       return;
     }
     const first = focusable[0];
@@ -194,6 +208,7 @@ export function ConfirmDialog({
     <div
       className="dialog-backdrop"
       data-state={presence.state}
+      inert={!open}
       onMouseDown={(event) => {
         if (event.currentTarget === event.target && !busy) {
           onClose();
@@ -205,7 +220,9 @@ export function ConfirmDialog({
         className="dialog-panel"
         data-state={presence.state}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
+        aria-busy={busy}
         aria-hidden={!open}
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-description"

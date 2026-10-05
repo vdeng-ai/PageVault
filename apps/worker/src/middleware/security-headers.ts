@@ -1,27 +1,44 @@
+import { publicDocument, publicHeader } from "../public-layout.js";
+import { publicIcons } from "../public-icons.js";
+
 export const publicSecurityHeaders: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
   "Permissions-Policy": "geolocation=(), camera=(), microphone=()",
-  "Cache-Control": "private, no-store"
+  "Cache-Control": "private, no-store",
 };
 
 export const apiSecurityHeaders: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
-  "Cache-Control": "no-store"
+  "Cache-Control": "no-store",
 };
 
 export function publicErrorPage(status: 403 | 404 | 410): Response {
   const messages = {
-    403: "该页面已下线",
-    404: "页面不存在",
-    410: "该页面链接已过期"
+    403: {
+      label: "该页面已下线",
+      description: "分享者已停用此链接，暂时无法访问。",
+    },
+    404: {
+      label: "页面不存在",
+      description: "此链接不可用，请确认地址是否正确。",
+    },
+    410: {
+      label: "链接已失效",
+      description: "分享链接已超过有效期，或文件保留时间已结束。",
+    },
   } as const;
-  return new Response(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${messages[status]}</title></head><body>${messages[status]}</body></html>`, {
+  const message = messages[status];
+  const html = publicDocument({
+    title: `${status} · ${message.label}`,
+    body: `<div class="error-shell">${publicHeader()}<main class="error-content"><div class="error-icon">${publicIcons["link-2-off"]}</div><p class="error-eyebrow">${message.label}</p><h1>此链接暂时无法打开</h1><p class="error-message">${message.description}</p><p class="error-message">请联系分享者，获取新的访问链接。</p><button class="error-back" type="button" data-go-back>${publicIcons["arrow-left"]}返回上一页</button><p class="error-code">${status} · ${message.label}</p></main><footer class="public-footer">PageVault · 文件发布与分享</footer></div>`,
+  });
+  return new Response(html, {
     status,
     headers: {
       ...publicSecurityHeaders,
-      "Content-Type": "text/html; charset=utf-8"
-    }
+      "Content-Type": "text/html; charset=utf-8",
+    },
   });
 }

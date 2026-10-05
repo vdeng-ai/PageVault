@@ -1,5 +1,15 @@
 const FILE_SIZE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 
+export function itemPreviewUrl(item: {
+  id: string;
+  visibility: "public" | "private";
+  publicUrl: string;
+}): string {
+  return item.visibility === "private"
+    ? `/api/admin/items/${encodeURIComponent(item.id)}/preview`
+    : item.publicUrl;
+}
+
 export function encodeShareUrl(value: string): string {
   try {
     return new URL(value).href;

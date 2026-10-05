@@ -1,6 +1,8 @@
 import {
   Ban,
-  Check,
+  CheckCircle2,
+  Info,
+  AlertCircle,
   Copy,
   KeyRound,
   Plus,
@@ -30,6 +32,7 @@ import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { GlassDialog } from "../components/Glass.js";
 import { useExitPresence } from "../hooks/useExitPresence.js";
 import { useSettings } from "../settings.js";
+import { copyText } from "../clipboard.js";
 
 function ApiKeyDialog({
   open,
@@ -50,25 +53,29 @@ function ApiKeyDialog({
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const copyRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const presence = useExitPresence(open, 220);
 
   useLayoutEffect(() => {
     if (!open) {
       setName("");
+      returnFocusRef.current?.focus();
+      returnFocusRef.current = null;
       return;
     }
-    const previous = document.activeElement as HTMLElement | null;
-    return () => previous?.focus();
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
   }, [open]);
 
   useLayoutEffect(() => {
     if (!open || !presence.present) return;
-    if (created) {
+    if (creating) {
+      panelRef.current?.focus();
+    } else if (created) {
       copyRef.current?.focus();
     } else {
       inputRef.current?.focus();
     }
-  }, [created, open, presence.present]);
+  }, [created, creating, open, presence.present]);
 
   if (!presence.present) {
     return null;
@@ -90,6 +97,11 @@ function ApiKeyDialog({
     );
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
+    if (!first) {
+      event.preventDefault();
+      panelRef.current?.focus();
+      return;
+    }
     if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last?.focus();
@@ -101,6 +113,7 @@ function ApiKeyDialog({
 
   function submit(event: FormEvent): void {
     event.preventDefault();
+    if (creating || created) return;
     const normalized = name.trim();
     if (normalized) {
       onCreate(normalized);
@@ -109,8 +122,7 @@ function ApiKeyDialog({
 
   function copyToken(): void {
     if (!created) return;
-    void navigator.clipboard
-      .writeText(created.token)
+    void copyText(created.token)
       .then(() => notify(t("apiKeys.copied"), "success"))
       .catch(() => notify(t("apiKeys.copyFailed"), "error"));
   }
@@ -119,6 +131,7 @@ function ApiKeyDialog({
     <div
       className="dialog-backdrop"
       data-state={presence.state}
+      inert={!open}
       onMouseDown={(event) => {
         if (event.currentTarget === event.target && !creating && !created) {
           onClose();
@@ -130,7 +143,9 @@ function ApiKeyDialog({
         className="dialog-panel api-key-dialog"
         data-state={presence.state}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
+        aria-busy={creating}
         aria-hidden={!open}
         aria-labelledby="api-key-dialog-title"
         aria-describedby="api-key-dialog-description"
@@ -139,7 +154,7 @@ function ApiKeyDialog({
         <div className="api-key-dialog-heading">
           <div className="dialog-icon">
             {created ? (
-              <Check className="h-5 w-5" aria-hidden />
+              <CheckCircle2 className="h-5 w-5" aria-hidden />
             ) : (
               <KeyRound className="h-5 w-5" aria-hidden />
             )}
@@ -164,18 +179,34 @@ function ApiKeyDialog({
         </p>
 
         {created ? (
-          <div className="api-key-token-wrap">
-            <code className="api-key-token">{created.token}</code>
-          <button
-            ref={copyRef}
-            className="btn btn-primary"
-            type="button"
-            onClick={copyToken}
-            >
-              <Copy className="h-4 w-4" aria-hidden />
-              {t("apiKeys.copy")}
-            </button>
-          </div>
+          <>
+            <div className="alert-warning">
+              <AlertCircle size={22} aria-hidden />
+              {t("apiKeys.onceWarning")}
+            </div>
+            <div className="api-key-token-wrap">
+              <span className="text-secondary">{created.apiKey.name}</span>
+              <code className="api-key-token">{created.token}</code>
+              <button
+                ref={copyRef}
+                className="btn btn-primary"
+                type="button"
+                onClick={copyToken}
+              >
+                <Copy className="h-4 w-4" aria-hidden />
+                {t("apiKeys.copy")}
+              </button>
+            </div>
+            <div className="api-key-dialog-actions">
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={onClose}
+              >
+                {t("apiKeys.savedClose")}
+              </button>
+            </div>
+          </>
         ) : (
           <form className="api-key-create-form" onSubmit={submit}>
             <label className="field-label">
@@ -186,6 +217,7 @@ function ApiKeyDialog({
                 value={name}
                 maxLength={100}
                 autoComplete="off"
+                disabled={creating}
                 placeholder={t("apiKeys.namePlaceholder")}
                 onChange={(event) => setName(event.target.value)}
               />
@@ -312,12 +344,17 @@ export function ApiKeysPage() {
       <WorkspaceHero
         icon={KeyRound}
         eyebrow={t("apiKeys.activeSummary", { count: activeCount })}
+        badge={
+          <span className="api-key-summary">
+            {t("apiKeys.activeSummary", { count: activeCount })}
+          </span>
+        }
         title={t("apiKeys.title")}
         subtitle={t("apiKeys.subtitle")}
         actions={
           <div className="workspace-action-row api-key-header-actions">
             <button
-              className="icon-button"
+              className="btn btn-secondary"
               type="button"
               title={t("common.refresh")}
               aria-label={t("common.refresh")}
@@ -328,6 +365,7 @@ export function ApiKeysPage() {
                 className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
                 aria-hidden
               />
+              {t("common.refresh")}
             </button>
             <button
               className="btn btn-primary"
@@ -341,6 +379,10 @@ export function ApiKeysPage() {
         }
       />
 
+      <div className="alert-info">
+        <ShieldAlert size={26} aria-hidden />
+        {t("apiKeys.securityHint")}
+      </div>
       {error ? (
         <div className="alert-error" role="alert">
           {error}
@@ -372,65 +414,70 @@ export function ApiKeysPage() {
         <>
           <div className="surface api-key-table-wrap api-key-table-desktop">
             <table className="api-key-table">
-            <thead>
-              <tr>
-                <th>{t("apiKeys.name")}</th>
-                <th>{t("apiKeys.key")}</th>
-                <th>{t("apiKeys.scope")}</th>
-                <th>{t("apiKeys.created")}</th>
-                <th>{t("apiKeys.lastUsed")}</th>
-                <th>{t("apiKeys.status")}</th>
-                <th className="api-key-action-heading">
-                  {t("apiKeys.actions")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {apiKeys.map((apiKey) => {
-                const revoked = apiKey.revokedAt !== null;
-                return (
-                  <tr key={apiKey.id}>
-                    <td>
-                      <strong className="api-key-name">{apiKey.name}</strong>
-                    </td>
-                    <td>
-                      <code className="api-key-prefix">{apiKey.prefix}...</code>
-                    </td>
-                    <td>{t("apiKeys.uploadScope")}</td>
-                    <td>{formatDate(apiKey.createdAt)}</td>
-                    <td>{formatDate(apiKey.lastUsedAt)}</td>
-                    <td>
-                      <span
-                        className={`api-key-status ${revoked ? "api-key-status-revoked" : "api-key-status-active"}`}
-                      >
-                        {revoked ? t("apiKeys.revoked") : t("apiKeys.active")}
-                      </span>
-                    </td>
-                    <td className="api-key-action-cell">
-                      <button
-                        className="icon-button api-key-revoke-button"
-                        type="button"
-                        title={t("apiKeys.revoke")}
-                        aria-label={t("apiKeys.revokeNamed", {
-                          name: apiKey.name,
-                        })}
-                        disabled={revoked}
-                        onClick={() => setRevokeTarget(apiKey)}
-                      >
-                        <Ban className="h-4 w-4" aria-hidden />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
+              <thead>
+                <tr>
+                  <th>{t("apiKeys.name")}</th>
+                  <th>{t("apiKeys.key")}</th>
+                  <th>{t("apiKeys.scope")}</th>
+                  <th>{t("apiKeys.created")}</th>
+                  <th>{t("apiKeys.lastUsed")}</th>
+                  <th>{t("apiKeys.status")}</th>
+                  <th className="api-key-action-heading">
+                    {t("apiKeys.actions")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {apiKeys.map((apiKey) => {
+                  const revoked = apiKey.revokedAt !== null;
+                  return (
+                    <tr key={apiKey.id}>
+                      <td>
+                        <strong className="api-key-name">{apiKey.name}</strong>
+                      </td>
+                      <td>
+                        <code className="api-key-prefix">
+                          {apiKey.prefix}...
+                        </code>
+                      </td>
+                      <td>{t("apiKeys.uploadScope")}</td>
+                      <td>{formatDate(apiKey.createdAt)}</td>
+                      <td>{formatDate(apiKey.lastUsedAt)}</td>
+                      <td>
+                        <span
+                          className={`api-key-status ${revoked ? "api-key-status-revoked" : "api-key-status-active"}`}
+                        >
+                          {revoked ? t("apiKeys.revoked") : t("apiKeys.active")}
+                        </span>
+                      </td>
+                      <td className="api-key-action-cell">
+                        <button
+                          className="icon-button api-key-revoke-button"
+                          type="button"
+                          title={t("apiKeys.revoke")}
+                          aria-label={t("apiKeys.revokeNamed", {
+                            name: apiKey.name,
+                          })}
+                          disabled={revoked}
+                          onClick={() => setRevokeTarget(apiKey)}
+                        >
+                          {t("apiKeys.revoke")}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
             </table>
           </div>
           <div className="api-key-mobile-list">
             {apiKeys.map((apiKey) => {
               const revoked = apiKey.revokedAt !== null;
               return (
-                <article className="surface api-key-mobile-card" key={apiKey.id}>
+                <article
+                  className="surface api-key-mobile-card"
+                  key={apiKey.id}
+                >
                   <div className="api-key-mobile-heading">
                     <div>
                       <strong className="api-key-name">{apiKey.name}</strong>
@@ -475,6 +522,14 @@ export function ApiKeysPage() {
           </div>
         </>
       )}
+
+      <div className="api-key-footer">
+        <span>{t("files.recordSummary", { total: apiKeys.length })}</span>
+        <p>
+          <Info size={17} aria-hidden />
+          {t("apiKeys.revokeHint")}
+        </p>
+      </div>
 
       <ApiKeyDialog
         open={dialogOpen}

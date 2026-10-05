@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { encodeShareUrl, formatFileSize } from "./format.js";
+import { encodeShareUrl, formatFileSize, itemPreviewUrl } from "./format.js";
+
+describe("itemPreviewUrl", () => {
+  it("uses the authenticated admin route only for private files", () => {
+    const item = {
+      id: "file/with space",
+      publicUrl: "https://public.test/p/file",
+    };
+    expect(itemPreviewUrl({ ...item, visibility: "public" })).toBe(
+      item.publicUrl,
+    );
+    expect(itemPreviewUrl({ ...item, visibility: "private" })).toBe(
+      "/api/admin/items/file%2Fwith%20space/preview",
+    );
+  });
+});
 
 describe("encodeShareUrl", () => {
   it("percent-encodes non-ASCII path segments without changing the URL structure", () => {

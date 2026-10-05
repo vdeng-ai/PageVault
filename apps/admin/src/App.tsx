@@ -1,13 +1,9 @@
 import {
   BarChart3,
-  FileText,
+  FolderOpen,
   KeyRound,
-  Languages,
   LogOut,
-  Monitor,
-  Moon,
   ShieldCheck,
-  Sun,
   UploadCloud,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -18,11 +14,10 @@ import { ItemDetailPage } from "./pages/ItemDetailPage.js";
 import { ItemListPage } from "./pages/ItemListPage.js";
 import { LoginPage } from "./pages/LoginPage.js";
 import { UploadPage } from "./pages/UploadPage.js";
-import { useSettings, type ThemePreference } from "./settings.js";
-import {
-  GlassNav,
-  GlassSegmentedControl,
-} from "./components/Glass.js";
+import { useSettings } from "./settings.js";
+import { SettingsControls } from "./components/SettingsControls.js";
+import { Brand } from "./components/Brand.js";
+import { GlassNav } from "./components/Glass.js";
 
 export type Route =
   | { name: "upload" }
@@ -60,74 +55,6 @@ function navigate(path: string): void {
   window.location.hash = path;
 }
 
-function SettingsControls({ compact = false }: { compact?: boolean }) {
-  const { language, setLanguage, themePreference, setThemePreference, t } =
-    useSettings();
-  const themeOptions: Array<{
-    value: ThemePreference;
-    label: string;
-    icon: typeof Monitor;
-  }> = [
-    { value: "system", label: t("settings.system"), icon: Monitor },
-    { value: "light", label: t("settings.light"), icon: Sun },
-    { value: "dark", label: t("settings.dark"), icon: Moon },
-  ];
-
-  return (
-    <div
-      className={`settings-controls ${compact ? "settings-controls-compact" : ""}`}
-    >
-      <GlassSegmentedControl
-        className="segmented-control"
-        aria-label={t("settings.language")}
-      >
-        <button
-            className={`segment-button ${language === "en" ? "segment-button-active" : ""}`}
-            type="button"
-            aria-pressed={language === "en"}
-            title={t("settings.english")}
-          onClick={() => setLanguage("en")}
-        >
-          <Languages className="h-4 w-4" aria-hidden />
-          <span className={compact ? "sr-only" : ""}>
-            {t("settings.english")}
-          </span>
-        </button>
-        <button
-            className={`segment-button ${language === "zh-CN" ? "segment-button-active" : ""}`}
-            type="button"
-            aria-pressed={language === "zh-CN"}
-            title={t("settings.chinese")}
-          onClick={() => setLanguage("zh-CN")}
-        >
-          {t("settings.chinese")}
-        </button>
-      </GlassSegmentedControl>
-      <GlassSegmentedControl
-        className="segmented-control"
-        aria-label={t("settings.theme")}
-      >
-        {themeOptions.map((option) => {
-          const Icon = option.icon;
-          return (
-            <button
-              key={option.value}
-                className={`segment-button ${themePreference === option.value ? "segment-button-active" : ""}`}
-                title={option.label}
-                type="button"
-                aria-pressed={themePreference === option.value}
-                onClick={() => setThemePreference(option.value)}
-            >
-              <Icon className="h-4 w-4" aria-hidden />
-              <span className={compact ? "sr-only" : ""}>{option.label}</span>
-            </button>
-          );
-        })}
-      </GlassSegmentedControl>
-    </div>
-  );
-}
-
 export function App() {
   const { t } = useSettings();
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -145,7 +72,12 @@ export function App() {
   const navItems = useMemo(
     () => [
       { route: "upload", label: t("nav.upload"), icon: UploadCloud, path: "/" },
-      { route: "items", label: t("nav.files"), icon: FileText, path: "/items" },
+      {
+        route: "items",
+        label: t("nav.files"),
+        icon: FolderOpen,
+        path: "/items",
+      },
       {
         route: "dashboard",
         label: t("nav.dashboard"),
@@ -196,20 +128,7 @@ export function App() {
         data-glass="standard"
       >
         <div className="app-header-inner">
-          <div className="app-brand">
-            <div className="brand-mark app-brand-mark">
-              <ShieldCheck className="h-5 w-5" aria-hidden />
-            </div>
-            <div className="app-brand-copy">
-              <div className="app-brand-name">PageVault</div>
-              <div className="app-brand-subtitle">
-                <span className="app-brand-tagline">
-                  {t("app.controlCenter")}
-                </span>
-                <span className="app-brand-email">{user.email}</span>
-              </div>
-            </div>
-          </div>
+          <Brand />
 
           <GlassNav
             material="standard"
@@ -240,34 +159,42 @@ export function App() {
           </GlassNav>
 
           <div className="app-header-actions">
-            <SettingsControls compact />
-            <div className="header-account">
-              <div className="header-account-avatar">
-                {user.email?.slice(0, 1).toUpperCase()}
-              </div>
-              <div className="header-account-copy">
-                <div>{t("login.admin")}</div>
+            <SettingsControls />
+            <details className="account-menu">
+              <summary
+                className="header-account-avatar"
+                aria-label={t("app.workspace")}
+                title={user.email}
+              >
+                {user.email?.slice(0, 1).toUpperCase() || "A"}
+              </summary>
+              <div className="account-popover">
+                <span>{t("login.admin")}</span>
                 <strong>{user.email}</strong>
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  onClick={() => {
+                    void logout().finally(() =>
+                      setUser({ authenticated: false }),
+                    );
+                  }}
+                >
+                  <LogOut className="h-4 w-4" aria-hidden />
+                  {t("app.signOut")}
+                </button>
               </div>
-            </div>
-            <button
-              className="icon-button header-sign-out"
-              type="button"
-              title={t("app.signOut")}
-              aria-label={t("app.signOut")}
-              onClick={() => {
-                void logout().finally(() => setUser({ authenticated: false }));
-              }}
-            >
-              <LogOut className="h-4 w-4" aria-hidden />
-            </button>
+            </details>
           </div>
         </div>
       </header>
 
       <main className="app-main">
         {route.name === "upload" && (
-          <UploadPage onViewItem={(id) => navigate(`/items/${id}`)} />
+          <UploadPage
+            onViewItem={(id) => navigate(`/items/${id}`)}
+            onBack={() => navigate("/items")}
+          />
         )}
         {route.name === "items" && (
           <ItemListPage
@@ -280,7 +207,11 @@ export function App() {
         )}
         {route.name === "apiKeys" && <ApiKeysPage />}
         {route.name === "detail" && (
-          <ItemDetailPage id={route.id} onBack={() => navigate("/items")} />
+          <ItemDetailPage
+            key={route.id}
+            id={route.id}
+            onBack={() => navigate("/items")}
+          />
         )}
       </main>
 
