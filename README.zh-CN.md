@@ -17,7 +17,9 @@ PageVault 是一个为个人使用设计的自托管发布工具，用于在微�
 
 **免费层级友好：** PageVault 可以使用 Cloudflare Workers、D1 和 R2 提供的免费配额起步部署；超出免费配额后，将按照 Cloudflare 当前定价计费。
 
-![PageVault 上传页面，包含文件、可见性和保留期限设置](./docs/assets/pagevault-upload.png)
+![PageVault 英文上传界面，展示 Markdown 预览、可见性和保留期限设置](./docs/assets/pagevault-upload-en.jpg)
+
+英文界面 · 深色主题 · Markdown 发布前本地预览。
 
 ## 核心功能
 
