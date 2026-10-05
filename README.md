@@ -17,7 +17,9 @@ PageVault is a personal-first, self-hosted publisher for sharing AI-generated HT
 
 **Free-tier friendly:** PageVault can start on Cloudflare's included free quotas for Workers, D1, and R2. Usage beyond those quotas is subject to Cloudflare's current pricing.
 
-![PageVault upload page with file, visibility, and retention settings](./docs/assets/pagevault-upload.png)
+![PageVault English upload interface with Markdown preview, visibility, and retention settings](./docs/assets/pagevault-upload-en.jpg)
+
+English interface · Dark theme · Local Markdown preview before publishing.
 
 ## Highlights
 
