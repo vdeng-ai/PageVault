@@ -21,6 +21,7 @@ import { itemPreviewUrl, encodeShareUrl } from "../format.js";
 import { UploadDropzone } from "../components/UploadDropzone.js";
 import { ContentPreview } from "../components/ContentPreview.js";
 import { useSettings } from "../settings.js";
+import { copyText } from "../clipboard.js";
 
 const supportedExtensions = new Set([
   "html",
@@ -137,8 +138,7 @@ export function UploadPage({
   }
   function copyUrl(encoded = false) {
     if (!result) return;
-    void navigator.clipboard
-      .writeText(encoded ? encodeShareUrl(result.publicUrl) : result.publicUrl)
+    void copyText(encoded ? encodeShareUrl(result.publicUrl) : result.publicUrl)
       .then(() =>
         notify(
           t(encoded ? "common.encodedCopied" : "common.copied"),

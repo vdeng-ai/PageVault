@@ -27,6 +27,7 @@ import { GlassToolbar } from "../components/Glass.js";
 import { formatFileSize } from "../format.js";
 import { fileKind } from "../components/FileIcon.js";
 import { useSettings } from "../settings.js";
+import { copyText } from "../clipboard.js";
 
 type EditableFields = {
   title: string;
@@ -152,8 +153,7 @@ export function ItemDetailPage({
   }
 
   function copy(value: string): void {
-    void navigator.clipboard
-      .writeText(value)
+    void copyText(value)
       .then(() => notify(t("detail.copied"), "success"))
       .catch(() => notify(t("common.copyFailed"), "error"));
   }

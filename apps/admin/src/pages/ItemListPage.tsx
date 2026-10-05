@@ -22,6 +22,7 @@ import { ItemTable } from "../components/ItemTable.js";
 import { GlassToolbar } from "../components/Glass.js";
 import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { useSettings } from "../settings.js";
+import { copyText } from "../clipboard.js";
 
 const SEARCH_DEBOUNCE_MS = 400;
 
@@ -386,8 +387,7 @@ export function ItemListPage({
             )
           }
           onCopy={(url) => {
-            void navigator.clipboard
-              .writeText(url)
+            void copyText(url)
               .then(() => notify(t("common.copied"), "success"))
               .catch(() => notify(t("common.copyFailed"), "error"));
           }}

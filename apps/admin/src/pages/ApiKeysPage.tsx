@@ -32,6 +32,7 @@ import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { GlassDialog } from "../components/Glass.js";
 import { useExitPresence } from "../hooks/useExitPresence.js";
 import { useSettings } from "../settings.js";
+import { copyText } from "../clipboard.js";
 
 function ApiKeyDialog({
   open,
@@ -52,25 +53,29 @@ function ApiKeyDialog({
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const copyRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const presence = useExitPresence(open, 220);
 
   useLayoutEffect(() => {
     if (!open) {
       setName("");
+      returnFocusRef.current?.focus();
+      returnFocusRef.current = null;
       return;
     }
-    const previous = document.activeElement as HTMLElement | null;
-    return () => previous?.focus();
+    returnFocusRef.current = document.activeElement as HTMLElement | null;
   }, [open]);
 
   useLayoutEffect(() => {
     if (!open || !presence.present) return;
-    if (created) {
+    if (creating) {
+      panelRef.current?.focus();
+    } else if (created) {
       copyRef.current?.focus();
     } else {
       inputRef.current?.focus();
     }
-  }, [created, open, presence.present]);
+  }, [created, creating, open, presence.present]);
 
   if (!presence.present) {
     return null;
@@ -92,6 +97,11 @@ function ApiKeyDialog({
     );
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
+    if (!first) {
+      event.preventDefault();
+      panelRef.current?.focus();
+      return;
+    }
     if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last?.focus();
@@ -103,6 +113,7 @@ function ApiKeyDialog({
 
   function submit(event: FormEvent): void {
     event.preventDefault();
+    if (creating || created) return;
     const normalized = name.trim();
     if (normalized) {
       onCreate(normalized);
@@ -111,8 +122,7 @@ function ApiKeyDialog({
 
   function copyToken(): void {
     if (!created) return;
-    void navigator.clipboard
-      .writeText(created.token)
+    void copyText(created.token)
       .then(() => notify(t("apiKeys.copied"), "success"))
       .catch(() => notify(t("apiKeys.copyFailed"), "error"));
   }
@@ -121,6 +131,7 @@ function ApiKeyDialog({
     <div
       className="dialog-backdrop"
       data-state={presence.state}
+      inert={!open}
       onMouseDown={(event) => {
         if (event.currentTarget === event.target && !creating && !created) {
           onClose();
@@ -132,7 +143,9 @@ function ApiKeyDialog({
         className="dialog-panel api-key-dialog"
         data-state={presence.state}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
+        aria-busy={creating}
         aria-hidden={!open}
         aria-labelledby="api-key-dialog-title"
         aria-describedby="api-key-dialog-description"
@@ -204,6 +217,7 @@ function ApiKeyDialog({
                 value={name}
                 maxLength={100}
                 autoComplete="off"
+                disabled={creating}
                 placeholder={t("apiKeys.namePlaceholder")}
                 onChange={(event) => setName(event.target.value)}
               />

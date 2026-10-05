@@ -35,8 +35,10 @@
 
 ## 验证
 
-本次本地 `pnpm run typecheck`、`pnpm run lint`、`pnpm run test`、`pnpm run build` 已通过，测试为 19 个文件、102 项。冻结锁文件安装通过。修改的代码和文档使用 Prettier；全仓库格式检查仍有原有格式问题，未批量重排无关文件和 pnpm 生成的锁文件。
+本次本地 `pnpm run typecheck`、`pnpm run lint`、`pnpm run test`、`pnpm run build` 已通过，测试为 20 个文件、107 项。冻结锁文件安装通过。修改的代码和文档使用 Prettier；全仓库格式检查仍有原有格式问题，未批量重排无关文件和 pnpm 生成的锁文件。
 
 浏览器中已实测发布、普通及编码链接复制、详情保存、密钥创建与撤销、目录跳转，以及私有 HTML 按钮交互。手机列表、详情、密钥页测得 `scrollWidth === clientWidth === 380`，对应 390 px 视口和 10 px 滚动条。
 
-合并前需要补齐视觉验收，并检查 GitHub CI 和 Docker 构建结果。
+新增 5 项 React/jsdom 回归测试，验证弹窗关闭后的焦点恢复、请求进行中的焦点约束，以及剪贴板 API 不可用时的错误提示和完整密钥重试复制。这些交互修复没有新增截图，仍需浏览器复核；本目录已有图片的拍摄时间与状态不变。
+
+合并前需要补齐视觉验收，并确认 PR 最新提交的 GitHub CI 和 Docker 构建结果。
