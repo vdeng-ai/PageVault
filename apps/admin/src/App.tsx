@@ -207,7 +207,11 @@ export function App() {
         )}
         {route.name === "apiKeys" && <ApiKeysPage />}
         {route.name === "detail" && (
-          <ItemDetailPage id={route.id} onBack={() => navigate("/items")} />
+          <ItemDetailPage
+            key={route.id}
+            id={route.id}
+            onBack={() => navigate("/items")}
+          />
         )}
       </main>
 

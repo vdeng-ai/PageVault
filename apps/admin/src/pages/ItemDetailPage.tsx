@@ -73,21 +73,27 @@ export function ItemDetailPage({
   );
 
   useEffect(() => {
+    let cancelled = false;
     setItem(null);
     setInitial(null);
     setError(null);
     void getItem(id)
       .then((nextItem) => {
+        if (cancelled) return;
         const nextFields = fieldsFromItem(nextItem);
         setItem(nextItem);
         setFields(nextFields);
         setInitial(nextFields);
       })
-      .catch((nextError: unknown) =>
+      .catch((nextError: unknown) => {
+        if (cancelled) return;
         setError(
           nextError instanceof Error ? nextError.message : "load-failed",
-        ),
-      );
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const dirty =

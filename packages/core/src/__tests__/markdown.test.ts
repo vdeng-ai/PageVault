@@ -31,4 +31,37 @@ describe("shared Markdown renderer", () => {
     expect(rendered.html).toContain('<a id="safe"></a>');
     expect(rendered.html).toContain("&lt;a id=");
   });
+
+  it("preserves anchor examples inside fenced code blocks", () => {
+    const rendered = renderMarkdown(
+      '```markdown\n<a id="example"></a>\n## Example\n```\n\n~~~markdown\n<a id="second-example"></a>\n## Second example\n~~~\n\n## Real heading',
+    );
+    expect(rendered.html).toContain(
+      "&lt;a id=&quot;example&quot;&gt;&lt;/a&gt;",
+    );
+    expect(rendered.html).toContain(
+      "&lt;a id=&quot;second-example&quot;&gt;&lt;/a&gt;",
+    );
+    expect(rendered.headings).toEqual([
+      { id: "real-heading", text: "Real heading", level: 2 },
+    ]);
+  });
+
+  it("keeps standalone anchors and heading IDs unique", () => {
+    const rendered = renderMarkdown(
+      '<a id="example"></a>\n\nParagraph\n\n## Example',
+    );
+    expect(rendered.html).toContain('<a id="example"></a>');
+    expect(rendered.html).toContain('<h2 id="example-1">Example</h2>');
+    expect(rendered.headings[0]?.id).toBe("example-1");
+  });
+
+  it("associates explicit anchors with parsed setext and blockquote headings", () => {
+    const rendered = renderMarkdown(
+      '<a id="setext"></a>\n\nSetext heading\n---\n\n> <a id="quoted"></a>\n> ## Quoted heading',
+    );
+    expect(rendered.headings.map((h) => h.id)).toEqual(["setext", "quoted"]);
+    expect(rendered.html).not.toContain('<a id="setext"></a>');
+    expect(rendered.html).not.toContain('<a id="quoted"></a>');
+  });
 });

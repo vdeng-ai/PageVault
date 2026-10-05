@@ -152,4 +152,48 @@ describe("UploadPage", () => {
     });
     expect(vi.mocked(uploadHtml)).not.toHaveBeenCalled();
   });
+
+  it("shows retained custom expiry values when continuing with another upload", async () => {
+    vi.mocked(uploadHtml).mockResolvedValue({
+      id: "item-1",
+      title: "page",
+      slug: "page-ab12",
+      publicUrl: "https://html.example/page-ab12",
+      urlExpiresAt: "2026-11-01T00:00:00.000Z",
+      fileExpiresAt: "2027-01-01T00:00:00.000Z",
+    });
+    const user = userEvent.setup();
+    renderUpload();
+    const urlSelect = screen.getByRole("combobox", { name: "URL days" });
+    await user.selectOptions(urlSelect, "custom");
+    const days = screen.getByRole("spinbutton");
+    await user.clear(days);
+    await user.type(days, "45");
+    const file = new File(["Hello"], "page.md", { type: "text/markdown" });
+    await user.upload(screen.getByLabelText("Choose file"), file);
+    await user.click(
+      screen.getByRole("button", { name: "Upload and publish" }),
+    );
+    await screen.findByText("Your file is live");
+    await user.click(screen.getByRole("button", { name: "Upload another" }));
+    expect(screen.getByRole<HTMLInputElement>("spinbutton").value).toBe("45");
+    expect(
+      screen.getByRole<HTMLSelectElement>("combobox", { name: "URL days" })
+        .value,
+    ).toBe("custom");
+    await user.click(
+      screen.getByRole("button", { name: /Drop your file here/ }),
+    );
+    await user.upload(screen.getByLabelText("Choose file"), file);
+    await user.click(
+      screen.getByRole("button", { name: "Upload and publish" }),
+    );
+    await waitFor(() => expect(uploadHtml).toHaveBeenCalledTimes(2));
+    expect(uploadHtml).toHaveBeenLastCalledWith({
+      file,
+      urlExpireDays: 45,
+      fileExpireDays: 30,
+      visibility: "public",
+    });
+  });
 });

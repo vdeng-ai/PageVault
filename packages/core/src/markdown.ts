@@ -6,21 +6,34 @@ export function renderMarkdown(source: string): {
   html: string;
   headings: MarkdownHeading[];
 } {
-  const prepared = prepareMarkdownSource(source);
   const env: MarkdownRenderEnv = {
     headingSlugs: new Set<string>(),
-    explicitHeadingAnchors: prepared.explicitHeadingAnchors,
     headings: [],
   };
+  // Associate parsed blocks so anchor-like text in code examples stays intact.
+  const tokens = markdown.parse(source, env);
+  for (let index = 0; index < tokens.length; index += 1) {
+    const anchor = tokens[index];
+    const heading = tokens[index + 1];
+    if (
+      anchor?.type === "pagevault_explicit_anchor" &&
+      heading?.type === "heading_open"
+    ) {
+      const id = anchor.attrGet("id");
+      if (id) {
+        heading.attrSet("id", id);
+        anchor.hidden = true;
+      }
+    }
+  }
   return {
-    html: markdown.render(prepared.source, env),
+    html: markdown.renderer.render(tokens, markdown.options, env),
     headings: env.headings ?? [],
   };
 }
 
 type MarkdownRenderEnv = {
   headingSlugs?: Set<string>;
-  explicitHeadingAnchors?: Map<number, string>;
   headings?: MarkdownHeading[];
 };
 
@@ -54,9 +67,17 @@ markdown.block.ruler.before(
   },
 );
 
-markdown.renderer.rules.pagevault_explicit_anchor = (tokens, index) => {
-  const anchorId = tokens[index]?.attrGet("id");
-  return anchorId ? `<a id="${escapeHtml(anchorId)}"></a>\n` : "";
+markdown.renderer.rules.pagevault_explicit_anchor = (
+  tokens,
+  index,
+  _options,
+  env,
+) => {
+  const token = tokens[index];
+  const anchorId = token?.attrGet("id");
+  if (!anchorId || token?.hidden) return "";
+  const id = uniqueSlug(anchorId, env as MarkdownRenderEnv);
+  return `<a id="${escapeHtml(id)}"></a>\n`;
 };
 
 markdown.renderer.rules.heading_open = (tokens, index, options, env, self) => {
@@ -64,20 +85,9 @@ markdown.renderer.rules.heading_open = (tokens, index, options, env, self) => {
   const headingText =
     inline?.type === "inline" ? inlineTextContent(inline.children ?? []) : "";
   const renderEnv = env as MarkdownRenderEnv;
-  const headingLine = tokens[index]?.map?.[0];
-  const explicitSlug =
-    headingLine === undefined || headingLine === null
-      ? undefined
-      : renderEnv.explicitHeadingAnchors?.get(headingLine);
+  const explicitSlug = tokens[index]?.attrGet("id");
   const baseSlug = (explicitSlug ?? headingSlug(headingText)) || "section";
-  const usedSlugs = (renderEnv.headingSlugs ??= new Set<string>());
-  let slug = baseSlug;
-  let suffix = 1;
-  while (usedSlugs.has(slug)) {
-    slug = `${baseSlug}-${suffix}`;
-    suffix += 1;
-  }
-  usedSlugs.add(slug);
+  const slug = uniqueSlug(baseSlug, renderEnv);
   tokens[index]?.attrSet("id", slug);
   (renderEnv.headings ??= []).push({
     id: slug,
@@ -87,36 +97,16 @@ markdown.renderer.rules.heading_open = (tokens, index, options, env, self) => {
   return self.renderToken(tokens, index, options);
 };
 
-function prepareMarkdownSource(source: string): {
-  source: string;
-  explicitHeadingAnchors: Map<number, string>;
-} {
-  const lines = source.split(/\r?\n/);
-  const explicitHeadingAnchors = new Map<number, string>();
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const anchorId = explicitAnchorId(lines[index] ?? "");
-    if (!anchorId) {
-      continue;
-    }
-
-    let headingLine = index + 1;
-    while (
-      headingLine < lines.length &&
-      (lines[headingLine] ?? "").trim() === ""
-    ) {
-      headingLine += 1;
-    }
-    if (isHeadingAtLine(lines, headingLine)) {
-      explicitHeadingAnchors.set(headingLine, anchorId);
-      lines[index] = "";
-    }
+function uniqueSlug(baseSlug: string, env: MarkdownRenderEnv): string {
+  const usedSlugs = (env.headingSlugs ??= new Set<string>());
+  let slug = baseSlug;
+  let suffix = 1;
+  while (usedSlugs.has(slug)) {
+    slug = `${baseSlug}-${suffix}`;
+    suffix += 1;
   }
-
-  return {
-    source: lines.join("\n"),
-    explicitHeadingAnchors,
-  };
+  usedSlugs.add(slug);
+  return slug;
 }
 
 function explicitAnchorId(line: string): string | null {
@@ -128,15 +118,6 @@ function explicitAnchorId(line: string): string | null {
     return null;
   }
   return value;
-}
-
-function isHeadingAtLine(lines: string[], line: number): boolean {
-  const value = lines[line] ?? "";
-  if (/^ {0,3}#{1,6}(?:\s+|$)/.test(value)) {
-    return true;
-  }
-  const underline = lines[line + 1] ?? "";
-  return /^ {0,3}(?:=+|-+)\s*$/.test(underline) && value.trim().length > 0;
 }
 
 function inlineTextContent(

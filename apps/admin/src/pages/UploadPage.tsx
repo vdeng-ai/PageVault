@@ -33,6 +33,7 @@ const supportedExtensions = new Set([
   "png",
   "webp",
 ]);
+const durationPresets = [7, 15, 30, 90, 365];
 function positiveInteger(value: string): number | null {
   if (!/^\d+$/.test(value)) return null;
   const parsed = Number(value);
@@ -53,7 +54,9 @@ function DurationField({
   disabled: boolean;
 }) {
   const { t } = useSettings();
-  const [custom, setCustom] = useState(false);
+  const [custom, setCustom] = useState(
+    () => !durationPresets.some((days) => String(days) === value),
+  );
   return (
     <div className="field-label">
       <label>
@@ -68,7 +71,7 @@ function DurationField({
             if (next !== "custom") onChange(next);
           }}
         >
-          {[7, 15, 30, 90, 365].map((days) => (
+          {durationPresets.map((days) => (
             <option key={days} value={days}>
               {days} {t("upload.days")}
             </option>
