@@ -143,7 +143,7 @@ export function cachePublicContentResponse(
   });
   scheduleCacheWork(
     cache
-      .put(publicContentCacheRequest(env, slug), cacheResponse)
+      .put(publicContentCacheRequest(env, slug, variant), cacheResponse)
       .catch((error: unknown) => {
         logCacheFailure(error, "put", slug);
       }),
