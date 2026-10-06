@@ -41,7 +41,7 @@ class FakeD1Database {
   readonly runSqls: string[] = [];
   readonly runValues: unknown[][] = [];
   runChanges = 1;
-  firstResult: Record<string, number> | null = null;
+  firstResult: Record<string, unknown> | null = null;
 
   constructor(
     readonly rows: HtmlItemRow[],
@@ -155,37 +155,76 @@ describe("CloudflareD1Repository dashboard stats", () => {
   });
 });
 
-describe("CloudflareD1Repository API upload lease", () => {
-  it("uses affected-row counts for atomic acquire and owner-matched release", async () => {
+describe("CloudflareD1Repository API upload idempotency", () => {
+  it("claims, detects in-flight/conflicting requests, and completes owner-matched records", async () => {
     const db = new FakeD1Database([], 0);
     const repository = new CloudflareD1Repository(db.asD1());
+    db.firstResult = {
+      request_hash: "hash-a",
+      item_id: "item-a",
+      status: "processing",
+      owner: "owner-a",
+    };
 
     await expect(
-      repository.tryAcquireApiUploadLease(
-        "owner-a",
-        "2026-07-05T00:15:00.000Z",
-        "2026-07-05T00:00:00.000Z",
-      ),
-    ).resolves.toBe(true);
-    expect(db.runSqls[0]).toContain("ON CONFLICT(name) DO UPDATE");
-    expect(db.runSqls[0]).toContain("api_upload_lock.expires_at <= ?");
-    expect(db.runValues[0]).toEqual([
-      "owner-a",
-      "2026-07-05T00:15:00.000Z",
-      "2026-07-05T00:00:00.000Z",
-    ]);
+      repository.claimApiUploadIdempotency({
+        apiKeyId: "key-a",
+        idempotencyKey: "request-a",
+        requestHash: "hash-a",
+        candidateItemId: "item-a",
+        owner: "owner-a",
+        now: "2026-07-05T00:00:00.000Z",
+        expiresAt: "2026-07-05T00:15:00.000Z",
+      }),
+    ).resolves.toEqual({ kind: "acquired", itemId: "item-a" });
+    expect(db.runSqls[0]).toContain(
+      "ON CONFLICT(api_key_id, idempotency_key) DO UPDATE",
+    );
+    expect(db.runSqls[0]).toContain(
+      "api_upload_idempotency.expires_at <= excluded.updated_at",
+    );
 
     db.runChanges = 0;
     await expect(
-      repository.tryAcquireApiUploadLease(
-        "owner-b",
-        "2026-07-05T00:16:00.000Z",
-        "2026-07-05T00:01:00.000Z",
-      ),
-    ).resolves.toBe(false);
+      repository.claimApiUploadIdempotency({
+        apiKeyId: "key-a",
+        idempotencyKey: "request-a",
+        requestHash: "hash-a",
+        candidateItemId: "item-b",
+        owner: "owner-b",
+        now: "2026-07-05T00:01:00.000Z",
+        expiresAt: "2026-07-05T00:16:00.000Z",
+      }),
+    ).resolves.toEqual({ kind: "in_progress", itemId: "item-a" });
 
-    await repository.releaseApiUploadLease("owner-a");
-    expect(db.runSqls[2]).toContain("name = 'global' AND owner = ?");
-    expect(db.runValues[2]).toEqual(["owner-a"]);
+    db.firstResult = {
+      request_hash: "hash-old",
+      item_id: "item-a",
+      status: "processing",
+      owner: "owner-a",
+    };
+    await expect(
+      repository.claimApiUploadIdempotency({
+        apiKeyId: "key-a",
+        idempotencyKey: "request-a",
+        requestHash: "hash-new",
+        candidateItemId: "item-c",
+        owner: "owner-c",
+        now: "2026-07-05T00:02:00.000Z",
+        expiresAt: "2026-07-05T00:17:00.000Z",
+      }),
+    ).resolves.toEqual({ kind: "conflict", itemId: "item-a" });
+
+    db.runChanges = 1;
+    await repository.completeApiUploadIdempotency(
+      "key-a",
+      "request-a",
+      "owner-a",
+      "2026-07-05T00:03:00.000Z",
+      "2026-07-06T00:03:00.000Z",
+    );
+    expect(db.runSqls.at(-1)).toContain("status = 'completed'");
+    expect(db.runSqls.at(-1)).toContain("owner = ?");
   });
 });
+
