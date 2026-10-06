@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { HTML_CONTENT_TYPE } from "@pagevault/core";
+import { HTML_CONTENT_TYPE, PDF_CONTENT_TYPE } from "@pagevault/core";
 import { describe, expect, it } from "vitest";
 import { NodeSqliteRepository } from "../node-db.js";
 
@@ -183,6 +183,112 @@ describe("NodeSqliteRepository dashboard stats", () => {
         fileDeletingSoon: 0,
         deleted: 1,
       });
+    } finally {
+      db.close();
+    }
+  });
+});
+
+
+describe("NodeSqliteRepository admin list filters", () => {
+  it("filters by file kind, created time, expiry window, and size", async () => {
+    const db = new DatabaseSync(":memory:");
+    const repository = new NodeSqliteRepository(db);
+    const initialMigration = fileURLToPath(
+      new URL("../../../../../migrations/0001_initial.sql", import.meta.url),
+    );
+    const indexMigration = fileURLToPath(
+      new URL(
+        "../../../../../migrations/0006_admin_list_indexes.sql",
+        import.meta.url,
+      ),
+    );
+
+    const makeItem = (input: {
+      id: string;
+      contentType: string;
+      sizeBytes: number;
+      createdAt: string;
+      urlExpiresAt: string;
+    }) => ({
+      id: input.id,
+      title: input.id,
+      originalFilename:
+        input.contentType === PDF_CONTENT_TYPE ? input.id + ".pdf" : input.id + ".html",
+      slug: input.id + "-a1b2c3d4",
+      objectKey:
+        "objects/" +
+        input.id +
+        (input.contentType === PDF_CONTENT_TYPE ? "/index.pdf" : "/index.html"),
+      contentType: input.contentType,
+      sizeBytes: input.sizeBytes,
+      sha256: "hash-" + input.id,
+      visibility: "public" as const,
+      status: "active" as const,
+      urlExpiresAt: input.urlExpiresAt,
+      fileExpiresAt: "2026-12-01T00:00:00.000Z",
+      accessCount: 0,
+      lastAccessedAt: null,
+      createdAt: input.createdAt,
+      updatedAt: input.createdAt,
+      deletedAt: null,
+    });
+
+    try {
+      await repository.migrate(initialMigration);
+      await repository.migrate(indexMigration);
+      await repository.migrate(indexMigration);
+
+      await repository.createItem({
+        item: makeItem({
+          id: "target",
+          contentType: PDF_CONTENT_TYPE,
+          sizeBytes: 5 * 1024 * 1024,
+          createdAt: "2026-10-01T00:00:00.000Z",
+          urlExpiresAt: "2026-10-10T00:00:00.000Z",
+        }),
+      });
+      await repository.createItem({
+        item: makeItem({
+          id: "old-pdf",
+          contentType: PDF_CONTENT_TYPE,
+          sizeBytes: 5 * 1024 * 1024,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          urlExpiresAt: "2026-10-10T00:00:00.000Z",
+        }),
+      });
+      await repository.createItem({
+        item: makeItem({
+          id: "html",
+          contentType: HTML_CONTENT_TYPE,
+          sizeBytes: 5 * 1024 * 1024,
+          createdAt: "2026-10-01T00:00:00.000Z",
+          urlExpiresAt: "2026-10-10T00:00:00.000Z",
+        }),
+      });
+      await repository.createItem({
+        item: makeItem({
+          id: "large-pdf",
+          contentType: PDF_CONTENT_TYPE,
+          sizeBytes: 12 * 1024 * 1024,
+          createdAt: "2026-10-01T00:00:00.000Z",
+          urlExpiresAt: "2026-10-10T00:00:00.000Z",
+        }),
+      });
+
+      const result = await repository.listItems({
+        page: 1,
+        pageSize: 20,
+        fileKind: "pdf",
+        createdAfter: "2026-09-01T00:00:00.000Z",
+        urlExpiresAfter: "2026-10-05T00:00:00.000Z",
+        urlExpiresBefore: "2026-10-15T00:00:00.000Z",
+        minSizeBytes: 1024 * 1024,
+        maxSizeBytes: 10 * 1024 * 1024,
+      });
+
+      expect(result.items.map((item) => item.id)).toEqual(["target"]);
+      expect(result.hasNextPage).toBe(false);
     } finally {
       db.close();
     }

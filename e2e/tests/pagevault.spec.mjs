@@ -256,3 +256,61 @@ test("API Idempotency-Key replays the same upload and rejects conflicting reuse"
     code: "idempotency_conflict",
   });
 });
+
+
+test("admin library filters server-side and restores selected files in batch", async ({
+  page,
+  context,
+}) => {
+  await login(page);
+
+  await uploadViaUi(page, {
+    name: "admin-filter-html.html",
+    mimeType: "text/html",
+    buffer: Buffer.from("<h1>html</h1>"),
+  });
+  const pdf = await uploadViaUi(page, {
+    name: "admin-filter-pdf.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.7\nadmin-filter"),
+  });
+
+  const disable = await adminJson(
+    page,
+    `/api/admin/items/${pdf.id}`,
+    "PATCH",
+    { status: "disabled" },
+  );
+  expect(disable.status).toBe(200);
+
+  await page.goto(`${ADMIN_URL}/#/items`);
+  await expect(page.getByRole("heading", { name: "Files" })).toBeVisible();
+
+  await page.getByLabel("All types").selectOption("pdf");
+  await page.getByLabel("Created").selectOption("7");
+  await page.getByLabel("Expiry").selectOption("url-30");
+  await page.getByLabel("File size").selectOption("small");
+  await page.getByLabel("All status").selectOption("disabled");
+  await page
+    .getByPlaceholder("Search title, filename, or URL")
+    .fill("admin-filter-pdf");
+
+  await expect(
+    page.getByRole("button", { name: "admin-filter-pdf", exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "admin-filter-html", exact: true }),
+  ).toHaveCount(0);
+
+  await page
+    .locator('input[aria-label^="Select admin-filter-pdf"]:visible')
+    .first()
+    .check();
+  await page.getByRole("button", { name: "Restore" }).click();
+
+  await page.getByLabel("All status").selectOption("active");
+  await expect(
+    page.getByRole("button", { name: "admin-filter-pdf", exact: true }).first(),
+  ).toBeVisible();
+  expect((await context.request.get(pdf.publicUrl)).status()).toBe(200);
+});

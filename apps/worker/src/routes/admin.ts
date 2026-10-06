@@ -1,6 +1,7 @@
 import type {
   PageVaultService,
   VaultItem,
+  FileKind,
   ListItemsInput,
   UpdateItemInput,
   Visibility,
@@ -83,10 +84,38 @@ function numberFromQuery(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function nonNegativeNumberFromQuery(
+  value: string | undefined,
+): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function isoDateFromQuery(value: string | undefined): string | undefined {
+  if (!value || Number.isNaN(Date.parse(value))) {
+    return undefined;
+  }
+  return new Date(value).toISOString();
+}
+
+function fileKindFromQuery(value: string | undefined): FileKind | "" {
+  return value === "html" ||
+    value === "markdown" ||
+    value === "jpeg" ||
+    value === "pdf" ||
+    value === "png" ||
+    value === "svg" ||
+    value === "webp"
+    ? value
+    : "";
+}
+
 function itemDto(api: PageVaultService, item: VaultItem) {
   return {
     ...item,
     publicUrl: api.publicUrl(item.slug),
+    rawUrl: api.rawUrl(item.slug),
     derivedStatus: getDerivedStatus(item),
   };
 }
@@ -115,12 +144,34 @@ function listInput(c: Context<HonoRuntime>): ListItemsInput {
     undefined
   >;
   const visibility = (c.req.query("visibility") ?? "") as Visibility | "";
+  const minSizeBytes = nonNegativeNumberFromQuery(
+    c.req.query("minSizeBytes"),
+  );
+  const maxSizeBytes = nonNegativeNumberFromQuery(
+    c.req.query("maxSizeBytes"),
+  );
+  const createdAfter = isoDateFromQuery(c.req.query("createdAfter"));
+  const createdBefore = isoDateFromQuery(c.req.query("createdBefore"));
+  const urlExpiresAfter = isoDateFromQuery(c.req.query("urlExpiresAfter"));
+  const urlExpiresBefore = isoDateFromQuery(c.req.query("urlExpiresBefore"));
+  const fileExpiresAfter = isoDateFromQuery(c.req.query("fileExpiresAfter"));
+  const fileExpiresBefore = isoDateFromQuery(c.req.query("fileExpiresBefore"));
+
   return {
     page: numberFromQuery(c.req.query("page"), 1),
-    pageSize: numberFromQuery(c.req.query("pageSize"), 20),
-    q: c.req.query("q") ?? "",
+    pageSize: Math.min(numberFromQuery(c.req.query("pageSize"), 20), 100),
+    q: (c.req.query("q") ?? "").slice(0, 200),
     status,
     visibility,
+    fileKind: fileKindFromQuery(c.req.query("fileKind")),
+    ...(createdAfter ? { createdAfter } : {}),
+    ...(createdBefore ? { createdBefore } : {}),
+    ...(urlExpiresAfter ? { urlExpiresAfter } : {}),
+    ...(urlExpiresBefore ? { urlExpiresBefore } : {}),
+    ...(fileExpiresAfter ? { fileExpiresAfter } : {}),
+    ...(fileExpiresBefore ? { fileExpiresBefore } : {}),
+    ...(minSizeBytes === undefined ? {} : { minSizeBytes }),
+    ...(maxSizeBytes === undefined ? {} : { maxSizeBytes }),
     includeDeleted: status === "deleted",
     includeTotal: c.req.query("includeTotal") === "true",
   };

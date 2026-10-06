@@ -4,6 +4,7 @@ import {
   Link2,
   LockKeyhole,
   PauseCircle,
+  RotateCcw,
   Trash2,
 } from "lucide-react";
 import type { BatchAction } from "../api/client.js";
@@ -13,7 +14,14 @@ import { GlassToolbar } from "./Glass.js";
 const actions: Array<{
   action: BatchAction;
   icon: typeof Link2;
-  labelKey: "url" | "file" | "public" | "private" | "disable" | "delete";
+  labelKey:
+    | "url"
+    | "file"
+    | "public"
+    | "private"
+    | "disable"
+    | "restore"
+    | "delete";
   days?: number;
 }> = [
   { action: "extend_url", labelKey: "url", icon: Link2, days: 15 },
@@ -22,6 +30,7 @@ const actions: Array<{
   { action: "set_public", labelKey: "public", icon: Globe },
   { action: "set_private", labelKey: "private", icon: LockKeyhole },
   { action: "disable", labelKey: "disable", icon: PauseCircle },
+  { action: "restore", labelKey: "restore", icon: RotateCcw },
   { action: "delete", labelKey: "delete", icon: Trash2 },
 ];
 
@@ -55,6 +64,9 @@ export function BatchToolbar({
     }
     if (item.labelKey === "disable") {
       return t("table.disable");
+    }
+    if (item.labelKey === "restore") {
+      return t("batch.restore");
     }
     return t("common.delete");
   }

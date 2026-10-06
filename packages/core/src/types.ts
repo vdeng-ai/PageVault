@@ -1,3 +1,4 @@
+import type { FileKind } from "./file-types.js";
 import type { StoredObject } from "./storage.js";
 
 export type Visibility = "public" | "private";
@@ -87,6 +88,15 @@ export interface ListItemsInput {
   q?: string;
   status?: ItemStatus | DerivedStatus | "";
   visibility?: Visibility | "";
+  fileKind?: FileKind | "";
+  createdAfter?: string;
+  createdBefore?: string;
+  urlExpiresAfter?: string;
+  urlExpiresBefore?: string;
+  fileExpiresAfter?: string;
+  fileExpiresBefore?: string;
+  minSizeBytes?: number;
+  maxSizeBytes?: number;
   includeDeleted?: boolean;
   includeTotal?: boolean;
 }

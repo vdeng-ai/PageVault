@@ -39,23 +39,9 @@ PageVault intentionally does **not** plan to support DOCX/PPTX conversion or oth
 - **Phase F — Reliability Baseline:** Playwright coverage for login, browser upload, public/raw delivery, lifecycle states, core formats, mobile layout, PDF ranges, and API idempotency.
 - **Phase G — Incremental GC and Storage Reconciliation:** bounded DB/storage cursor scans, safe deleted-object cleanup, dry-run diagnostics, and one shared daily maintenance path.
 - **Phase H — Free-tier and Deployment Hardening:** health/readiness probes, fail-closed migrations, non-root Docker, graceful SQLite shutdown, backup/restore verification, deployment parity checks, and enforceable free-tier guardrails.
+- **Phase I — Lightweight Admin Experience:** server-side type/time/expiry/size filters, targeted list indexes, clearer title/type metadata, share/raw link actions, and safer batch restore without introducing a search service.
 
 ## Remaining roadmap
-
-### Phase I — Lightweight Admin Experience
-
-Improve personal content management without introducing a search service:
-
-- filename/title search;
-- file-type filter;
-- visibility/status filters;
-- creation and expiry filters;
-- file-size display/filtering;
-- efficient pagination and indexes;
-- safer batch actions;
-- copy share/raw links.
-
-Do not introduce FTS until real personal-scale data demonstrates that indexed SQL is insufficient.
 
 ### Phase J — Share Viewer 2.0
 

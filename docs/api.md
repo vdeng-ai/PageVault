@@ -42,9 +42,13 @@ Returns counts for live files, public files, URL-expired files, files whose rete
 
 ## Items
 
-`GET /api/admin/items?page=1&pageSize=20&q=&status=&visibility=&includeTotal=`
+`GET /api/admin/items?page=1&pageSize=20&q=&status=&visibility=&fileKind=&createdAfter=&createdBefore=&urlExpiresAfter=&urlExpiresBefore=&fileExpiresAfter=&fileExpiresBefore=&minSizeBytes=&maxSizeBytes=&includeTotal=`
 
-By default, the list response uses lightweight pagination, returns `total: null`, and provides `hasNextPage`. Pass `includeTotal=true` when a precise total is needed.
+By default, the list response uses lightweight pagination, returns `total: null`, and provides `hasNextPage`. `pageSize` is capped at 100. Pass `includeTotal=true` only when a precise total is needed.
+
+Lightweight filters are evaluated in D1/SQLite rather than in the browser. `fileKind` accepts `html`, `markdown`, `jpeg`, `pdf`, `png`, `svg`, or `webp`; date filters accept ISO timestamps; size filters use bytes. The admin UI exposes compact presets for recent creation, upcoming URL/file expiry, and common file-size ranges. Search continues to use title, original filename, and slug matching; PageVault intentionally does not require a separate search service or FTS index for personal-scale use.
+
+Item DTOs include both `publicUrl` (the stable `/p/:slug` share/viewer URL) and `rawUrl` (the `/raw/:slug` original-content URL).
 
 `POST /api/admin/items` accepts `multipart/form-data` fields:
 

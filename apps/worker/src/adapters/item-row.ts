@@ -1,4 +1,9 @@
-import type { VaultItem, ItemStatus, Visibility } from "@pagevault/core";
+import {
+  FILE_CAPABILITIES,
+  type VaultItem,
+  type ItemStatus,
+  type Visibility,
+} from "@pagevault/core";
 
 export interface HtmlItemRow {
   id: string;
@@ -81,6 +86,15 @@ export function buildListWhere(input: {
   q?: string;
   status?: string;
   visibility?: string;
+  fileKind?: string;
+  createdAfter?: string;
+  createdBefore?: string;
+  urlExpiresAfter?: string;
+  urlExpiresBefore?: string;
+  fileExpiresAfter?: string;
+  fileExpiresBefore?: string;
+  minSizeBytes?: number;
+  maxSizeBytes?: number;
   includeDeleted?: boolean;
 }): ListSqlParts {
   const conditions: string[] = [];
@@ -96,6 +110,55 @@ export function buildListWhere(input: {
   if (input.visibility === "public" || input.visibility === "private") {
     conditions.push("visibility = ?");
     values.push(input.visibility);
+  }
+
+  const capability = FILE_CAPABILITIES.find(
+    (candidate) => candidate.kind === input.fileKind,
+  );
+  if (capability) {
+    conditions.push("content_type = ?");
+    values.push(capability.contentType);
+  }
+
+  if (input.createdAfter) {
+    conditions.push("created_at >= ?");
+    values.push(input.createdAfter);
+  }
+  if (input.createdBefore) {
+    conditions.push("created_at <= ?");
+    values.push(input.createdBefore);
+  }
+  if (input.urlExpiresAfter) {
+    conditions.push("url_expires_at >= ?");
+    values.push(input.urlExpiresAfter);
+  }
+  if (input.urlExpiresBefore) {
+    conditions.push("url_expires_at <= ?");
+    values.push(input.urlExpiresBefore);
+  }
+  if (input.fileExpiresAfter) {
+    conditions.push("file_expires_at >= ?");
+    values.push(input.fileExpiresAfter);
+  }
+  if (input.fileExpiresBefore) {
+    conditions.push("file_expires_at <= ?");
+    values.push(input.fileExpiresBefore);
+  }
+  if (
+    input.minSizeBytes !== undefined &&
+    Number.isFinite(input.minSizeBytes) &&
+    input.minSizeBytes >= 0
+  ) {
+    conditions.push("size_bytes >= ?");
+    values.push(input.minSizeBytes);
+  }
+  if (
+    input.maxSizeBytes !== undefined &&
+    Number.isFinite(input.maxSizeBytes) &&
+    input.maxSizeBytes >= 0
+  ) {
+    conditions.push("size_bytes <= ?");
+    values.push(input.maxSizeBytes);
   }
 
   switch (input.status) {

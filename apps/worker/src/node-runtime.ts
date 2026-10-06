@@ -94,6 +94,9 @@ export function createNodeRuntime(): NodeRuntime {
       await repository.migrate(
         resolve(process.cwd(), "migrations/0005_maintenance_state.sql"),
       );
+      await repository.migrate(
+        resolve(process.cwd(), "migrations/0006_admin_list_indexes.sql"),
+      );
     },
     shutdown: async () => {
       repository.checkpoint();

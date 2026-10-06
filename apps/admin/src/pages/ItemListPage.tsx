@@ -14,6 +14,8 @@ import {
   listItems,
   updateItem,
   type BatchAction,
+  type FileKind,
+  type ListItemsParams,
   type VaultItem,
 } from "../api/client.js";
 import { BatchToolbar } from "../components/BatchToolbar.js";
@@ -25,6 +27,69 @@ import { useSettings } from "../settings.js";
 import { copyText } from "../clipboard.js";
 
 const SEARCH_DEBOUNCE_MS = 400;
+const MIB = 1024 * 1024;
+
+type CreatedWindow = "" | "7" | "30" | "90";
+type ExpiryWindow = "" | "url-7" | "url-30" | "file-7" | "file-30";
+type SizeRange = "" | "small" | "medium" | "large";
+type AdvancedListFilters = Pick<
+  ListItemsParams,
+  | "fileKind"
+  | "createdAfter"
+  | "urlExpiresAfter"
+  | "urlExpiresBefore"
+  | "fileExpiresAfter"
+  | "fileExpiresBefore"
+  | "minSizeBytes"
+  | "maxSizeBytes"
+>;
+
+function listFilterParams(input: {
+  fileKind: FileKind | "";
+  createdWindow: CreatedWindow;
+  expiryWindow: ExpiryWindow;
+  sizeRange: SizeRange;
+  now?: Date;
+}): AdvancedListFilters {
+  const now = input.now ?? new Date();
+  const params: AdvancedListFilters = {
+    fileKind: input.fileKind,
+  };
+
+  if (input.createdWindow) {
+    params.createdAfter = new Date(
+      now.getTime() - Number(input.createdWindow) * 24 * 60 * 60 * 1000,
+    ).toISOString();
+  }
+
+  if (input.expiryWindow) {
+    const [target, daysText] = input.expiryWindow.split("-") as [
+      "url" | "file",
+      string,
+    ];
+    const before = new Date(
+      now.getTime() + Number(daysText) * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    if (target === "url") {
+      params.urlExpiresAfter = now.toISOString();
+      params.urlExpiresBefore = before;
+    } else {
+      params.fileExpiresAfter = now.toISOString();
+      params.fileExpiresBefore = before;
+    }
+  }
+
+  if (input.sizeRange === "small") {
+    params.maxSizeBytes = MIB - 1;
+  } else if (input.sizeRange === "medium") {
+    params.minSizeBytes = MIB;
+    params.maxSizeBytes = 10 * MIB;
+  } else if (input.sizeRange === "large") {
+    params.minSizeBytes = 10 * MIB + 1;
+  }
+
+  return params;
+}
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
@@ -54,6 +119,10 @@ export function ItemListPage({
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [visibility, setVisibility] = useState("");
+  const [fileKind, setFileKind] = useState<FileKind | "">("");
+  const [createdWindow, setCreatedWindow] = useState<CreatedWindow>("");
+  const [expiryWindow, setExpiryWindow] = useState<ExpiryWindow>("");
+  const [sizeRange, setSizeRange] = useState<SizeRange>("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [batchBusy, setBatchBusy] = useState(false);
@@ -76,7 +145,22 @@ export function ItemListPage({
       setLoading(true);
       setError(null);
       const init = signal ? { signal } : {};
-      void listItems({ page, pageSize, q, status, visibility }, init)
+      void listItems(
+        {
+          page,
+          pageSize,
+          q,
+          status,
+          visibility,
+          ...listFilterParams({
+            fileKind,
+            createdWindow,
+            expiryWindow,
+            sizeRange,
+          }),
+        },
+        init,
+      )
         .then((result) => {
           if (requestId !== requestSeq.current) {
             return;
@@ -102,7 +186,16 @@ export function ItemListPage({
           }
         });
     },
-    [page, q, status, visibility],
+    [
+      page,
+      q,
+      status,
+      visibility,
+      fileKind,
+      createdWindow,
+      expiryWindow,
+      sizeRange,
+    ],
   );
 
   useEffect(() => {
@@ -122,7 +215,14 @@ export function ItemListPage({
     total === null
       ? t("files.pageSummary", { page })
       : t("files.recordSummary", { total });
-  const hasFilters = q.length > 0 || status.length > 0 || visibility.length > 0;
+  const hasFilters =
+    q.length > 0 ||
+    status.length > 0 ||
+    visibility.length > 0 ||
+    fileKind.length > 0 ||
+    createdWindow.length > 0 ||
+    expiryWindow.length > 0 ||
+    sizeRange.length > 0;
 
   function selectedArray(): string[] {
     return Array.from(selectedIds);
@@ -330,6 +430,67 @@ export function ItemListPage({
           <option value="public">{t("common.public")}</option>
           <option value="private">{t("common.private")}</option>
         </select>
+        <select
+          className="control min-w-36 px-3"
+          value={fileKind}
+          aria-label={t("files.allTypes")}
+          onChange={(event) => {
+            setPage(1);
+            setFileKind(event.target.value as FileKind | "");
+          }}
+        >
+          <option value="">{t("files.allTypes")}</option>
+          <option value="html">HTML</option>
+          <option value="markdown">Markdown</option>
+          <option value="pdf">PDF</option>
+          <option value="svg">SVG</option>
+          <option value="png">PNG</option>
+          <option value="jpeg">JPEG</option>
+          <option value="webp">WebP</option>
+        </select>
+        <select
+          className="control min-w-36 px-3"
+          value={createdWindow}
+          aria-label={t("files.created")}
+          onChange={(event) => {
+            setPage(1);
+            setCreatedWindow(event.target.value as CreatedWindow);
+          }}
+        >
+          <option value="">{t("files.createdAny")}</option>
+          <option value="7">{t("files.createdDays", { days: 7 })}</option>
+          <option value="30">{t("files.createdDays", { days: 30 })}</option>
+          <option value="90">{t("files.createdDays", { days: 90 })}</option>
+        </select>
+        <select
+          className="control min-w-44 px-3"
+          value={expiryWindow}
+          aria-label={t("files.expiry")}
+          onChange={(event) => {
+            setPage(1);
+            setExpiryWindow(event.target.value as ExpiryWindow);
+          }}
+        >
+          <option value="">{t("files.expiryAny")}</option>
+          <option value="url-7">{t("files.urlExpiresDays", { days: 7 })}</option>
+          <option value="url-30">{t("files.urlExpiresDays", { days: 30 })}</option>
+          <option value="file-7">{t("files.fileExpiresDays", { days: 7 })}</option>
+          <option value="file-30">{t("files.fileExpiresDays", { days: 30 })}</option>
+        </select>
+        <select
+          className="control min-w-36 px-3"
+          value={sizeRange}
+          aria-label={t("files.size")}
+          onChange={(event) => {
+            setPage(1);
+            setSizeRange(event.target.value as SizeRange);
+          }}
+        >
+          <option value="">{t("files.sizeAny")}</option>
+          <option value="small">{t("files.sizeSmall")}</option>
+          <option value="medium">{t("files.sizeMedium")}</option>
+          <option value="large">{t("files.sizeLarge")}</option>
+        </select>
         {
           <button
             className="btn btn-ghost"
@@ -338,6 +499,10 @@ export function ItemListPage({
               setQ("");
               setStatus("");
               setVisibility("");
+              setFileKind("");
+              setCreatedWindow("");
+              setExpiryWindow("");
+              setSizeRange("");
               setPage(1);
             }}
           >

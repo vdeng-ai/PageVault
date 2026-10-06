@@ -1,3 +1,12 @@
+export type FileKind =
+  | "html"
+  | "markdown"
+  | "jpeg"
+  | "pdf"
+  | "png"
+  | "svg"
+  | "webp";
+
 export type Visibility = "public" | "private";
 export type ItemStatus = "active" | "disabled" | "deleted";
 export type DerivedStatus =
@@ -21,6 +30,7 @@ export interface VaultItem {
   status: ItemStatus;
   derivedStatus: DerivedStatus;
   publicUrl: string;
+  rawUrl: string;
   urlExpiresAt: string;
   fileExpiresAt: string;
   accessCount: number;
@@ -163,15 +173,26 @@ export function revokeApiKey(id: string): Promise<{ ok: true }> {
   });
 }
 
+export interface ListItemsParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  status?: string;
+  visibility?: string;
+  fileKind?: FileKind | "";
+  createdAfter?: string;
+  createdBefore?: string;
+  urlExpiresAfter?: string;
+  urlExpiresBefore?: string;
+  fileExpiresAfter?: string;
+  fileExpiresBefore?: string;
+  minSizeBytes?: number;
+  maxSizeBytes?: number;
+  includeTotal?: boolean;
+}
+
 export function listItems(
-  params: {
-    page?: number;
-    pageSize?: number;
-    q?: string;
-    status?: string;
-    visibility?: string;
-    includeTotal?: boolean;
-  },
+  params: ListItemsParams,
   init: Pick<RequestInit, "signal"> = {},
 ): Promise<ListItemsResult> {
   const query = new URLSearchParams();

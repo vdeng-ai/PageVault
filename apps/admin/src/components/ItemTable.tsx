@@ -18,7 +18,12 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { VaultItem } from "../api/client.js";
-import { itemPreviewUrl, encodeShareUrl, formatFileSize } from "../format.js";
+import {
+  itemPreviewUrl,
+  encodeShareUrl,
+  fileTypeLabel,
+  formatFileSize,
+} from "../format.js";
 import { useSettings } from "../settings.js";
 import { useExitPresence } from "../hooks/useExitPresence.js";
 import { FileIcon } from "./FileIcon.js";
@@ -110,7 +115,7 @@ function ItemActionMenu({
     }
     const rect = buttonRef.current?.getBoundingClientRect();
     if (rect) {
-      const estimatedHeight = 292;
+      const estimatedHeight = 372;
       const opensUp =
         window.innerHeight - rect.bottom < estimatedHeight &&
         rect.top > estimatedHeight;
@@ -218,6 +223,15 @@ function ItemActionMenu({
               type="button"
               role="menuitem"
               tabIndex={-1}
+              onClick={() => run(() => onCopy(item.rawUrl))}
+            >
+              <Copy className="h-4 w-4" aria-hidden />
+              {t("table.copyRawUrl")}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              tabIndex={-1}
               onClick={() => run(() => onCopy(encodeShareUrl(item.publicUrl)))}
             >
               <Copy className="h-4 w-4" aria-hidden />
@@ -233,6 +247,17 @@ function ItemActionMenu({
             >
               <ExternalLink className="h-4 w-4" aria-hidden />
               {t("table.openPreview")}
+            </a>
+            <a
+              href={item.rawUrl}
+              target="_blank"
+              rel="noreferrer"
+              role="menuitem"
+              tabIndex={-1}
+              onClick={() => setOpen(false)}
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden />
+              {t("table.openRaw")}
             </a>
             <div className="action-menu-separator" />
             <button
@@ -378,13 +403,14 @@ export function ItemTable({
                     <button
                       className="link-button block max-w-full truncate text-left font-bold"
                       type="button"
-                      title={item.originalFilename}
+                      title={item.title}
                       onClick={() => onEdit(item.id)}
                     >
-                      {item.originalFilename}
+                      {item.title}
                     </button>
                   </div>
                   <div className="row-created mt-1 truncate text-xs text-muted">
+                    {fileTypeLabel(item.contentType)} · {item.originalFilename} ·{" "}
                     {formatDate(item.createdAt, locale)}
                   </div>
                 </td>
@@ -468,9 +494,10 @@ export function ItemTable({
                   type="button"
                   onClick={() => onEdit(item.id)}
                 >
-                  {item.originalFilename}
+                  {item.title}
                 </button>
                 <div className="mt-1 text-xs font-medium text-muted">
+                  {fileTypeLabel(item.contentType)} · {item.originalFilename} ·{" "}
                   {formatDate(item.createdAt, locale)}
                 </div>
               </div>

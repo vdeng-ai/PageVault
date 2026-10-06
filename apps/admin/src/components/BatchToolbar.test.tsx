@@ -35,9 +35,11 @@ describe("BatchToolbar", () => {
     await user.click(screen.getByRole("button", { name: "URL +15d" }));
     await user.click(screen.getByRole("button", { name: "URL +30d" }));
     await user.click(screen.getByRole("button", { name: "File +30d" }));
+    await user.click(screen.getByRole("button", { name: "Restore" }));
 
     expect(onAction).toHaveBeenNthCalledWith(1, "extend_url", 15);
     expect(onAction).toHaveBeenNthCalledWith(2, "extend_url", 30);
     expect(onAction).toHaveBeenNthCalledWith(3, "extend_file", 30);
+    expect(onAction).toHaveBeenNthCalledWith(4, "restore", undefined);
   });
 });

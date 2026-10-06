@@ -131,6 +131,7 @@ class MemoryRepository implements MetadataRepository {
   readonly maintenance = new Map<string, string | null>();
   idempotencyClaims = 0;
   accessWrites = 0;
+  lastListInput: ListItemsInput | null = null;
 
   async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
     this.apiKeys.set(input.apiKey.id, input);
@@ -264,6 +265,7 @@ class MemoryRepository implements MetadataRepository {
     );
   }
   async listItems(input: ListItemsInput): Promise<ListItemsResult> {
+    this.lastListInput = input;
     return {
       items: [],
       page: input.page,
@@ -806,6 +808,50 @@ describe("admin auth routes", () => {
     await expect(exact.json()).resolves.toMatchObject({
       total: 0,
       hasNextPage: false,
+    });
+  });
+
+  it("parses lightweight admin filters and returns share/raw URLs", async () => {
+    const { env, handle, repo } = await createFixture();
+    const { cookie } = await adminSession(env, handle);
+    const stored = item({
+      id: "filter-item",
+      slug: "filter-item-a1b2c3d4",
+      objectKey: "objects/filter-item/index.pdf",
+      originalFilename: "filter-item.pdf",
+      contentType: PDF_CONTENT_TYPE,
+    });
+    repo.items.set(stored.id, stored);
+
+    const listResponse = await handle(
+      new Request(
+        "https://admin.test/api/admin/items?pageSize=500&q=report&fileKind=pdf&createdAfter=2026-09-01T00%3A00%3A00.000Z&urlExpiresAfter=2026-10-01T00%3A00%3A00.000Z&urlExpiresBefore=2026-10-08T00%3A00%3A00.000Z&minSizeBytes=1048576&maxSizeBytes=10485760",
+        { headers: { Cookie: cookie } },
+      ),
+      env,
+    );
+    expect(listResponse.status).toBe(200);
+    expect(repo.lastListInput).toMatchObject({
+      pageSize: 100,
+      q: "report",
+      fileKind: "pdf",
+      createdAfter: "2026-09-01T00:00:00.000Z",
+      urlExpiresAfter: "2026-10-01T00:00:00.000Z",
+      urlExpiresBefore: "2026-10-08T00:00:00.000Z",
+      minSizeBytes: 1_048_576,
+      maxSizeBytes: 10_485_760,
+    });
+
+    const detail = await handle(
+      new Request(
+        "https://admin.test/api/admin/items/filter-item",
+        { headers: { Cookie: cookie } },
+      ),
+      env,
+    );
+    await expect(detail.json()).resolves.toMatchObject({
+      publicUrl: "https://public.test/p/filter-item-a1b2c3d4",
+      rawUrl: "https://public.test/raw/filter-item-a1b2c3d4",
     });
   });
 

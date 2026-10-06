@@ -362,6 +362,25 @@ export function ItemDetailPage({
             · {fileKind(item.originalFilename)} ·{" "}
             {formatFileSize(item.sizeBytes, locale)}
           </p>
+          <label className="field-label mt-5">
+            {t("detail.rawLink")}
+            <div className="copy-field">
+              <input
+                aria-label={t("detail.rawLink")}
+                value={item.rawUrl}
+                readOnly
+                onFocus={(event) => event.target.select()}
+              />
+              <button
+                className="icon-button"
+                type="button"
+                aria-label={t("table.copyRawUrl")}
+                onClick={() => copy(item.rawUrl)}
+              >
+                <Copy size={20} aria-hidden />
+              </button>
+            </div>
+          </label>
           <details className="metadata-section" open>
             <summary>
               <div className="section-heading">
