@@ -184,7 +184,7 @@ export function listItems(
 }
 
 export function getItem(id: string): Promise<VaultItem> {
-  return request<HtmlItem>(`/api/admin/items/${id}`);
+  return request<VaultItem>(`/api/admin/items/${id}`);
 }
 
 export function uploadFile(input: {
@@ -216,7 +216,7 @@ export function updateItem(
     >
   >,
 ): Promise<VaultItem> {
-  return request<HtmlItem>(`/api/admin/items/${id}`, {
+  return request<VaultItem>(`/api/admin/items/${id}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
   });
