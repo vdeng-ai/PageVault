@@ -113,6 +113,13 @@ function contentType(pathname: string): string {
       return "text/javascript; charset=utf-8";
     case ".svg":
       return "image/svg+xml";
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".webp":
+      return "image/webp";
     case ".json":
       return "application/json; charset=utf-8";
     case ".ico":
