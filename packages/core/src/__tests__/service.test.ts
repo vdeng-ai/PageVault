@@ -15,7 +15,9 @@ import type { StorageProvider, StoredObject } from "../storage.js";
 import type {
   AccessCountInput,
   ApiKey,
+  ApiUploadIdempotencyClaim,
   AuditLogInput,
+  ClaimApiUploadIdempotencyInput,
   CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
@@ -72,7 +74,16 @@ class MemoryRepository implements MetadataRepository {
   readonly items = new Map<string, HtmlItem>();
   readonly apiKeys = new Map<string, { apiKey: ApiKey; tokenHash: string }>();
   readonly audits: AuditLogInput[] = [];
-  apiUploadLease: { owner: string; expiresAt: string } | null = null;
+  readonly idempotency = new Map<
+    string,
+    {
+      requestHash: string;
+      itemId: string;
+      status: "processing" | "completed";
+      owner: string;
+      expiresAt: string;
+    }
+  >();
   apiKeyUsageWrites = 0;
 
   async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
@@ -113,21 +124,63 @@ class MemoryRepository implements MetadataRepository {
     return true;
   }
 
-  async tryAcquireApiUploadLease(
-    owner: string,
-    expiresAt: string,
-    now: string,
-  ): Promise<boolean> {
-    if (this.apiUploadLease && this.apiUploadLease.expiresAt > now) {
-      return false;
+  async claimApiUploadIdempotency(
+    input: ClaimApiUploadIdempotencyInput,
+  ): Promise<ApiUploadIdempotencyClaim> {
+    const key = `${input.apiKeyId}\u0000${input.idempotencyKey}`;
+    const existing = this.idempotency.get(key);
+    if (existing && existing.expiresAt > input.now) {
+      if (existing.requestHash !== input.requestHash) {
+        return { kind: "conflict", itemId: existing.itemId };
+      }
+      return existing.status === "completed"
+        ? { kind: "completed", itemId: existing.itemId }
+        : { kind: "in_progress", itemId: existing.itemId };
     }
-    this.apiUploadLease = { owner, expiresAt };
-    return true;
+
+    const itemId =
+      existing?.status === "processing" &&
+      existing.requestHash === input.requestHash
+        ? existing.itemId
+        : input.candidateItemId;
+    this.idempotency.set(key, {
+      requestHash: input.requestHash,
+      itemId,
+      status: "processing",
+      owner: input.owner,
+      expiresAt: input.expiresAt,
+    });
+    return { kind: "acquired", itemId };
   }
 
-  async releaseApiUploadLease(owner: string): Promise<void> {
-    if (this.apiUploadLease?.owner === owner) {
-      this.apiUploadLease = null;
+  async completeApiUploadIdempotency(
+    apiKeyId: string,
+    idempotencyKey: string,
+    owner: string,
+    _updatedAt: string,
+    expiresAt: string,
+  ): Promise<void> {
+    const key = `${apiKeyId}\u0000${idempotencyKey}`;
+    const existing = this.idempotency.get(key);
+    if (!existing || existing.status !== "processing" || existing.owner !== owner) {
+      throw new Error("lost idempotency claim");
+    }
+    this.idempotency.set(key, {
+      ...existing,
+      status: "completed",
+      expiresAt,
+    });
+  }
+
+  async abandonApiUploadIdempotency(
+    apiKeyId: string,
+    idempotencyKey: string,
+    owner: string,
+  ): Promise<void> {
+    const key = `${apiKeyId}\u0000${idempotencyKey}`;
+    const existing = this.idempotency.get(key);
+    if (existing?.status === "processing" && existing.owner === owner) {
+      this.idempotency.delete(key);
     }
   }
 
@@ -339,31 +392,64 @@ describe("API keys", () => {
     await expect(service.authenticateApiKey(created.token)).resolves.toBeNull();
   });
 
-  it("uses an owner-safe global upload lease that can be reclaimed after expiry", async () => {
-    const { service } = createService();
-    const startedAt = new Date("2026-07-05T00:00:00.000Z");
-    const first = await service.tryAcquireApiUploadLease(startedAt);
+  it("replays a completed idempotent upload and rejects key reuse with different content", async () => {
+    const { service, repo, storage } = createService();
+    const now = new Date("2026-07-05T00:00:00.000Z");
+    const input = {
+      filename: "idempotent.html",
+      body: new TextEncoder().encode("<h1>same</h1>").buffer,
+      now,
+    };
 
-    expect(first?.expiresAt).toBe("2026-07-05T00:15:00.000Z");
-    await expect(
-      service.tryAcquireApiUploadLease(new Date("2026-07-05T00:14:59.999Z")),
-    ).resolves.toBeNull();
-
-    const replacement = await service.tryAcquireApiUploadLease(
-      new Date("2026-07-05T00:15:00.000Z"),
+    const first = await service.uploadFileIdempotent(
+      "api-key-1",
+      "request-123",
+      input,
     );
-    expect(replacement).not.toBeNull();
-    expect(replacement?.owner).not.toBe(first?.owner);
+    const replay = await service.uploadFileIdempotent(
+      "api-key-1",
+      "request-123",
+      input,
+    );
 
-    await service.releaseApiUploadLease(first?.owner ?? "");
-    await expect(
-      service.tryAcquireApiUploadLease(new Date("2026-07-05T00:15:01.000Z")),
-    ).resolves.toBeNull();
+    expect(first.replayed).toBe(false);
+    expect(replay.replayed).toBe(true);
+    expect(replay.item.id).toBe(first.item.id);
+    expect(repo.items.size).toBe(1);
+    expect(storage.objects.size).toBe(1);
 
-    await service.releaseApiUploadLease(replacement?.owner ?? "");
     await expect(
-      service.tryAcquireApiUploadLease(new Date("2026-07-05T00:15:01.000Z")),
-    ).resolves.not.toBeNull();
+      service.uploadFileIdempotent("api-key-1", "request-123", {
+        ...input,
+        body: new TextEncoder().encode("<h1>different</h1>").buffer,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: "idempotency_conflict",
+    });
+  });
+
+  it("scopes idempotency keys to each API key", async () => {
+    const { service, repo } = createService();
+    const input = {
+      filename: "same.html",
+      body: new TextEncoder().encode("<h1>same</h1>").buffer,
+      now: new Date("2026-07-05T00:00:00.000Z"),
+    };
+
+    const first = await service.uploadFileIdempotent(
+      "api-key-a",
+      "shared-key",
+      input,
+    );
+    const second = await service.uploadFileIdempotent(
+      "api-key-b",
+      "shared-key",
+      input,
+    );
+
+    expect(first.item.id).not.toBe(second.item.id);
+    expect(repo.items.size).toBe(2);
   });
 });
 
