@@ -1,13 +1,10 @@
+import { fileCapabilityForFilename } from "@pagevault/core";
 import { FileCode2, FileDown, FileImage, FileText } from "lucide-react";
 
 export function fileKind(
   filename: string,
 ): "Markdown" | "HTML" | "PDF" | "Image" {
-  const extension = filename.split(".").pop()?.toLowerCase();
-  if (extension === "md" || extension === "markdown") return "Markdown";
-  if (extension === "html" || extension === "htm") return "HTML";
-  if (extension === "pdf") return "PDF";
-  return "Image";
+  return fileCapabilityForFilename(filename)?.label ?? "Image";
 }
 
 export function FileIcon({ filename }: { filename: string }) {
