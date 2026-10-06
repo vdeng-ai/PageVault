@@ -112,7 +112,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 The startup migrations are idempotent. Keep the backup until login, upload, and public retrieval have been verified on the new container.
 
-For point-in-time backups and an isolated restore verification procedure, see [Operations and Free-tier Guardrails](./operations.md).
+For point-in-time backups and an isolated restore verification procedure, see [Operations and Free-tier Guardrails](./operations.md). For the v1 migration/rollback contract, see [Upgrading PageVault](./upgrading.md). Prefer published release tags for long-lived installations.
 
 ## Maintenance and reconciliation
 
