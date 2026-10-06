@@ -68,6 +68,19 @@ class MemoryStorage implements StorageProvider {
   async deleteObject(key: string): Promise<void> {
     this.objects.delete(key);
   }
+
+  async listObjects(input: { prefix: string; cursor?: string; limit: number }) {
+    const matching = Array.from(this.objects.entries())
+      .filter(([key]) => key.startsWith(input.prefix))
+      .filter(([key]) => !input.cursor || key > input.cursor)
+      .sort(([left], [right]) => left.localeCompare(right));
+    const page = matching.slice(0, input.limit);
+    return {
+      objects: page.map(([key, object]) => ({ key, size: object.size })),
+      nextCursor:
+        matching.length > input.limit ? (page.at(-1)?.[0] ?? null) : null,
+    };
+  }
 }
 
 class MemoryRepository implements MetadataRepository {
@@ -84,6 +97,7 @@ class MemoryRepository implements MetadataRepository {
       expiresAt: string;
     }
   >();
+  readonly maintenance = new Map<string, string | null>();
   apiKeyUsageWrites = 0;
 
   async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
@@ -213,6 +227,13 @@ class MemoryRepository implements MetadataRepository {
     );
   }
 
+  async getItemsByObjectKeys(objectKeys: string[]): Promise<HtmlItem[]> {
+    const requested = new Set(objectKeys);
+    return Array.from(this.items.values()).filter((item) =>
+      requested.has(item.objectKey),
+    );
+  }
+
   async getItemBySlug(slug: string): Promise<HtmlItem | null> {
     return (
       Array.from(this.items.values()).find((item) => item.slug === slug) ?? null
@@ -304,6 +325,34 @@ class MemoryRepository implements MetadataRepository {
     return Array.from(this.items.values())
       .filter((item) => item.status !== "deleted" && item.fileExpiresAt <= now)
       .slice(0, limit);
+  }
+
+  async listItemsForReconciliation(
+    cursor: string | null,
+    limit: number,
+  ) {
+    const matching = Array.from(this.items.values())
+      .filter((item) => item.status !== "deleted")
+      .filter((item) => !cursor || item.id > cursor)
+      .sort((left, right) => left.id.localeCompare(right.id));
+    const page = matching.slice(0, limit);
+    return {
+      items: page,
+      nextCursor:
+        matching.length > limit ? (page.at(-1)?.id ?? null) : null,
+    };
+  }
+
+  async getMaintenanceState(key: string): Promise<string | null> {
+    return this.maintenance.get(key) ?? null;
+  }
+
+  async setMaintenanceState(
+    key: string,
+    value: string | null,
+    _updatedAt: string,
+  ): Promise<void> {
+    this.maintenance.set(key, value);
   }
 
   async writeAuditLog(input: AuditLogInput): Promise<void> {
