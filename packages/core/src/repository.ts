@@ -10,6 +10,7 @@ import type {
   VaultItem,
   ListItemsInput,
   ListItemsResult,
+  ReconciliationItemPage,
   UpdateItemInput,
 } from "./types.js";
 
@@ -38,6 +39,7 @@ export interface MetadataRepository {
   createItem(input: CreateItemInput): Promise<VaultItem>;
   getItemById(id: string): Promise<VaultItem | null>;
   getItemsByIds(ids: string[]): Promise<VaultItem[]>;
+  getItemsByObjectKeys(objectKeys: string[]): Promise<VaultItem[]>;
   getItemBySlug(slug: string): Promise<VaultItem | null>;
   listItems(input: ListItemsInput): Promise<ListItemsResult>;
   getDashboardStats(now: string, soon: string): Promise<DashboardStats>;
@@ -46,5 +48,15 @@ export interface MetadataRepository {
   incrementAccess(id: string, accessedAt: string): Promise<void>;
   incrementAccessBatch(input: AccessCountInput[]): Promise<void>;
   findExpiredFiles(now: string, limit: number): Promise<VaultItem[]>;
+  listItemsForReconciliation(
+    cursor: string | null,
+    limit: number,
+  ): Promise<ReconciliationItemPage>;
+  getMaintenanceState(key: string): Promise<string | null>;
+  setMaintenanceState(
+    key: string,
+    value: string | null,
+    updatedAt: string,
+  ): Promise<void>;
   writeAuditLog(input: AuditLogInput): Promise<void>;
 }
