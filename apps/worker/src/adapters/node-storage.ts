@@ -1,8 +1,11 @@
 import { createReadStream } from "node:fs";
-import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
 import { Readable } from "node:stream";
 import type {
+  ListStoredObjectsInput,
+  ListStoredObjectsResult,
+  ListedStoredObject,
   StorageProvider,
   StoredObject,
   StoredObjectMetadata,
@@ -101,6 +104,80 @@ export class LocalFileStorage implements StorageProvider {
       rm(path, { force: true }),
       rm(`${path}.meta.json`, { force: true }),
     ]);
+  }
+
+  async listObjects(
+    input: ListStoredObjectsInput,
+  ): Promise<ListStoredObjectsResult> {
+    const limit = Math.min(1_000, Math.max(1, input.limit));
+    const collected: ListedStoredObject[] = [];
+    await this.collectObjects(
+      "",
+      input.prefix,
+      input.cursor ?? "",
+      limit + 1,
+      collected,
+    );
+    const objects = collected.slice(0, limit);
+    return {
+      objects,
+      nextCursor:
+        collected.length > limit ? (objects.at(-1)?.key ?? null) : null,
+    };
+  }
+
+  private async collectObjects(
+    relativeDir: string,
+    prefix: string,
+    cursor: string,
+    limit: number,
+    output: ListedStoredObject[],
+  ): Promise<void> {
+    if (output.length >= limit) return;
+
+    const directory = relativeDir
+      ? this.resolveKey(relativeDir)
+      : this.rootDir;
+    let entries;
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if (this.isMissing(error)) return;
+      throw error;
+    }
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+
+    for (const entry of entries) {
+      if (output.length >= limit) return;
+      const key = relativeDir
+        ? `${relativeDir}/${entry.name}`
+        : entry.name;
+
+      if (entry.isDirectory()) {
+        const directoryCouldMatch =
+          prefix.startsWith(`${key}/`) ||
+          key.startsWith(prefix) ||
+          prefix.length === 0;
+        if (directoryCouldMatch) {
+          await this.collectObjects(key, prefix, cursor, limit, output);
+        }
+        continue;
+      }
+
+      if (
+        entry.name.endsWith(".meta.json") ||
+        !key.startsWith(prefix) ||
+        key <= cursor
+      ) {
+        continue;
+      }
+      const info = await stat(this.resolveKey(key));
+      output.push({
+        key,
+        size: info.size,
+        uploadedAt: info.mtime.toISOString(),
+      });
+    }
   }
 
   private async readMetadata(
