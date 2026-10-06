@@ -34,6 +34,7 @@ export interface MetadataRepository {
     idempotencyKey: string,
     owner: string,
   ): Promise<void>;
+  deleteExpiredApiUploadIdempotency(now: string, limit: number): Promise<number>;
   createItem(input: CreateItemInput): Promise<VaultItem>;
   getItemById(id: string): Promise<VaultItem | null>;
   getItemsByIds(ids: string[]): Promise<VaultItem[]>;
