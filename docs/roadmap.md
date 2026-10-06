@@ -36,28 +36,9 @@ PageVault intentionally does **not** plan to support DOCX/PPTX conversion or oth
 - **Phase C — File Authenticity Validation:** magic-byte, UTF-8, and SVG-root validation before persistence.
 - **Phase D — Share Viewer / Raw Split:** stable `/p/:slug` viewer URLs plus `/raw/:slug` original content delivery.
 - **Phase E — Concurrent Idempotent API Uploads:** remove the global upload lock and provide retry-safe API uploads.
+- **Phase F — Reliability Baseline:** Playwright coverage for login, browser upload, public/raw delivery, lifecycle states, core formats, mobile layout, PDF ranges, and API idempotency.
 
 ## Remaining roadmap
-
-### Phase F — Reliability Baseline
-
-Add Playwright end-to-end coverage for the real user flow:
-
-- sign in;
-- upload each core format;
-- preview;
-- publish/share;
-- open `/p/:slug`;
-- open `/raw/:slug`;
-- public/private transitions;
-- disable/restore;
-- URL/file expiry behavior;
-- PDF range delivery;
-- API-key uploads with `Idempotency-Key`;
-- desktop and mobile viewports;
-- Chinese filenames and slugs.
-
-E2E runs in CI. It must not require production-only services.
 
 ### Phase G — Incremental GC and Storage Reconciliation
 
@@ -71,7 +52,7 @@ Extend the existing daily maintenance path without building a job system:
 - persist cursors where necessary;
 - expose dry-run/reporting for manual diagnosis.
 
-Never perform an unbounded D1 scan or full R2 bucket scan in one Worker invocation.
+Never perform an unbounded D1 scan or full R2 bucket scan in one Worker invocation. The implementation uses persistent cursors, defaults to 100 records/objects per direction, caps a page at 500, and only auto-deletes storage objects whose matching metadata is already marked deleted.
 
 ### Phase H — Free-tier and Deployment Hardening
 
