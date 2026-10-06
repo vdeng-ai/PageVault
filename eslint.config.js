@@ -11,7 +11,8 @@ export default tseslint.config(
       "dist",
       "node_modules",
       "coverage",
-      ".wrangler"
+      ".wrangler",
+      "e2e"
     ]
   },
   js.configs.recommended,
