@@ -1,3 +1,5 @@
+import process from "node:process";
+import { URL } from "node:url";
 import { readFile } from "node:fs/promises";
 
 const root = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
