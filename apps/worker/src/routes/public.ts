@@ -15,6 +15,7 @@ import {
 } from "../byte-range.js";
 import { isMarkdownContentType } from "../public-markdown.js";
 import { renderPublicShareViewer } from "../public-share-viewer.js";
+import { publicShareArtResponse } from "../public-share-art.js";
 import {
   cachePublicContentResponse,
   effectivePublicContentCacheSeconds,
@@ -218,6 +219,7 @@ async function handleShareViewer(input: {
     item: input.item,
     publicUrl: publicItemUrl(input.env, "share", input.item.slug),
     rawUrl: publicItemUrl(input.env, "raw", input.item.slug),
+    fallbackImageUrl: `${input.env.PUBLIC_BASE_URL.replace(/\/+$/g, "")}/share-card.svg`,
     ...(markdownObject ? { markdownObject } : {}),
   });
   const response = new Response(body, { status: 200, headers });
@@ -330,7 +332,12 @@ export async function handlePublicRequest(
     return publicErrorPage(404);
   }
 
-  const route = publicRouteFromPath(new URL(request.url).pathname);
+  const url = new URL(request.url);
+  if (url.pathname === "/share-card.svg") {
+    return publicShareArtResponse(request.method);
+  }
+
+  const route = publicRouteFromPath(url.pathname);
   if (!route) {
     return publicErrorPage(404);
   }
