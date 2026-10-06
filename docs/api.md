@@ -53,7 +53,7 @@ By default, the list response uses lightweight pagination, returns `total: null`
 - `fileExpireDays`
 - `visibility`, either `public` or `private`
 
-Supported file extensions are `.html`, `.htm`, `.md`, `.markdown`, `.jpg`, `.jpeg`, `.png`, `.svg`, and `.webp`. The upload limit defaults to 10 MiB and is controlled by `MAX_UPLOAD_SIZE_MB`.
+Supported file extensions are `.html`, `.htm`, `.md`, `.markdown`, `.jpg`, `.jpeg`, `.pdf`, `.png`, `.svg`, and `.webp`. The upload limit defaults to 10 MiB and is controlled by `MAX_UPLOAD_SIZE_MB`.
 
 When omitted, `urlExpireDays` defaults to 15 days and `fileExpireDays` defaults to 30 days. Explicit positive values remain authoritative.
 
@@ -74,7 +74,7 @@ curl "$ADMIN_BASE_URL/api/admin/items" \
 
 Returns the stored content for an authenticated administrator, including private files. Markdown is rendered to HTML. Deleted records return `404`, expired file retention returns `410`, and missing object bytes return `404`. The response is not cached. Upload API keys cannot access this endpoint. URL expiry and disabled public sharing do not prevent an administrator from previewing a retained file.
 
-HTML previews run under a CSP sandbox with an opaque origin. SVG previews use a stricter sandbox that blocks scripts and external resources while preserving inline vector rendering. Public links keep their existing access rules and original HTML behavior.
+HTML previews run under a CSP sandbox with an opaque origin. SVG previews use a stricter sandbox that blocks scripts and external resources while preserving inline vector rendering. PDF previews are returned as `application/pdf` with inline disposition and use the browser's native PDF viewer. Public links keep their existing access rules and original HTML behavior.
 
 `PATCH /api/admin/items/:id`
 
@@ -122,6 +122,6 @@ The public hostname accepts matching `GET` and `HEAD` requests for:
 - `/p/:slug/`
 - `/p/:slug.html`
 
-The file is returned only when the record is public, active, not deleted, URL-valid, and file-valid. HTML is returned as uploaded, Markdown is rendered to HTML with raw HTML disabled, and JPEG, PNG, SVG, and WebP files retain their image content type. SVG responses are displayed inline with a dedicated CSP sandbox that blocks scripts and network-loaded resources.
+The file is returned only when the record is public, active, not deleted, URL-valid, and file-valid. HTML is returned as uploaded, Markdown is rendered to HTML with raw HTML disabled, JPEG, PNG, SVG, and WebP files retain their image content type, and PDF files are returned as `application/pdf`. PDF responses use inline disposition so supported browsers open their native PDF viewer. SVG responses are displayed inline with a dedicated CSP sandbox that blocks scripts and network-loaded resources.
 
 See [Security](./security.md) for host isolation, storage, and content-handling details.
