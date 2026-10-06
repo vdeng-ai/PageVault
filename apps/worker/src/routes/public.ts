@@ -154,6 +154,16 @@ function notModifiedResponse(
   return null;
 }
 
+function publicItemUrl(
+  env: AppBindings,
+  variant: PublicCacheVariant,
+  slug: string,
+): string {
+  const baseUrl = env.PUBLIC_BASE_URL.replace(/\/+$/g, "");
+  const path = variant === "share" ? "p" : "raw";
+  return `${baseUrl}/${path}/${encodeURIComponent(slug)}`;
+}
+
 function itemStateError(
   result: Awaited<ReturnType<PageVaultService["getPublicItem"]>>,
 ): Response | null {
@@ -206,8 +216,8 @@ async function handleShareViewer(input: {
 
   const body = await renderPublicShareViewer({
     item: input.item,
-    publicUrl: input.service.publicUrl(input.item.slug),
-    rawUrl: input.service.rawUrl(input.item.slug),
+    publicUrl: publicItemUrl(input.env, "share", input.item.slug),
+    rawUrl: publicItemUrl(input.env, "raw", input.item.slug),
     ...(markdownObject ? { markdownObject } : {}),
   });
   const response = new Response(body, { status: 200, headers });
