@@ -11,6 +11,7 @@ import type {
   VaultItem,
   ListItemsInput,
   ListItemsResult,
+  OperationsSummary,
   ReconciliationItemPage,
   UpdateItemInput,
 } from "@pagevault/core";
@@ -381,6 +382,46 @@ export class CloudflareD1Repository implements MetadataRepository {
       urlExpired: row?.url_expired ?? 0,
       fileDeletingSoon: row?.file_deleting_soon ?? 0,
       deleted: row?.deleted ?? 0,
+    };
+  }
+
+  async getOperationsSummary(): Promise<OperationsSummary> {
+    const maintenance = await this.db
+      .prepare(
+        "SELECT value, updated_at FROM maintenance_state WHERE key = ? LIMIT 1",
+      )
+      .bind("last_maintenance")
+      .first<{ value: string | null; updated_at: string }>();
+    const auditRows = await this.db
+      .prepare(
+        "SELECT action, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 8",
+      )
+      .all<{ action: string; created_at: string }>();
+    let status: "ok" | "findings" | null = null;
+    let summary: string | null = null;
+    if (maintenance?.value) {
+      try {
+        const parsed = JSON.parse(maintenance.value) as {
+          status?: "ok" | "findings";
+          summary?: string;
+        };
+        status =
+          parsed.status === "ok" || parsed.status === "findings"
+            ? parsed.status
+            : null;
+        summary = typeof parsed.summary === "string" ? parsed.summary : null;
+      } catch {
+        summary = maintenance.value;
+      }
+    }
+    return {
+      lastMaintenanceAt: maintenance?.updated_at ?? null,
+      lastMaintenanceStatus: status,
+      lastMaintenanceSummary: summary,
+      recentAuditEvents: auditRows.results.map((row) => ({
+        action: row.action,
+        createdAt: row.created_at,
+      })),
     };
   }
 
