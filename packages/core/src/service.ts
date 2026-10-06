@@ -877,6 +877,18 @@ export class PageVaultService {
     return this.repository.getOperationsSummary();
   }
 
+  async recordMaintenanceOutcome(
+    status: "ok" | "findings",
+    summary: string,
+    now = new Date(),
+  ): Promise<void> {
+    await this.repository.setMaintenanceState(
+      "last_maintenance",
+      JSON.stringify({ status, summary }),
+      now.toISOString(),
+    );
+  }
+
   publicUrl(slug: string): string {
     return `${this.config.publicBaseUrl.replace(/\/+$/g, "")}/p/${slug}`;
   }
