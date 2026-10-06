@@ -184,6 +184,19 @@ class MemoryRepository implements MetadataRepository {
     }
   }
 
+  async deleteExpiredApiUploadIdempotency(
+    now: string,
+    limit: number,
+  ): Promise<number> {
+    const expired = Array.from(this.idempotency.entries())
+      .filter(([, entry]) => entry.expiresAt <= now)
+      .slice(0, limit);
+    for (const [key] of expired) {
+      this.idempotency.delete(key);
+    }
+    return expired.length;
+  }
+
   async createItem(input: CreateItemInput): Promise<HtmlItem> {
     this.items.set(input.item.id, input.item);
     return input.item;
