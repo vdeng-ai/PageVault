@@ -19,7 +19,12 @@ import {
 import { randomHex, sha256Hex } from "./hash.js";
 import type { MetadataRepository } from "./repository.js";
 import { buildPublicSlug } from "./slug.js";
-import type { StorageProvider, StoredObject } from "./storage.js";
+import type {
+  StorageProvider,
+  StoredObject,
+  StoredObjectMetadata,
+  StoredObjectRange,
+} from "./storage.js";
 import type {
   ApiKey,
   BatchInput,
@@ -303,6 +308,36 @@ export class PageVaultService {
     now = new Date(),
   ): Promise<StoredObject | null> {
     const object = await this.storage.getObject(item.objectKey);
+    if (!object) {
+      await this.audit(item.id, "public_object_missing", item.objectKey, now);
+      return null;
+    }
+    return object;
+  }
+
+  async getObjectMetadata(
+    item: VaultItem,
+    now = new Date(),
+  ): Promise<StoredObjectMetadata | null> {
+    const metadata = await this.storage.headObject(item.objectKey);
+    if (!metadata) {
+      await this.audit(item.id, "public_object_missing", item.objectKey, now);
+      return null;
+    }
+    return metadata;
+  }
+
+  async getObjectRange(
+    item: VaultItem,
+    offset: number,
+    length: number,
+    now = new Date(),
+  ): Promise<StoredObjectRange | null> {
+    const object = await this.storage.getObjectRange(
+      item.objectKey,
+      offset,
+      length,
+    );
     if (!object) {
       await this.audit(item.id, "public_object_missing", item.objectKey, now);
       return null;
