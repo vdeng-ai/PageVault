@@ -373,7 +373,7 @@ describe("upload", () => {
     const now = new Date("2026-07-05T00:00:00.000Z");
     const defaults = await service.uploadHtml({
       filename: "defaults.html",
-      body: new ArrayBuffer(1),
+      body: new TextEncoder().encode("<h1>ok</h1>").buffer,
       now,
     });
     const explicit = await service.uploadHtml({
@@ -399,49 +399,63 @@ describe("upload", () => {
         contentType: HTML_CONTENT_TYPE,
         storageExtension: ".html",
         slugPattern: /^产品介绍-[0-9a-f]{8}$/,
+        body: new TextEncoder().encode("<!doctype html><h1>产品介绍</h1>").buffer,
       },
       {
         filename: "notes.md",
         contentType: MARKDOWN_CONTENT_TYPE,
         storageExtension: ".md",
         slugPattern: /^notes-[0-9a-f]{8}$/,
+        body: new TextEncoder().encode("# Notes").buffer,
       },
       {
         filename: "photo.jpeg",
         contentType: JPEG_CONTENT_TYPE,
         storageExtension: ".jpg",
         slugPattern: /^photo-[0-9a-f]{8}$/,
+        body: new Uint8Array([0xff, 0xd8, 0xff, 0xdb]).buffer,
       },
       {
         filename: "report.pdf",
         contentType: PDF_CONTENT_TYPE,
         storageExtension: ".pdf",
         slugPattern: /^report-[0-9a-f]{8}$/,
+        body: new TextEncoder().encode("%PDF-1.7\n").buffer,
       },
       {
         filename: "diagram.png",
         contentType: PNG_CONTENT_TYPE,
         storageExtension: ".png",
         slugPattern: /^diagram-[0-9a-f]{8}$/,
+        body: new Uint8Array([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+        ]).buffer,
       },
       {
         filename: "diagram.svg",
         contentType: SVG_CONTENT_TYPE,
         storageExtension: ".svg",
         slugPattern: /^diagram-[0-9a-f]{8}$/,
+        body: new TextEncoder().encode(
+          '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"></svg>',
+        ).buffer,
       },
       {
         filename: "cover.webp",
         contentType: WEBP_CONTENT_TYPE,
         storageExtension: ".webp",
         slugPattern: /^cover-[0-9a-f]{8}$/,
+        body: new Uint8Array([
+          0x52, 0x49, 0x46, 0x46, 0x04, 0x00, 0x00, 0x00,
+          0x57, 0x45, 0x42, 0x50,
+        ]).buffer,
       },
     ];
 
-    for (const [index, upload] of uploads.entries()) {
+    for (const upload of uploads) {
       const result = await service.uploadHtml({
         filename: upload.filename,
-        body: new Uint8Array([index]).buffer,
+        body: upload.body,
         now,
       });
 
@@ -454,6 +468,23 @@ describe("upload", () => {
         upload.contentType,
       );
     }
+  });
+
+  it("rejects extension/content mismatches before writing storage", async () => {
+    const { service, storage, repo } = createService();
+
+    await expect(
+      service.uploadFile({
+        filename: "fake.pdf",
+        body: new TextEncoder().encode("<html>not a pdf</html>").buffer,
+      }),
+    ).rejects.toMatchObject({
+      code: "invalid_file_content",
+      status: 400,
+    });
+
+    expect(storage.objects.size).toBe(0);
+    expect(repo.items.size).toBe(0);
   });
 
   it("rejects unsupported file types", async () => {
