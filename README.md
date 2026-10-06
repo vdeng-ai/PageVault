@@ -11,7 +11,7 @@
 
 Language: English | [简体中文](./README.zh-CN.md)
 
-PageVault is a personal-first, self-hosted publisher for sharing AI-generated HTML, Markdown, and infographics in WeChat and other messaging apps. It turns files that are awkward to preview in chat into controlled links that open directly in a browser.
+PageVault is a personal-first, self-hosted publisher for sharing AI-generated HTML, Markdown, SVG, and image-based infographics in WeChat and other messaging apps. It turns files that are awkward to preview in chat into controlled links that open directly in a browser.
 
 **Upload once → get a controlled link → paste it into any chat.**
 
@@ -23,7 +23,7 @@ English interface · Dark theme · Local Markdown preview before publishing.
 
 ## Highlights
 
-- **Chat-ready sharing** — Turn HTML and Markdown that messaging apps cannot preview into browser-friendly links.
+- **Chat-ready sharing** — Turn HTML, Markdown, SVG, and images that messaging apps cannot preview into browser-friendly links.
 - **Built for AI output** — Share AI-generated interactive pages, reports, documents, and infographics.
 - **One upload, one link** — Copy a usable link as soon as the upload finishes, without building a website.
 - **Personal-first** — A single-admin design without teams, tenants, or complex roles.
