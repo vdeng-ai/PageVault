@@ -283,6 +283,15 @@ class MemoryRepository implements MetadataRepository {
     };
   }
 
+  async getOperationsSummary() {
+    return {
+      lastMaintenanceAt: null,
+      lastMaintenanceStatus: null,
+      lastMaintenanceSummary: null,
+      recentAuditEvents: [],
+    };
+  }
+
   async updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem> {
     const item = this.items.get(id);
     if (!item) {
