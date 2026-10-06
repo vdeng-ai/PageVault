@@ -1,4 +1,6 @@
 import type {
+  ListStoredObjectsInput,
+  ListStoredObjectsResult,
   StorageProvider,
   StoredObject,
   StoredObjectMetadata,
@@ -75,5 +77,25 @@ export class CloudflareR2Storage implements StorageProvider {
 
   async deleteObject(key: string): Promise<void> {
     await this.bucket.delete(key);
+  }
+
+  async listObjects(
+    input: ListStoredObjectsInput,
+  ): Promise<ListStoredObjectsResult> {
+    const limit = Math.min(1_000, Math.max(1, input.limit));
+    const listed = await this.bucket.list({
+      prefix: input.prefix,
+      limit,
+      include: [],
+      ...(input.cursor ? { cursor: input.cursor } : {}),
+    });
+    return {
+      objects: listed.objects.map((object) => ({
+        key: object.key,
+        size: object.size,
+        uploadedAt: object.uploaded.toISOString(),
+      })),
+      nextCursor: listed.truncated ? (listed.cursor ?? null) : null,
+    };
   }
 }
