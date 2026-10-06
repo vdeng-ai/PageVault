@@ -142,6 +142,8 @@ Share/viewer URLs stay stable:
 
 These routes always return a PageVault HTML share page with canonical/Open Graph/Twitter metadata. HTML is shown in a sandboxed iframe, Markdown is rendered into the viewer with raw HTML disabled, PDF uses the browser-native viewer, and JPEG/PNG/SVG/WebP are displayed as images.
 
+Viewer 2.0 keeps all controls client-side: share-link copy, open-original, HTML/PDF fullscreen, and image fit/background toggles do not create server-side jobs or derived files. Raster JPEG/PNG/WebP items use the original raw image for Open Graph/Twitter preview. HTML, Markdown, PDF, and SVG use the fixed `/share-card.png` fallback so social crawlers are not required to render document or SVG content. The fallback PNG is a static asset and does not read D1 or R2.
+
 The original stored content is available separately at:
 
 - `/raw/:slug`
