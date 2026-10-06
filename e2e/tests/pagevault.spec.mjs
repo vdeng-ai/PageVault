@@ -21,6 +21,9 @@ async function uploadViaUi(
   },
 ) {
   await page.goto(`${ADMIN_URL}/#/`);
+  // Reload to reset UploadPage component state when a test publishes more than
+  // one file from the same browser session.
+  await page.reload();
   await expect(page.getByRole("heading", { name: "Upload" })).toBeVisible();
 
   await page.locator('input[type="file"]').setInputFiles({
