@@ -60,6 +60,13 @@ export interface DashboardStats {
   deleted: number;
 }
 
+export interface OperationsSummary {
+  lastMaintenanceAt: string | null;
+  lastMaintenanceStatus: "ok" | "findings" | null;
+  lastMaintenanceSummary: string | null;
+  recentAuditEvents: Array<{ action: string; createdAt: string }>;
+}
+
 export interface ApiKey {
   id: string;
   name: string;
@@ -153,6 +160,10 @@ export async function me(): Promise<CurrentUser> {
 
 export function dashboard(): Promise<DashboardStats> {
   return request<DashboardStats>("/api/admin/dashboard");
+}
+
+export function operations(): Promise<OperationsSummary> {
+  return request<OperationsSummary>("/api/admin/operations");
 }
 
 export async function listApiKeys(): Promise<ApiKey[]> {
