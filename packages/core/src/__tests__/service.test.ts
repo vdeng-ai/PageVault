@@ -796,6 +796,116 @@ describe("garbage collection", () => {
   });
 });
 
+describe("storage reconciliation", () => {
+  it("reports anomalies without destructive repair and only removes objects for deleted rows", async () => {
+    const { service, repo, storage } = createService();
+    const now = new Date("2026-07-05T00:00:00.000Z");
+    const missing = item({
+      id: "a-missing",
+      slug: "a-missing-a1b2c3d4",
+      objectKey: "objects/a-missing/index.html",
+      sizeBytes: 12,
+    });
+    const mismatch = item({
+      id: "b-mismatch",
+      slug: "b-mismatch-a1b2c3d4",
+      objectKey: "objects/b-mismatch/index.html",
+      sizeBytes: 12,
+    });
+    const deleted = item({
+      id: "c-deleted",
+      slug: "c-deleted-a1b2c3d4",
+      objectKey: "objects/c-deleted/index.html",
+      status: "deleted",
+    });
+    await repo.createItem({ item: missing });
+    await repo.createItem({ item: mismatch });
+    await repo.createItem({ item: deleted });
+    await storage.putObject(
+      mismatch.objectKey,
+      new ArrayBuffer(3),
+      HTML_CONTENT_TYPE,
+    );
+    await storage.putObject(
+      deleted.objectKey,
+      new ArrayBuffer(1),
+      HTML_CONTENT_TYPE,
+    );
+    await storage.putObject(
+      "objects/orphan/index.html",
+      new ArrayBuffer(1),
+      HTML_CONTENT_TYPE,
+    );
+
+    const dryRun = await service.reconcileStorage({
+      now,
+      limit: 100,
+      dryRun: true,
+    });
+    expect(dryRun.missingObjects).toEqual([
+      { itemId: missing.id, objectKey: missing.objectKey },
+    ]);
+    expect(dryRun.sizeMismatches).toEqual([
+      {
+        itemId: mismatch.id,
+        objectKey: mismatch.objectKey,
+        expectedSize: 12,
+        actualSize: 3,
+      },
+    ]);
+    expect(dryRun.orphanObjects).toEqual(["objects/orphan/index.html"]);
+    expect(dryRun.deletedObjectsPendingCleanup).toEqual([
+      deleted.objectKey,
+    ]);
+    expect(dryRun.deletedObjectsRemoved).toEqual([]);
+    expect(storage.objects.has(deleted.objectKey)).toBe(true);
+    expect(storage.objects.has("objects/orphan/index.html")).toBe(true);
+    expect(repo.maintenance.size).toBe(0);
+
+    const repaired = await service.reconcileStorage({ now, limit: 100 });
+    expect(repaired.deletedObjectsRemoved).toEqual([deleted.objectKey]);
+    expect(storage.objects.has(deleted.objectKey)).toBe(false);
+    expect(storage.objects.has("objects/orphan/index.html")).toBe(true);
+    expect(repo.maintenance.has("reconciliation.db.cursor")).toBe(true);
+    expect(repo.maintenance.has("reconciliation.storage.cursor")).toBe(true);
+  });
+
+  it("advances bounded cursors and wraps after the final page", async () => {
+    const { service, repo, storage } = createService();
+    const now = new Date("2026-07-05T00:00:00.000Z");
+    for (const id of ["a", "b", "c"]) {
+      const next = item({
+        id,
+        slug: `${id}-a1b2c3d4`,
+        objectKey: `objects/${id}/index.html`,
+        sizeBytes: 1,
+      });
+      await repo.createItem({ item: next });
+      await storage.putObject(
+        next.objectKey,
+        new ArrayBuffer(1),
+        HTML_CONTENT_TYPE,
+      );
+    }
+
+    const first = await service.reconcileStorage({ now, limit: 2 });
+    expect(first.dbScanned).toBe(2);
+    expect(first.storageScanned).toBe(2);
+    expect(first.dbNextCursor).toBe("b");
+    expect(first.storageNextCursor).toBe("objects/b/index.html");
+
+    const second = await service.reconcileStorage({ now, limit: 2 });
+    expect(second.dbScanned).toBe(1);
+    expect(second.storageScanned).toBe(1);
+    expect(second.dbNextCursor).toBeNull();
+    expect(second.storageNextCursor).toBeNull();
+
+    const third = await service.reconcileStorage({ now, limit: 2 });
+    expect(third.dbScanned).toBe(2);
+    expect(third.storageScanned).toBe(2);
+  });
+});
+
 describe("dashboard stats", () => {
   it("counts all repository items without list pagination", async () => {
     const { service, repo } = createService();
