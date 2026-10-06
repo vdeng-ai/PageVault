@@ -30,6 +30,14 @@ function installBrowserStubs(): void {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
   });
+  Object.defineProperty(URL, "createObjectURL", {
+    configurable: true,
+    value: vi.fn().mockReturnValue("blob:svg-preview"),
+  });
+  Object.defineProperty(URL, "revokeObjectURL", {
+    configurable: true,
+    value: vi.fn(),
+  });
 }
 
 function renderUpload(onViewItem = vi.fn()) {
