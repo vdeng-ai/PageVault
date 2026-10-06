@@ -94,7 +94,7 @@ describe("reconciliation adapters", () => {
 
       const second = await storage.listObjects({
         prefix: "objects/",
-        cursor: first.nextCursor ?? undefined,
+        ...(first.nextCursor ? { cursor: first.nextCursor } : {}),
         limit: 2,
       });
       expect(second.objects.map((object) => object.key)).toEqual([
