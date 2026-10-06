@@ -27,6 +27,7 @@ export interface MetadataRepository {
     idempotencyKey: string,
     owner: string,
     updatedAt: string,
+    expiresAt: string,
   ): Promise<void>;
   abandonApiUploadIdempotency(
     apiKeyId: string,
