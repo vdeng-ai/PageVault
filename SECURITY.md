@@ -2,7 +2,16 @@
 
 ## Supported Versions
 
-Until PageVault publishes versioned releases, security fixes are applied to the latest commit on `main`. Older commits and private downstream modifications are not separately maintained.
+PageVault follows the maintenance policy below from v1.0 onward:
+
+| Version | Supported |
+| --- | --- |
+| latest `1.0.x` | Yes |
+| older `1.0.x` | Upgrade to the latest patch release |
+| pre-v1 releases/commits | No |
+| private downstream modifications | Not separately maintained |
+
+Security fixes are applied to the latest supported patch line. A security fix may tighten validation, authentication, or browser-isolation behavior without waiting for a major release.
 
 ## Reporting a Vulnerability
 

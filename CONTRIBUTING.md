@@ -73,6 +73,7 @@ Open `http://localhost:5173` for the admin interface. Published URLs use `http:/
 Run the same checks used by CI before opening a pull request:
 
 ```bash
+pnpm run release:check
 pnpm run typecheck
 pnpm run lint
 pnpm run test
@@ -100,5 +101,9 @@ The E2E package is intentionally outside the pnpm production workspace so Playwr
 - Update documentation when configuration, APIs, deployment steps, or security properties change.
 - Do not commit `.env` files, production credentials, generated build output, Wrangler state, or uploaded content.
 - Confirm CI and Docker build checks pass.
+- Preserve the documented v1 API/share URL contract for compatible releases.
+- Prefer bug fixes, security, reliability, performance, and focused UX improvements over new product surfaces.
+
+For release preparation and tag rules, see [docs/releasing.md](./docs/releasing.md). For supported product/deployment boundaries, see [docs/support.md](./docs/support.md).
 
 There is no required commit-message convention. Use concise messages that describe the change.

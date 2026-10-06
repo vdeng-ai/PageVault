@@ -5,6 +5,19 @@ async function rootFile(path: string): Promise<string> {
   return readFile(new URL("../../../../" + path, import.meta.url), "utf8");
 }
 
+function packageVersion(contents: string): string {
+  const parsed: unknown = JSON.parse(contents);
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("version" in parsed) ||
+    typeof parsed.version !== "string"
+  ) {
+    throw new Error("Package metadata is missing a string version");
+  }
+  return parsed.version;
+}
+
 describe("deployment hardening contract", () => {
   it("keeps the Cloudflare architecture inside the lightweight boundary", async () => {
     const config = await readFile(
@@ -67,4 +80,29 @@ describe("deployment hardening contract", () => {
       expect(compose).toContain(`${name}:`);
     }
   });
+
+  it("keeps v1 release metadata aligned and tag automation present", async () => {
+    const [rootPackage, corePackage, workerPackage, adminPackage, changelog, releaseWorkflow] =
+      await Promise.all([
+        rootFile("package.json"),
+        rootFile("packages/core/package.json"),
+        rootFile("apps/worker/package.json"),
+        rootFile("apps/admin/package.json"),
+        rootFile("CHANGELOG.md"),
+        rootFile(".github/workflows/release.yml"),
+      ]);
+
+    const versions = [
+      packageVersion(rootPackage),
+      packageVersion(corePackage),
+      packageVersion(workerPackage),
+      packageVersion(adminPackage),
+    ];
+    expect(new Set(versions)).toEqual(new Set(["1.0.0"]));
+    expect(changelog).toContain("## [1.0.0]");
+    expect(releaseWorkflow).toContain('"v*.*.*"');
+    expect(releaseWorkflow).toContain("scripts/check-release.mjs");
+    expect(releaseWorkflow).toContain("gh release create");
+  });
+
 });

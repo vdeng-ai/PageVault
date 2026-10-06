@@ -52,6 +52,16 @@ Changes covered by public sharing, authentication, upload, lifecycle state, or b
 
 Keep cross-runtime behavior aligned unless a runtime limitation is explicitly documented.
 
-## Roadmap discipline
+## Maintenance mode
 
-The planned endpoint is v1.0 after Phases F-L. After that point, default to maintenance, performance, reliability, and security improvements rather than new heavyweight formats or platform features.
+The A-L roadmap is complete at v1.0. Future changes should default to maintenance, performance, reliability, security, and small compatible UX improvements.
+
+Before proposing a new product surface, confirm that it cannot be solved by improving the existing viewer, admin, storage, or maintenance paths. New formats, platform services, background workers, or multi-user features require an explicit major-version decision.
+
+## Release discipline
+
+- Keep the root, core, worker, and admin package versions aligned.
+- Update `CHANGELOG.md` for every published version.
+- Run `pnpm run release:check` before tagging.
+- Published tags are immutable and follow `vX.Y.Z`.
+- Treat the v1 API/share URL contract in `docs/api.md` and `docs/upgrading.md` as compatibility boundaries.

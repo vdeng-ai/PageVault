@@ -17,6 +17,8 @@ PageVault 是一个为个人使用设计的自托管发布工具，用于在微�
 
 **Cloudflare Free-first：** PageVault 明确面向个人使用，核心部署长期以 Workers、D1、R2、Workers Static Assets 和一个 Cron Trigger 的免费层为约束。项目主动避免重计算、Office 转换、复杂后台任务基础设施，以及会让核心部署变重的功能。
 
+**v1.0 稳定基线：** A–L 路线图已经完成。此后 PageVault 按 SemVer 维护，默认优先正确性、安全、可靠性、性能和小型兼容改进，不再持续扩张产品边界。
+
 ![PageVault 英文上传界面，展示 Markdown 预览、可见性和保留期限设置](./docs/assets/pagevault-upload-en.jpg)
 
 英文界面 · 深色主题 · Markdown 发布前本地预览。
@@ -70,6 +72,10 @@ pnpm tsx scripts/hash-password.ts
 ## 文档
 
 - [产品方向与路线图](./docs/roadmap.md)
+- [v1 升级与回滚](./docs/upgrading.md)
+- [发布流程](./docs/releasing.md)
+- [支持边界](./docs/support.md)
+- [更新日志](./CHANGELOG.md)
 - [配置参考](./docs/configuration.md)
 - [Cloudflare 部署](./docs/cloudflare-deploy.md)
 - [Docker 部署](./docs/docker-deploy.md)

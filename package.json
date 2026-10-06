@@ -1,6 +1,6 @@
 {
   "name": "pagevault",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.15.0",
@@ -12,7 +12,9 @@
     "lint": "pnpm --filter @pagevault/core run build && eslint . --max-warnings=0",
     "test": "pnpm --filter @pagevault/core run build && vitest run",
     "typecheck": "pnpm --filter @pagevault/core run build && pnpm -r run typecheck",
-    "wrangler": "pnpm --filter @pagevault/worker exec wrangler"
+    "wrangler": "pnpm --filter @pagevault/worker exec wrangler",
+    "release:check": "node scripts/check-release.mjs",
+    "release:notes": "node scripts/release-notes.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
