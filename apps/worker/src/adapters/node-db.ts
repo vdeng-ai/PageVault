@@ -334,6 +334,25 @@ export class NodeSqliteRepository implements MetadataRepository {
       .run(apiKeyId, idempotencyKey, owner);
   }
 
+  async deleteExpiredApiUploadIdempotency(
+    now: string,
+    limit: number,
+  ): Promise<number> {
+    const result = this.db
+      .prepare(
+        `DELETE FROM api_upload_idempotency
+         WHERE rowid IN (
+           SELECT rowid
+           FROM api_upload_idempotency
+           WHERE expires_at <= ?
+           ORDER BY expires_at ASC
+           LIMIT ?
+         )`,
+      )
+      .run(now, limit);
+    return Number(result.changes);
+  }
+
   async createItem(input: CreateItemInput): Promise<VaultItem> {
     this.db.prepare(insertItemSql).run(...itemToRowValues(input.item));
     return input.item;
