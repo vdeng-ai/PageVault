@@ -111,6 +111,13 @@ function assertVisibility(value: Visibility): void {
   }
 }
 
+function hasControlCharacter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint < 0x20 || codePoint === 0x7f;
+  });
+}
+
 export class PageVaultService {
   constructor(
     private readonly repository: MetadataRepository,
@@ -203,7 +210,7 @@ export class PageVaultService {
     if (
       key.length === 0 ||
       key.length > 200 ||
-      /[\u0000-\u001f\u007f]/.test(key)
+      hasControlCharacter(key)
     ) {
       throw new AppError(
         "Idempotency-Key must be between 1 and 200 visible characters",
