@@ -256,3 +256,64 @@ test("API Idempotency-Key replays the same upload and rejects conflicting reuse"
     code: "idempotency_conflict",
   });
 });
+
+
+test("admin library filters server-side and restores selected files in batch", async ({
+  page,
+  context,
+}) => {
+  await login(page);
+
+  await uploadViaUi(page, {
+    name: "admin-filter-html.html",
+    mimeType: "text/html",
+    buffer: Buffer.from("<h1>html</h1>"),
+  });
+  const pdf = await uploadViaUi(page, {
+    name: "admin-filter-pdf.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.7\nadmin-filter"),
+  });
+
+  const disable = await adminJson(
+    page,
+    `/api/admin/items/${pdf.id}`,
+    "PATCH",
+    { status: "disabled" },
+  );
+  expect(disable.status).toBe(200);
+
+  await page.goto(`${ADMIN_URL}/#/items`);
+  await expect(page.getByRole("heading", { name: "Files" })).toBeVisible();
+
+  await page.getByLabel("All types").selectOption("pdf");
+  await page.getByLabel("Created").selectOption("7");
+  await page.getByLabel("Expiry").selectOption("url-30");
+  await page.getByLabel("File size").selectOption("small");
+  await page.getByLabel("All status").selectOption("disabled");
+  await page
+    .getByPlaceholder("Search title, filename, or URL")
+    .fill("admin-filter-pdf");
+
+  await expect(page.getByText("admin-filter-pdf.pdf").first()).toBeVisible();
+  await expect(page.getByText("admin-filter-html.html")).toHaveCount(0);
+
+  const menuButton = page.locator('button[aria-label="More actions"]:visible').first();
+  await menuButton.click();
+  const rawLink = page.getByRole("menuitem", { name: "Open raw file" });
+  await expect(rawLink).toHaveAttribute(
+    "href",
+    `${PUBLIC_URL}/raw/${encodeURIComponent(pdf.slug)}`,
+  );
+  await page.keyboard.press("Escape");
+
+  await page
+    .locator('input[aria-label^="Select admin-filter-pdf"]:visible')
+    .first()
+    .check();
+  await page.getByRole("button", { name: "Restore" }).click();
+
+  await page.getByLabel("All status").selectOption("active");
+  await expect(page.getByText("admin-filter-pdf.pdf").first()).toBeVisible();
+  expect((await context.request.get(pdf.publicUrl)).status()).toBe(200);
+});
