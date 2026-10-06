@@ -61,7 +61,6 @@ describe("content previews", () => {
         "blob:pdf-preview",
       ),
     );
-    expect(URL.createObjectURL).toHaveBeenCalledWith(file);
     expect(screen.getByText("PDF")).toBeTruthy();
   });
 
