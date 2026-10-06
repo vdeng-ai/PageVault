@@ -31,6 +31,7 @@ const supportedExtensions = new Set([
   "jpg",
   "jpeg",
   "png",
+  "svg",
   "webp",
 ]);
 const durationPresets = [7, 15, 30, 90, 365];
