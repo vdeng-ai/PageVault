@@ -91,8 +91,16 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
     ctx?: ExecutionContext
   ): Promise<Response> {
     const url = new URL(request.url);
+    const hostname = url.hostname;
+    const adminHost = hostnameFromBaseUrl(env.ADMIN_BASE_URL);
+    const publicHost = hostnameFromBaseUrl(env.PUBLIC_BASE_URL);
+    const healthHost =
+      hostname === adminHost ||
+      hostname === "localhost" ||
+      hostname === "127.0.0.1";
 
     if (
+      healthHost &&
       (request.method === "GET" || request.method === "HEAD") &&
       url.pathname === "/healthz"
     ) {
@@ -106,6 +114,7 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
     }
 
     if (
+      healthHost &&
       (request.method === "GET" || request.method === "HEAD") &&
       url.pathname === "/readyz"
     ) {
@@ -134,10 +143,6 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
           : response;
       }
     }
-
-    const hostname = url.hostname;
-    const adminHost = hostnameFromBaseUrl(env.ADMIN_BASE_URL);
-    const publicHost = hostnameFromBaseUrl(env.PUBLIC_BASE_URL);
 
     if (hostname === adminHost || isLocalDevHost(hostname, env)) {
       return adminApp.fetch(request, env, ctx);
