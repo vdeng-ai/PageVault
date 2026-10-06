@@ -4,6 +4,7 @@ import type { AppBindings, WaitUntilContext } from "../bindings.js";
 import {
   publicErrorPage,
   publicSecurityHeaders,
+  publicSvgHeaders,
 } from "../middleware/security-headers.js";
 import { recordPublicAccess } from "../access-counter.js";
 import { decoratePublicHtmlForShare } from "../public-share-meta.js";
@@ -38,6 +39,7 @@ function publicHtmlHeaders(
     "Cache-Control": `public, max-age=0, s-maxage=${ttlSeconds}`,
     "Content-Type": contentType,
   };
+  Object.assign(responseHeaders, publicSvgHeaders(contentType));
   responseHeaders.ETag = publicEntityTag(item);
   const lastModified = publicLastModified(item);
   if (lastModified) {
