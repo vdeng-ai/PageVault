@@ -15,6 +15,18 @@ export function isSvgContentType(contentType: string): boolean {
   return /^image\/svg\+xml(?:\s*;|$)/i.test(contentType.trim());
 }
 
+export function isPdfContentType(contentType: string): boolean {
+  return /^application\/pdf(?:\s*;|$)/i.test(contentType.trim());
+}
+
+export function pdfInlineHeaders(
+  contentType: string,
+): Record<string, string> {
+  return isPdfContentType(contentType)
+    ? { "Content-Disposition": "inline" }
+    : {};
+}
+
 export function publicSvgHeaders(
   contentType: string,
 ): Record<string, string> {
