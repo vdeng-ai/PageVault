@@ -11,9 +11,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
       - uses: docker/setup-buildx-action@v3
+
       - uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
           push: false
+          load: true
+          tags: pagevault:test
+
+      - name: Smoke-test non-root runtime and readiness
+        run: |
+          set -eu
+
+          docker run -d             --name pagevault-test             --tmpfs /data/pagevault:rw,uid=10001,gid=10001             -e APP_ENV=production             -e ADMIN_BASE_URL=http://localhost:3000             -e PUBLIC_BASE_URL=http://127.0.0.1:3000             -e ADMIN_EMAIL=e2e@example.com             -e ADMIN_PASSWORD_HASH='pbkdf2_sha256$100000$00112233445566778899aabbccddeeff$047ea8ea77c5c3da26301faab69eb90ff6797a797980fda356a6375c0e61ecaa'             -e SESSION_SECRET=pagevault-docker-ci-session-secret             pagevault:test
+
+          for attempt in $(seq 1 30); do
+            if docker exec pagevault-test node -e "fetch('http://127.0.0.1:3000/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs pagevault-test
+              exit 1
+            fi
+            sleep 1
+          done
+
+          test "$(docker exec pagevault-test node -e 'process.stdout.write(String(process.getuid()))')" = "10001"
+
+          docker stop -t 15 pagevault-test
+          docker logs pagevault-test | grep '"message":"pagevault node server stopped"'
+          docker rm pagevault-test
+
+      - name: Fail closed when SQLite cannot initialize
+        run: |
+          set -eu
+
+          if docker run --rm             -e APP_ENV=production             -e ADMIN_BASE_URL=http://localhost:3000             -e PUBLIC_BASE_URL=http://127.0.0.1:3000             -e ADMIN_EMAIL=e2e@example.com             -e ADMIN_PASSWORD_HASH='pbkdf2_sha256$100000$00112233445566778899aabbccddeeff$047ea8ea77c5c3da26301faab69eb90ff6797a797980fda356a6375c0e61ecaa'             -e SESSION_SECRET=pagevault-docker-ci-session-secret             -e SQLITE_PATH=/proc/pagevault.sqlite             pagevault:test; then
+            echo "Container unexpectedly started with an invalid SQLite path" >&2
+            exit 1
+          fi
