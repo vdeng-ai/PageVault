@@ -2,11 +2,16 @@ import type { PageVaultService, VaultItem } from "@pagevault/core";
 import { HTML_CONTENT_TYPE, normalizePublicSlug } from "@pagevault/core";
 import type { AppBindings, WaitUntilContext } from "../bindings.js";
 import {
+  isPdfContentType,
   publicContentHeaders,
   publicErrorPage,
   publicSecurityHeaders,
 } from "../middleware/security-headers.js";
 import { recordPublicAccess } from "../access-counter.js";
+import {
+  ifRangeAllowsPartial,
+  parseSingleByteRange,
+} from "../byte-range.js";
 import { decoratePublicHtmlForShare } from "../public-share-meta.js";
 import {
   isMarkdownContentType,
@@ -44,6 +49,10 @@ function publicResponseHeaders(
   const lastModified = publicLastModified(item);
   if (lastModified) {
     responseHeaders["Last-Modified"] = lastModified;
+  }
+  if (isPdfContentType(contentType)) {
+    responseHeaders["Accept-Ranges"] = "bytes";
+    responseHeaders["Content-Length"] = String(item.sizeBytes);
   }
   return responseHeaders;
 }
@@ -138,8 +147,12 @@ export async function handlePublicRequest(
     return publicErrorPage(404);
   }
   const now = new Date();
+  const rangeHeader =
+    request.method === "GET" ? request.headers.get("Range") : null;
 
-  const cached = await matchPublicContentCache(env, slug, request.method);
+  const cached = rangeHeader
+    ? null
+    : await matchPublicContentCache(env, slug, request.method);
   if (cached) {
     if (cached.itemId) {
       recordPublicAccess(service, env, ctx, cached.itemId, slug);
@@ -181,6 +194,51 @@ export async function handlePublicRequest(
     return new Response(null, {
       status: 200,
       headers,
+    });
+  }
+
+  if (
+    rangeHeader &&
+    isPdfContentType(responseContentType) &&
+    ifRangeAllowsPartial(
+      request.headers.get("If-Range"),
+      headers.get("ETag"),
+      headers.get("Last-Modified"),
+    )
+  ) {
+    const parsed = parseSingleByteRange(rangeHeader, result.item.sizeBytes);
+    if (parsed.kind === "unsatisfiable") {
+      headers.set("Content-Range", `bytes */${result.item.sizeBytes}`);
+      headers.set("Content-Length", "0");
+      return new Response(null, { status: 416, headers });
+    }
+
+    const partial = await service.getObjectRange(
+      result.item,
+      parsed.range.start,
+      parsed.range.length,
+      now,
+    );
+    if (!partial) {
+      return publicErrorPage(404);
+    }
+    if (partial.length <= 0) {
+      headers.set("Content-Range", `bytes */${partial.totalSize}`);
+      headers.set("Content-Length", "0");
+      return new Response(null, { status: 416, headers });
+    }
+
+    const partialHeaders = new Headers(headers);
+    partialHeaders.set(
+      "Content-Range",
+      `bytes ${partial.offset}-${partial.offset + partial.length - 1}/${partial.totalSize}`,
+    );
+    partialHeaders.set("Content-Length", String(partial.length));
+    partialHeaders.set("Content-Type", partial.contentType ?? responseContentType);
+    partialHeaders.set("Accept-Ranges", "bytes");
+    return new Response(partial.body, {
+      status: 206,
+      headers: partialHeaders,
     });
   }
 
