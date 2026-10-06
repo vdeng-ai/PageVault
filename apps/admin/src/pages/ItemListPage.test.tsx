@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -143,6 +144,19 @@ describe("ItemListPage request behavior", () => {
     await user.click(trigger);
     return { user, trigger, menu: screen.getByRole("menu") };
   }
+
+  it("exposes separate share and raw actions in the item menu", async () => {
+    const { menu } = await openMenu();
+    expect(
+      within(menu).getByRole("menuitem", { name: "Copy share URL" }),
+    ).toBeTruthy();
+    expect(
+      within(menu).getByRole("menuitem", { name: "Copy raw URL" }),
+    ).toBeTruthy();
+    expect(
+      within(menu).getByRole("menuitem", { name: "Open raw file" }),
+    ).toHaveAttribute("href", item.rawUrl);
+  });
 
   it.each([false, true])(
     "keeps arrow navigation and lets Tab close the action menu (shift: %s)",
