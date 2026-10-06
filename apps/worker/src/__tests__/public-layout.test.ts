@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { publicErrorPage } from "../middleware/security-headers.js";
+import {
+  publicErrorPage,
+  publicSvgHeaders,
+  SVG_DOCUMENT_CONTENT_SECURITY_POLICY,
+} from "../middleware/security-headers.js";
 import { publicDocument } from "../public-layout.js";
 
 describe("public document chrome", () => {
@@ -15,6 +19,18 @@ describe("public document chrome", () => {
       expect(body).not.toContain("内容管理");
     },
   );
+  it("locks down SVG documents while keeping browser preview inline", () => {
+    const headers = publicSvgHeaders("image/svg+xml");
+    expect(headers["Content-Disposition"]).toBe("inline");
+    expect(headers["Content-Security-Policy"]).toBe(
+      SVG_DOCUMENT_CONTENT_SECURITY_POLICY,
+    );
+    expect(headers["Content-Security-Policy"]).toContain("sandbox");
+    expect(headers["Content-Security-Policy"]).toContain("default-src 'none'");
+    expect(headers["Content-Security-Policy"]).not.toContain("allow-scripts");
+    expect(publicSvgHeaders("image/png")).toEqual({});
+  });
+
   it("escapes document titles without changing the document body", () => {
     const html = publicDocument({
       title: "</title><script>alert(1)</script>",
