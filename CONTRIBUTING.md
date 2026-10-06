@@ -107,3 +107,16 @@ The E2E package is intentionally outside the pnpm production workspace so Playwr
 For release preparation and tag rules, see [docs/releasing.md](./docs/releasing.md). For supported product/deployment boundaries, see [docs/support.md](./docs/support.md).
 
 There is no required commit-message convention. Use concise messages that describe the change.
+
+
+## Release discipline
+
+PageVault v1 uses Semantic Versioning. Release preparation must keep the root, core, worker, and admin package versions aligned and add the matching `CHANGELOG.md` entry.
+
+Before proposing or tagging a release, run:
+
+```bash
+pnpm run release:check
+```
+
+See [docs/releasing.md](./docs/releasing.md) for the full release process.
