@@ -110,6 +110,7 @@ class MemoryStorage implements StorageProvider {
 }
 
 class MemoryRepository implements MetadataRepository {
+  async healthCheck(): Promise<void> {}
   readonly items = new Map<string, HtmlItem>();
   readonly apiKeys = new Map<string, { apiKey: ApiKey; tokenHash: string }>();
   readonly idempotency = new Map<
