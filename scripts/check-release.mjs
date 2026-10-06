@@ -8,6 +8,21 @@ async function readJson(relativePath) {
   );
 }
 
+function changelogSection(changelog, version) {
+  const lines = changelog.split("\n");
+  const headingPrefix = `## [${version}]`;
+  const start = lines.findIndex((line) => line.startsWith(headingPrefix));
+  if (start < 0) return null;
+  const nextRelative = lines
+    .slice(start + 1)
+    .findIndex((line) => line.startsWith("## ["));
+  const end = nextRelative < 0 ? lines.length : start + 1 + nextRelative;
+  return {
+    heading: lines[start],
+    body: lines.slice(start + 1, end).join("\n").trim(),
+  };
+}
+
 const root = await readJson("../package.json");
 const packagePaths = [
   "../packages/core/package.json",
@@ -33,30 +48,21 @@ const changelog = await readFile(
   new URL("../CHANGELOG.md", import.meta.url),
   "utf8",
 );
-const sectionPattern = new RegExp(
-  `^## \\\[${version.replace(/\./g, "\\.")}\\\].*$`,
-  "m",
-);
-const match = sectionPattern.exec(changelog);
-if (!match) {
+const section = changelogSection(changelog, version);
+if (!section) {
   throw new Error(`CHANGELOG.md has no section for ${version}`);
 }
-const rest = changelog.slice(match.index + match[0].length);
-const next = rest.search(/\n## \[/);
-const body = (next >= 0 ? rest.slice(0, next) : rest).trim();
-if (!body) {
+if (!section.body) {
   throw new Error(`CHANGELOG.md section for ${version} is empty`);
 }
 
 const tag = process.argv[2];
 if (tag && tag !== `v${version}`) {
-  throw new Error(`Release tag ${tag} does not match package version v${version}`);
+  throw new Error(
+    `Release tag ${tag} does not match package version v${version}`,
+  );
 }
 
 process.stdout.write(
-  JSON.stringify({
-    ok: true,
-    version,
-    tag: tag ?? null,
-  }) + "\n",
+  JSON.stringify({ ok: true, version, tag: tag ?? null }) + "\n",
 );
