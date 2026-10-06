@@ -1,6 +1,6 @@
 import type {
   PageVaultService,
-  HtmlItem,
+  VaultItem,
   ListItemsInput,
   UpdateItemInput,
   Visibility,
@@ -14,13 +14,10 @@ import {
   requireAdminWrite,
   requireAdminWriteOrApiKey,
 } from "../middleware/admin-auth.js";
-import { purgePublicHtmlCache } from "../public-cache.js";
+import { purgePublicContentCache } from "../public-cache.js";
 import {
-  isPdfContentType,
-  isSvgContentType,
-  pdfInlineHeaders,
+  adminPreviewContentHeaders,
   publicErrorPage,
-  SVG_DOCUMENT_CONTENT_SECURITY_POLICY,
 } from "../middleware/security-headers.js";
 import {
   isMarkdownContentType,
@@ -84,7 +81,7 @@ function numberFromQuery(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function itemDto(api: PageVaultService, item: HtmlItem) {
+function itemDto(api: PageVaultService, item: VaultItem) {
   return {
     ...item,
     publicUrl: api.publicUrl(item.slug),
@@ -106,7 +103,7 @@ function purgeSlugs(c: Context<HonoRuntime>, slugs: string[]): void {
   // executionCtx there would throw after a successful database write.
   if (typeof caches === "undefined") return;
   for (const slug of slugs) {
-    purgePublicHtmlCache(c.env, c.executionCtx, slug);
+    purgePublicContentCache(c.env, c.executionCtx, slug);
   }
 }
 
@@ -191,7 +188,7 @@ export function registerAdminRoutes(
       const body = await c.req.formData();
       const file = body.get("file");
       if (!(file instanceof File)) {
-        return c.json({ error: "HTML file is required" }, 400);
+        return c.json({ error: "File is required" }, 400);
       }
       if (file.size > maxUploadBytes(c)) {
         return c.json({ error: "Uploaded file is too large" }, 413);
@@ -201,7 +198,7 @@ export function registerAdminRoutes(
       const urlExpireDays = formNumber(body.get("urlExpireDays"));
       const fileExpireDays = formNumber(body.get("fileExpireDays"));
       const nextVisibility = formVisibility(body.get("visibility"));
-      const result = await api.uploadHtml({
+      const result = await api.uploadFile({
         filename: file.name,
         body: await file.arrayBuffer(),
         ...(urlExpireDays === undefined ? {} : { urlExpireDays }),
@@ -246,18 +243,7 @@ export function registerAdminRoutes(
       headers: {
         "Content-Type": responseContentType,
         "Cache-Control": "no-store",
-        ...pdfInlineHeaders(responseContentType),
-        // Uploaded HTML can run in an opaque origin, without access to the
-        // administrator's cookies, local storage, or parent window. SVG is
-        // intentionally stricter because it does not need script execution.
-        // PDFs are left to the browser's native viewer without an HTML CSP.
-        ...(isPdfContentType(responseContentType)
-          ? {}
-          : {
-              "Content-Security-Policy": isSvgContentType(contentType)
-                ? `${SVG_DOCUMENT_CONTENT_SECURITY_POLICY}; frame-ancestors 'self'`
-                : "sandbox allow-scripts; frame-ancestors 'self'",
-            }),
+        ...adminPreviewContentHeaders(responseContentType),
       },
     });
   });
