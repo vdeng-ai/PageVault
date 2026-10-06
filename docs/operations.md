@@ -160,3 +160,12 @@ After upgrading either runtime, verify:
 6. a reconciliation dry run shows no unexpected missing/orphan objects.
 
 Keep the previous backup until these checks pass.
+
+
+## v1 release operations
+
+PageVault v1 release preparation is validated by `pnpm run release:check`. The check requires all workspace package versions to match and requires a matching `CHANGELOG.md` section.
+
+Published tags use `vMAJOR.MINOR.PATCH`. Pushing a release tag triggers the GitHub Release workflow, which reruns typecheck, lint, tests, build, and a Docker image build before creating the GitHub Release.
+
+See [Releasing PageVault](./releasing.md) and [Upgrading PageVault](./upgrading.md).
