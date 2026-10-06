@@ -15,7 +15,7 @@ PageVault is a personal-first, self-hosted publisher for sharing AI-generated HT
 
 **Upload once → get a controlled link → paste it into any chat.**
 
-**Free-tier friendly:** PageVault can start on Cloudflare's included free quotas for Workers, D1, and R2. Usage beyond those quotas is subject to Cloudflare's current pricing.
+**Cloudflare Free-first:** PageVault is intentionally designed for personal use on the free tiers of Workers, D1, R2, Workers Static Assets, and one Cron Trigger. The project avoids heavy compute, Office conversion, background processing infrastructure, and other features that would push the core deployment beyond that lightweight boundary.
 
 ![PageVault English upload interface with Markdown preview, visibility, and retention settings](./docs/assets/pagevault-upload-en.jpg)
 
@@ -29,7 +29,8 @@ English interface · Dark theme · Local Markdown preview before publishing.
 - **Personal-first** — A single-admin design without teams, tenants, or complex roles.
 - **Controlled access** — Choose public or private visibility, set URL expiry and file retention, disable access, or delete content.
 - **Private storage** — Original files are never exposed directly; every public request passes through the PageVault gateway.
-- **Deploy your way** — Start with Cloudflare Workers, D1, and R2 free quotas, or run the same service with Docker.
+- **Deploy your way** — Stay lightweight on Cloudflare's free tier or run the same service with Docker.
+- **Deliberately small scope** — HTML, Markdown, PDF, SVG, PNG, JPEG, and WebP only; no DOCX/PPTX conversion, OCR, video processing, or server-side rendering pipeline.
 
 ## Architecture
 
@@ -68,6 +69,7 @@ For a contributor-oriented local setup, see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## Documentation
 
+- [Product direction and roadmap](./docs/roadmap.md)
 - [Configuration reference](./docs/configuration.md)
 - [Cloudflare deployment](./docs/cloudflare-deploy.md)
 - [Docker deployment](./docs/docker-deploy.md)
