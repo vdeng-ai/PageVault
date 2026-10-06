@@ -178,6 +178,35 @@ export interface GcResult {
   failed: Array<{ id: string; error: string }>;
 }
 
+export interface ReconciliationItemPage {
+  items: VaultItem[];
+  nextCursor: string | null;
+}
+
+export interface ReconciliationResult {
+  dryRun: boolean;
+  dbScanned: number;
+  storageScanned: number;
+  missingObjects: Array<{ itemId: string; objectKey: string }>;
+  sizeMismatches: Array<{
+    itemId: string;
+    objectKey: string;
+    expectedSize: number;
+    actualSize: number;
+  }>;
+  orphanObjects: string[];
+  deletedObjectsPendingCleanup: string[];
+  deletedObjectsRemoved: string[];
+  failed: Array<{ target: string; error: string }>;
+  dbNextCursor: string | null;
+  storageNextCursor: string | null;
+}
+
+export interface MaintenanceResult {
+  gc: GcResult;
+  reconciliation: ReconciliationResult;
+}
+
 export interface DashboardStats {
   total: number;
   totalSizeBytes: number;

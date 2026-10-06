@@ -10,6 +10,8 @@
     "deploy:dry-run": "wrangler deploy --dry-run --keep-vars --secrets-file .env.production",
     "dev": "wrangler dev",
     "gc": "node dist/cli.js gc",
+    "maintenance": "node dist/cli.js maintenance",
+    "reconcile": "node dist/cli.js reconcile",
     "lint": "eslint src --max-warnings=0",
     "start": "node dist/node-server.js",
     "test": "vitest run src",

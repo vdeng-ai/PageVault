@@ -10,18 +10,18 @@ const handleRequest = createRequestHandler({
   fetchAsset: createStaticAssetFetcher()
 });
 
-const gcIntervalMs = 24 * 60 * 60 * 1000;
-const gcTimer = setInterval(() => {
-  void runtime.service.garbageCollectExpiredFiles().catch((error: unknown) => {
+const maintenanceIntervalMs = 24 * 60 * 60 * 1000;
+const maintenanceTimer = setInterval(() => {
+  void runtime.service.runMaintenance().catch((error: unknown) => {
     console.error(
       JSON.stringify({
-        message: "node gc failed",
-        error: error instanceof Error ? error.message : String(error)
-      })
+        message: "node maintenance failed",
+        error: error instanceof Error ? error.message : String(error),
+      }),
     );
   });
-}, gcIntervalMs);
-gcTimer.unref();
+}, maintenanceIntervalMs);
+maintenanceTimer.unref();
 
 const port = Number.parseInt(process.env.PORT ?? "3000", 10);
 serve({

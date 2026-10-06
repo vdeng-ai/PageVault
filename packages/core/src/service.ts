@@ -34,12 +34,14 @@ import type {
   DashboardStats,
   CreatedApiKey,
   GcResult,
+  MaintenanceResult,
   PageVaultConfig,
   VaultItem,
   ListItemsInput,
   ListItemsResult,
   PublicContentResult,
   PublicItemResult,
+  ReconciliationResult,
   UpdateItemInput,
   UploadFileInput,
   UploadResult,
@@ -52,6 +54,10 @@ const API_KEY_TOKEN_PATTERN = /^pvk_[0-9a-f]{64}$/;
 const API_KEY_USAGE_WRITE_INTERVAL_MS = 60 * 60 * 1000;
 const API_UPLOAD_PROCESSING_LEASE_MS = 15 * 60 * 1000;
 const API_UPLOAD_IDEMPOTENCY_RETENTION_MS = 24 * 60 * 60 * 1000;
+const DB_RECONCILIATION_CURSOR_KEY = "reconciliation.db.cursor";
+const STORAGE_RECONCILIATION_CURSOR_KEY = "reconciliation.storage.cursor";
+const RECONCILIATION_OBJECT_PREFIX = "objects/";
+const DEFAULT_RECONCILIATION_BATCH_SIZE = 100;
 
 function encodeTimePart(timeMs: number): string {
   let value = BigInt(timeMs);
@@ -666,6 +672,193 @@ export class PageVaultService {
       idempotencyDeleted,
       failed,
     };
+  }
+
+  async reconcileStorage(
+    input: {
+      now?: Date;
+      limit?: number;
+      dryRun?: boolean;
+    } = {},
+  ): Promise<ReconciliationResult> {
+    const now = input.now ?? new Date();
+    const nowIso = now.toISOString();
+    const limit = Math.min(
+      500,
+      Math.max(1, input.limit ?? DEFAULT_RECONCILIATION_BATCH_SIZE),
+    );
+    const dryRun = input.dryRun === true;
+    const missingObjects: ReconciliationResult["missingObjects"] = [];
+    const sizeMismatches: ReconciliationResult["sizeMismatches"] = [];
+    const orphanObjects: string[] = [];
+    const deletedObjectsPendingCleanup: string[] = [];
+    const deletedObjectsRemoved: string[] = [];
+    const failed: ReconciliationResult["failed"] = [];
+
+    const dbCursor = await this.repository.getMaintenanceState(
+      DB_RECONCILIATION_CURSOR_KEY,
+    );
+    const dbPage = await this.repository.listItemsForReconciliation(
+      dbCursor,
+      limit,
+    );
+    for (const item of dbPage.items) {
+      try {
+        const metadata = await this.storage.headObject(item.objectKey);
+        if (!metadata) {
+          missingObjects.push({
+            itemId: item.id,
+            objectKey: item.objectKey,
+          });
+          continue;
+        }
+        if (metadata.size !== item.sizeBytes) {
+          sizeMismatches.push({
+            itemId: item.id,
+            objectKey: item.objectKey,
+            expectedSize: item.sizeBytes,
+            actualSize: metadata.size,
+          });
+        }
+      } catch (error) {
+        failed.push({
+          target: item.objectKey,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+
+    const storageCursor = await this.repository.getMaintenanceState(
+      STORAGE_RECONCILIATION_CURSOR_KEY,
+    );
+    const storagePage = await this.storage.listObjects({
+      prefix: RECONCILIATION_OBJECT_PREFIX,
+      ...(storageCursor ? { cursor: storageCursor } : {}),
+      limit,
+    });
+    const referencedItems = await this.repository.getItemsByObjectKeys(
+      storagePage.objects.map((object) => object.key),
+    );
+    const itemByObjectKey = new Map(
+      referencedItems.map((item) => [item.objectKey, item]),
+    );
+    const sizeMismatchKeys = new Set(
+      sizeMismatches.map((mismatch) => mismatch.objectKey),
+    );
+
+    for (const object of storagePage.objects) {
+      const item = itemByObjectKey.get(object.key);
+      if (!item) {
+        orphanObjects.push(object.key);
+        continue;
+      }
+      if (item.status === "deleted") {
+        deletedObjectsPendingCleanup.push(object.key);
+        if (!dryRun) {
+          try {
+            await this.storage.deleteObject(object.key);
+            deletedObjectsRemoved.push(object.key);
+          } catch (error) {
+            failed.push({
+              target: object.key,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
+        }
+        continue;
+      }
+      if (item.sizeBytes !== object.size && !sizeMismatchKeys.has(object.key)) {
+        sizeMismatches.push({
+          itemId: item.id,
+          objectKey: item.objectKey,
+          expectedSize: item.sizeBytes,
+          actualSize: object.size,
+        });
+        sizeMismatchKeys.add(object.key);
+      }
+    }
+
+    if (!dryRun) {
+      await Promise.all([
+        this.repository.setMaintenanceState(
+          DB_RECONCILIATION_CURSOR_KEY,
+          dbPage.nextCursor,
+          nowIso,
+        ),
+        this.repository.setMaintenanceState(
+          STORAGE_RECONCILIATION_CURSOR_KEY,
+          storagePage.nextCursor,
+          nowIso,
+        ),
+      ]);
+    }
+
+    const result: ReconciliationResult = {
+      dryRun,
+      dbScanned: dbPage.items.length,
+      storageScanned: storagePage.objects.length,
+      missingObjects,
+      sizeMismatches,
+      orphanObjects,
+      deletedObjectsPendingCleanup,
+      deletedObjectsRemoved,
+      failed,
+      dbNextCursor: dbPage.nextCursor,
+      storageNextCursor: storagePage.nextCursor,
+    };
+
+    if (
+      !dryRun &&
+      (missingObjects.length > 0 ||
+        sizeMismatches.length > 0 ||
+        orphanObjects.length > 0 ||
+        deletedObjectsRemoved.length > 0 ||
+        failed.length > 0)
+    ) {
+      await this.audit(
+        null,
+        "reconciliation",
+        JSON.stringify({
+          dryRun,
+          dbScanned: result.dbScanned,
+          storageScanned: result.storageScanned,
+          missingObjects: missingObjects.length,
+          sizeMismatches: sizeMismatches.length,
+          orphanObjects: orphanObjects.length,
+          deletedObjectsRemoved: deletedObjectsRemoved.length,
+          failed: failed.length,
+        }),
+        now,
+      );
+    }
+
+    return result;
+  }
+
+  async runMaintenance(
+    input: {
+      now?: Date;
+      gcLimit?: number;
+      reconcileLimit?: number;
+      dryRun?: boolean;
+    } = {},
+  ): Promise<MaintenanceResult> {
+    const now = input.now ?? new Date();
+    const gc = input.dryRun
+      ? {
+          scanned: 0,
+          deleted: 0,
+          deletedSlugs: [],
+          idempotencyDeleted: 0,
+          failed: [],
+        }
+      : await this.garbageCollectExpiredFiles(now, input.gcLimit ?? 100);
+    const reconciliation = await this.reconcileStorage({
+      now,
+      limit: input.reconcileLimit ?? DEFAULT_RECONCILIATION_BATCH_SIZE,
+      ...(input.dryRun === undefined ? {} : { dryRun: input.dryRun }),
+    });
+    return { gc, reconciliation };
   }
 
   async getDashboardStats(now = new Date()): Promise<DashboardStats> {

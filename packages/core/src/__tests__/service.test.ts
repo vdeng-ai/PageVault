@@ -68,6 +68,19 @@ class MemoryStorage implements StorageProvider {
   async deleteObject(key: string): Promise<void> {
     this.objects.delete(key);
   }
+
+  async listObjects(input: { prefix: string; cursor?: string; limit: number }) {
+    const matching = Array.from(this.objects.entries())
+      .filter(([key]) => key.startsWith(input.prefix))
+      .filter(([key]) => !input.cursor || key > input.cursor)
+      .sort(([left], [right]) => left.localeCompare(right));
+    const page = matching.slice(0, input.limit);
+    return {
+      objects: page.map(([key, object]) => ({ key, size: object.size })),
+      nextCursor:
+        matching.length > input.limit ? (page.at(-1)?.[0] ?? null) : null,
+    };
+  }
 }
 
 class MemoryRepository implements MetadataRepository {
@@ -84,6 +97,7 @@ class MemoryRepository implements MetadataRepository {
       expiresAt: string;
     }
   >();
+  readonly maintenance = new Map<string, string | null>();
   apiKeyUsageWrites = 0;
 
   async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
@@ -213,6 +227,13 @@ class MemoryRepository implements MetadataRepository {
     );
   }
 
+  async getItemsByObjectKeys(objectKeys: string[]): Promise<HtmlItem[]> {
+    const requested = new Set(objectKeys);
+    return Array.from(this.items.values()).filter((item) =>
+      requested.has(item.objectKey),
+    );
+  }
+
   async getItemBySlug(slug: string): Promise<HtmlItem | null> {
     return (
       Array.from(this.items.values()).find((item) => item.slug === slug) ?? null
@@ -304,6 +325,34 @@ class MemoryRepository implements MetadataRepository {
     return Array.from(this.items.values())
       .filter((item) => item.status !== "deleted" && item.fileExpiresAt <= now)
       .slice(0, limit);
+  }
+
+  async listItemsForReconciliation(
+    cursor: string | null,
+    limit: number,
+  ) {
+    const matching = Array.from(this.items.values())
+      .filter((item) => item.status !== "deleted")
+      .filter((item) => !cursor || item.id > cursor)
+      .sort((left, right) => left.id.localeCompare(right.id));
+    const page = matching.slice(0, limit);
+    return {
+      items: page,
+      nextCursor:
+        matching.length > limit ? (page.at(-1)?.id ?? null) : null,
+    };
+  }
+
+  async getMaintenanceState(key: string): Promise<string | null> {
+    return this.maintenance.get(key) ?? null;
+  }
+
+  async setMaintenanceState(
+    key: string,
+    value: string | null,
+    _updatedAt: string,
+  ): Promise<void> {
+    this.maintenance.set(key, value);
   }
 
   async writeAuditLog(input: AuditLogInput): Promise<void> {
@@ -744,6 +793,116 @@ describe("garbage collection", () => {
     });
     expect((await repo.getItemById("expired"))?.status).toBe("deleted");
     expect(await storage.getObject(expired.objectKey)).toBeNull();
+  });
+});
+
+describe("storage reconciliation", () => {
+  it("reports anomalies without destructive repair and only removes objects for deleted rows", async () => {
+    const { service, repo, storage } = createService();
+    const now = new Date("2026-07-05T00:00:00.000Z");
+    const missing = item({
+      id: "a-missing",
+      slug: "a-missing-a1b2c3d4",
+      objectKey: "objects/a-missing/index.html",
+      sizeBytes: 12,
+    });
+    const mismatch = item({
+      id: "b-mismatch",
+      slug: "b-mismatch-a1b2c3d4",
+      objectKey: "objects/b-mismatch/index.html",
+      sizeBytes: 12,
+    });
+    const deleted = item({
+      id: "c-deleted",
+      slug: "c-deleted-a1b2c3d4",
+      objectKey: "objects/c-deleted/index.html",
+      status: "deleted",
+    });
+    await repo.createItem({ item: missing });
+    await repo.createItem({ item: mismatch });
+    await repo.createItem({ item: deleted });
+    await storage.putObject(
+      mismatch.objectKey,
+      new ArrayBuffer(3),
+      HTML_CONTENT_TYPE,
+    );
+    await storage.putObject(
+      deleted.objectKey,
+      new ArrayBuffer(1),
+      HTML_CONTENT_TYPE,
+    );
+    await storage.putObject(
+      "objects/orphan/index.html",
+      new ArrayBuffer(1),
+      HTML_CONTENT_TYPE,
+    );
+
+    const dryRun = await service.reconcileStorage({
+      now,
+      limit: 100,
+      dryRun: true,
+    });
+    expect(dryRun.missingObjects).toEqual([
+      { itemId: missing.id, objectKey: missing.objectKey },
+    ]);
+    expect(dryRun.sizeMismatches).toEqual([
+      {
+        itemId: mismatch.id,
+        objectKey: mismatch.objectKey,
+        expectedSize: 12,
+        actualSize: 3,
+      },
+    ]);
+    expect(dryRun.orphanObjects).toEqual(["objects/orphan/index.html"]);
+    expect(dryRun.deletedObjectsPendingCleanup).toEqual([
+      deleted.objectKey,
+    ]);
+    expect(dryRun.deletedObjectsRemoved).toEqual([]);
+    expect(storage.objects.has(deleted.objectKey)).toBe(true);
+    expect(storage.objects.has("objects/orphan/index.html")).toBe(true);
+    expect(repo.maintenance.size).toBe(0);
+
+    const repaired = await service.reconcileStorage({ now, limit: 100 });
+    expect(repaired.deletedObjectsRemoved).toEqual([deleted.objectKey]);
+    expect(storage.objects.has(deleted.objectKey)).toBe(false);
+    expect(storage.objects.has("objects/orphan/index.html")).toBe(true);
+    expect(repo.maintenance.has("reconciliation.db.cursor")).toBe(true);
+    expect(repo.maintenance.has("reconciliation.storage.cursor")).toBe(true);
+  });
+
+  it("advances bounded cursors and wraps after the final page", async () => {
+    const { service, repo, storage } = createService();
+    const now = new Date("2026-07-05T00:00:00.000Z");
+    for (const id of ["a", "b", "c"]) {
+      const next = item({
+        id,
+        slug: `${id}-a1b2c3d4`,
+        objectKey: `objects/${id}/index.html`,
+        sizeBytes: 1,
+      });
+      await repo.createItem({ item: next });
+      await storage.putObject(
+        next.objectKey,
+        new ArrayBuffer(1),
+        HTML_CONTENT_TYPE,
+      );
+    }
+
+    const first = await service.reconcileStorage({ now, limit: 2 });
+    expect(first.dbScanned).toBe(2);
+    expect(first.storageScanned).toBe(2);
+    expect(first.dbNextCursor).toBe("b");
+    expect(first.storageNextCursor).toBe("objects/b/index.html");
+
+    const second = await service.reconcileStorage({ now, limit: 2 });
+    expect(second.dbScanned).toBe(1);
+    expect(second.storageScanned).toBe(1);
+    expect(second.dbNextCursor).toBeNull();
+    expect(second.storageNextCursor).toBeNull();
+
+    const third = await service.reconcileStorage({ now, limit: 2 });
+    expect(third.dbScanned).toBe(2);
+    expect(third.storageScanned).toBe(2);
   });
 });
 

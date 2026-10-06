@@ -1,6 +1,6 @@
 # Cloudflare Deploy
 
-PageVault deploys one Cloudflare Worker to two hostnames: the admin hostname and the public hostname. The Worker serves the admin SPA through Workers Static Assets, stores uploaded files in a private R2 bucket, stores metadata in D1, and runs a daily Cron Trigger for retention cleanup.
+PageVault deploys one Cloudflare Worker to two hostnames: the admin hostname and the public hostname. The Worker serves the admin SPA through Workers Static Assets, stores uploaded files in a private R2 bucket, stores metadata in D1, and runs one daily Cron Trigger for bounded retention cleanup and incremental storage reconciliation.
 
 PageVault is intentionally engineered for personal use within Cloudflare's included free usage quotas for Workers, D1, R2, Workers Static Assets, and one daily Cron Trigger. The application avoids heavy conversion and background-compute services by design. These quotas are limited rather than unlimited; review the current [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/), [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/), and [R2 pricing](https://developers.cloudflare.com/r2/pricing/) before production use.
 
@@ -89,7 +89,7 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
 
    Set `PUBLIC_BASE_URL` and `ADMIN_BASE_URL` to your two real HTTPS origins, without trailing slashes. Set `ADMIN_PASSWORD_HASH` to the output from `scripts/hash-password.ts` and `SESSION_SECRET` to the generated random secret. Do not commit the filled file.
 
-   Existing secrets override application defaults, so existing deployments must also update `DEFAULT_URL_EXPIRE_DAYS` to `15` and `DEFAULT_FILE_EXPIRE_DAYS` to `30`. Apply all D1 migrations, including `0004_api_upload_idempotency.sql`, before deploying this Worker version. The older `0003_api_upload_lock.sql` table is retained only for upgrade/rollback compatibility and is no longer used by the application. Existing item expiry timestamps are left unchanged.
+   Existing secrets override application defaults, so existing deployments must also update `DEFAULT_URL_EXPIRE_DAYS` to `15` and `DEFAULT_FILE_EXPIRE_DAYS` to `30`. Apply all D1 migrations, including `0005_maintenance_state.sql`, before deploying this Worker version. The older `0003_api_upload_lock.sql` table is retained only for upgrade/rollback compatibility and is no longer used by the application. Existing item expiry timestamps are left unchanged.
 
    See [Configuration](./configuration.md) for all supported runtime values and defaults.
 
@@ -154,3 +154,19 @@ Worker + Workers Static Assets
 ```
 
 Do not add heavy document conversion, OCR, server-side screenshots, media processing, full-bucket scans, per-view D1 writes, or extra stateful Cloudflare products merely to expand feature breadth. See [Product Direction and Roadmap](./roadmap.md).
+
+
+## Daily maintenance
+
+The single Cron Trigger performs a bounded maintenance pass:
+
+- delete up to the configured GC batch of file-retention-expired objects;
+- prune expired upload-idempotency rows;
+- verify a small page of live D1 records against R2 with `HEAD`-style metadata reads;
+- inspect one cursor-paged R2 listing under `objects/`;
+- remove only objects whose matching database row is already marked `deleted`;
+- report missing objects, size mismatches, and unreferenced objects without deleting them.
+
+Reconciliation defaults to 100 database items and 100 storage objects per run and is capped at 500 per direction. Two small cursor values are stored in D1 so the next daily run continues where the previous run stopped. Reaching the end resets that direction to the beginning for the next cycle.
+
+This intentionally avoids a full D1 scan or full R2 listing in one Worker invocation.
