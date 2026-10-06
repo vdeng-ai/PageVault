@@ -15,6 +15,7 @@ import type {
   VaultItem,
   ListItemsInput,
   ListItemsResult,
+  OperationsSummary,
   ReconciliationItemPage,
   UpdateItemInput,
 } from "@pagevault/core";
@@ -486,6 +487,50 @@ export class NodeSqliteRepository implements MetadataRepository {
       urlExpired: row?.url_expired ?? 0,
       fileDeletingSoon: row?.file_deleting_soon ?? 0,
       deleted: row?.deleted ?? 0,
+    };
+  }
+
+  async getOperationsSummary(): Promise<OperationsSummary> {
+    const maintenance = this.db
+      .prepare(
+        "SELECT value, updated_at FROM maintenance_state WHERE key = ? LIMIT 1",
+      )
+      .get("last_maintenance") as Record<string, SQLOutputValue> | undefined;
+    const auditRows = this.db
+      .prepare(
+        "SELECT action, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 8",
+      )
+      .all() as Array<Record<string, SQLOutputValue>>;
+    let status: "ok" | "findings" | null = null;
+    let summary: string | null = null;
+    const value = maintenance
+      ? nullableStringField(maintenance, "value")
+      : null;
+    if (value) {
+      try {
+        const parsed = JSON.parse(value) as {
+          status?: "ok" | "findings";
+          summary?: string;
+        };
+        status =
+          parsed.status === "ok" || parsed.status === "findings"
+            ? parsed.status
+            : null;
+        summary = typeof parsed.summary === "string" ? parsed.summary : null;
+      } catch {
+        summary = value;
+      }
+    }
+    return {
+      lastMaintenanceAt: maintenance
+        ? stringField(maintenance, "updated_at")
+        : null,
+      lastMaintenanceStatus: status,
+      lastMaintenanceSummary: summary,
+      recentAuditEvents: auditRows.map((row) => ({
+        action: stringField(row, "action"),
+        createdAt: stringField(row, "created_at"),
+      })),
     };
   }
 
