@@ -1,3 +1,4 @@
+import { SUPPORTED_UPLOAD_ACCEPT } from "@pagevault/core";
 import { RefreshCw, UploadCloud, X } from "lucide-react";
 import { useRef, useState } from "react";
 import type { Visibility } from "../api/client.js";
@@ -36,7 +37,7 @@ export function UploadDropzone({
       type="file"
       disabled={disabled}
       aria-label={t("upload.browse")}
-      accept=".html,.htm,.md,.markdown,.jpg,.jpeg,.pdf,.png,.svg,.webp,text/html,text/markdown,image/jpeg,application/pdf,image/png,image/svg+xml,image/webp"
+      accept={SUPPORTED_UPLOAD_ACCEPT}
       onChange={(event) => {
         const next = event.target.files?.item(0);
         if (next) onFile(next);
