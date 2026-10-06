@@ -1,3 +1,4 @@
+import { fileCapabilityForFilename } from "@pagevault/core";
 import {
   ArrowRight,
   CheckCircle2,
@@ -12,7 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import {
-  uploadHtml,
+  uploadFile,
   type UploadResult,
   type Visibility,
 } from "../api/client.js";
@@ -23,18 +24,6 @@ import { ContentPreview } from "../components/ContentPreview.js";
 import { useSettings } from "../settings.js";
 import { copyText } from "../clipboard.js";
 
-const supportedExtensions = new Set([
-  "html",
-  "htm",
-  "md",
-  "markdown",
-  "jpg",
-  "jpeg",
-  "pdf",
-  "png",
-  "svg",
-  "webp",
-]);
 const durationPresets = [7, 15, 30, 90, 365];
 function positiveInteger(value: string): number | null {
   if (!/^\d+$/.test(value)) return null;
@@ -129,11 +118,7 @@ export function UploadPage({
   function chooseFile(nextFile: File) {
     setResult(null);
     setError(null);
-    if (
-      !supportedExtensions.has(
-        nextFile.name.split(".").pop()?.toLowerCase() ?? "",
-      )
-    ) {
+    if (!fileCapabilityForFilename(nextFile.name)) {
       setFile(null);
       setFileError(t("upload.invalidType"));
       return;
@@ -160,7 +145,7 @@ export function UploadPage({
     }
     setBusy(true);
     setError(null);
-    void uploadHtml({
+    void uploadFile({
       file,
       urlExpireDays: parsedUrlDays,
       fileExpireDays: parsedFileDays,
