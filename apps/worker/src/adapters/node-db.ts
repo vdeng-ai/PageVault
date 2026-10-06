@@ -495,12 +495,12 @@ export class NodeSqliteRepository implements MetadataRepository {
       .prepare(
         "SELECT value, updated_at FROM maintenance_state WHERE key = ? LIMIT 1",
       )
-      .get("last_maintenance") as Record<string, SQLOutputValue> | undefined;
+      .get("last_maintenance");
     const auditRows = this.db
       .prepare(
         "SELECT action, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 8",
       )
-      .all() as Array<Record<string, SQLOutputValue>>;
+      .all();
     let status: "ok" | "findings" | null = null;
     let summary: string | null = null;
     const value = maintenance
