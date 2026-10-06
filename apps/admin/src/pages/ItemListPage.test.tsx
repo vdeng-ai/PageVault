@@ -39,7 +39,8 @@ const item: HtmlItem = {
   visibility: "public",
   status: "active",
   derivedStatus: "active",
-  publicUrl: "https://html.example/test-ab12",
+  publicUrl: "https://html.example/p/test-ab12",
+  rawUrl: "https://html.example/raw/test-ab12",
   urlExpiresAt: "2026-08-01T00:00:00.000Z",
   fileExpiresAt: "2027-01-01T00:00:00.000Z",
   accessCount: 12,
@@ -101,10 +102,10 @@ describe("ItemListPage request behavior", () => {
     );
 
     await waitFor(() => expect(vi.mocked(listItems)).toHaveBeenCalledTimes(1));
-    expect(screen.queryByText("Test file")).toBeNull();
-    const fileLinks = screen.getAllByRole("button", { name: "test.html" });
-    expect(fileLinks).toHaveLength(2);
-    await user.click(fileLinks[0]!);
+    const titleLinks = screen.getAllByRole("button", { name: "Test file" });
+    expect(titleLinks).toHaveLength(2);
+    expect(screen.getAllByText(/test\.html/).length).toBeGreaterThan(0);
+    await user.click(titleLinks[0]!);
     expect(onEdit).toHaveBeenCalledWith("item-1");
 
     await user.click(
