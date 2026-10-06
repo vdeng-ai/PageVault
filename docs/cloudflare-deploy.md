@@ -173,3 +173,12 @@ The single Cron Trigger performs a bounded maintenance pass:
 Reconciliation defaults to 100 database items and 100 storage objects per run and is capped at 500 per direction. Two small cursor values are stored in D1 so the next daily run continues where the previous run stopped. Reaching the end resets that direction to the beginning for the next cycle.
 
 This intentionally avoids a full D1 scan or full R2 listing in one Worker invocation.
+
+
+## Upgrading v1.x
+
+PageVault v1 uses forward-only numbered D1 migrations. Before upgrading, back up D1/R2, apply every pending migration in numeric order, deploy the application, and run the post-upgrade smoke checks.
+
+Do not attempt an automatic schema downgrade. For a rollback across a schema change, restore the pre-upgrade backup and run the matching older application version.
+
+See [Upgrading PageVault](./upgrading.md) for the compatibility matrix and rollback policy.
