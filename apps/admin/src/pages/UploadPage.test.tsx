@@ -150,7 +150,7 @@ describe("UploadPage", () => {
 
     expect(screen.getByText("diagram.svg")).toBeTruthy();
     expect(
-      screen.getByRole("button", {
+      screen.getByRole<HTMLButtonElement>("button", {
         name: "Upload and publish",
       }).disabled,
     ).toBe(false);
