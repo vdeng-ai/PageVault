@@ -38,7 +38,7 @@ pnpm run test
 pnpm run build
 ```
 
-Changes covered by Playwright must also pass the E2E suite once Phase F is present.
+Changes covered by public sharing, authentication, upload, lifecycle state, or browser rendering must also pass the Playwright E2E suite in `e2e/`. Playwright remains a test-only dependency outside the production pnpm workspace.
 
 ## Architecture boundaries
 

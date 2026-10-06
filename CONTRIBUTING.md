@@ -80,6 +80,17 @@ pnpm run build
 pnpm run format
 ```
 
+For browser-level coverage, install the isolated Playwright test package and Chromium once, then run the E2E suite:
+
+```bash
+cd e2e
+npm install --no-package-lock
+npx playwright install chromium
+npm test
+```
+
+The E2E package is intentionally outside the pnpm production workspace so Playwright and browser tooling never enter PageVault's runtime dependency graph.
+
 `pnpm run format` is a check and does not rewrite files. Use `pnpm exec prettier --write <files>` when you intentionally want to format changed files.
 
 ## Pull Requests
