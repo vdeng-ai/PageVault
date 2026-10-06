@@ -174,6 +174,7 @@ export interface GcResult {
   scanned: number;
   deleted: number;
   deletedSlugs: string[];
+  idempotencyDeleted: number;
   failed: Array<{ id: string; error: string }>;
 }
 
