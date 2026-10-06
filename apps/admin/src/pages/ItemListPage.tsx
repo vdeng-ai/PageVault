@@ -32,14 +32,7 @@ const MIB = 1024 * 1024;
 type CreatedWindow = "" | "7" | "30" | "90";
 type ExpiryWindow = "" | "url-7" | "url-30" | "file-7" | "file-30";
 type SizeRange = "" | "small" | "medium" | "large";
-
-function listFilterParams(input: {
-  fileKind: FileKind | "";
-  createdWindow: CreatedWindow;
-  expiryWindow: ExpiryWindow;
-  sizeRange: SizeRange;
-  now?: Date;
-}): Pick<
+type AdvancedListFilters = Pick<
   ListItemsParams,
   | "fileKind"
   | "createdAfter"
@@ -49,9 +42,17 @@ function listFilterParams(input: {
   | "fileExpiresBefore"
   | "minSizeBytes"
   | "maxSizeBytes"
-> {
+>;
+
+function listFilterParams(input: {
+  fileKind: FileKind | "";
+  createdWindow: CreatedWindow;
+  expiryWindow: ExpiryWindow;
+  sizeRange: SizeRange;
+  now?: Date;
+}): AdvancedListFilters {
   const now = input.now ?? new Date();
-  const params: ReturnType<typeof listFilterParams> = {
+  const params: AdvancedListFilters = {
     fileKind: input.fileKind,
   };
 
