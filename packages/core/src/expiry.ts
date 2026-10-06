@@ -2,7 +2,7 @@ import {
   DEFAULT_FILE_EXPIRE_DAYS,
   DEFAULT_URL_EXPIRE_DAYS
 } from "./constants.js";
-import type { DerivedStatus, HtmlItem } from "./types.js";
+import type { DerivedStatus, VaultItem } from "./types.js";
 
 export function addDays(date: Date, days: number): Date {
   const result = new Date(date.getTime());
@@ -22,15 +22,15 @@ export function isExpired(expiresAt: string, now = new Date()): boolean {
   return now.getTime() >= Date.parse(expiresAt);
 }
 
-export function isUrlExpired(item: Pick<HtmlItem, "urlExpiresAt">, now = new Date()): boolean {
+export function isUrlExpired(item: Pick<VaultItem, "urlExpiresAt">, now = new Date()): boolean {
   return isExpired(item.urlExpiresAt, now);
 }
 
-export function isFileExpired(item: Pick<HtmlItem, "fileExpiresAt">, now = new Date()): boolean {
+export function isFileExpired(item: Pick<VaultItem, "fileExpiresAt">, now = new Date()): boolean {
   return isExpired(item.fileExpiresAt, now);
 }
 
-export function getDerivedStatus(item: HtmlItem, now = new Date()): DerivedStatus {
+export function getDerivedStatus(item: VaultItem, now = new Date()): DerivedStatus {
   if (item.status === "deleted") {
     return "deleted";
   }
