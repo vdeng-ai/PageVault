@@ -9,6 +9,7 @@ export interface NodeRuntime {
   env: AppBindings;
   service: PageVaultService;
   migrate(): Promise<void>;
+  shutdown(): Promise<void>;
 }
 
 function requiredEnv(name: string): string {
@@ -26,6 +27,15 @@ function numberEnv(name: string, fallback: number): number {
   }
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function nonNegativeNumberEnv(name: string, fallback: number): number {
+  const value = process.env[name];
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 export function createNodeRuntime(): NodeRuntime {
@@ -46,6 +56,13 @@ export function createNodeRuntime(): NodeRuntime {
     DEFAULT_URL_EXPIRE_DAYS: String(numberEnv("DEFAULT_URL_EXPIRE_DAYS", 15)),
     DEFAULT_FILE_EXPIRE_DAYS: String(numberEnv("DEFAULT_FILE_EXPIRE_DAYS", 30)),
     MAX_UPLOAD_SIZE_MB: String(numberEnv("MAX_UPLOAD_SIZE_MB", 10)),
+    PUBLIC_HTML_CACHE_SECONDS: String(
+      nonNegativeNumberEnv("PUBLIC_HTML_CACHE_SECONDS", 3600),
+    ),
+    ACCESS_COUNT_FLUSH_SECONDS: String(
+      numberEnv("ACCESS_COUNT_FLUSH_SECONDS", 300),
+    ),
+    ACCESS_COUNT_MODE: process.env.ACCESS_COUNT_MODE ?? "windowed",
   };
   const service = new PageVaultService(
     repository,
@@ -77,6 +94,10 @@ export function createNodeRuntime(): NodeRuntime {
       await repository.migrate(
         resolve(process.cwd(), "migrations/0005_maintenance_state.sql"),
       );
+    },
+    shutdown: async () => {
+      repository.checkpoint();
+      repository.close();
     },
   };
 }

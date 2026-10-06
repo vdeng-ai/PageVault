@@ -5,6 +5,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: pagevault
     restart: unless-stopped
+    stop_grace_period: 15s
     ports:
       - "13080:3000"
     volumes:
@@ -24,4 +25,7 @@ services:
       DEFAULT_URL_EXPIRE_DAYS: "15"
       DEFAULT_FILE_EXPIRE_DAYS: "30"
       MAX_UPLOAD_SIZE_MB: "10"
+      PUBLIC_HTML_CACHE_SECONDS: "3600"
+      ACCESS_COUNT_MODE: windowed
+      ACCESS_COUNT_FLUSH_SECONDS: "300"
       PORT: "3000"

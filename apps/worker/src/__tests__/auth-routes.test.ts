@@ -110,6 +110,12 @@ class MemoryStorage implements StorageProvider {
 }
 
 class MemoryRepository implements MetadataRepository {
+  healthError: Error | null = null;
+
+  async healthCheck(): Promise<void> {
+    if (this.healthError) throw this.healthError;
+  }
+
   readonly items = new Map<string, HtmlItem>();
   readonly apiKeys = new Map<string, { apiKey: ApiKey; tokenHash: string }>();
   readonly idempotency = new Map<
@@ -456,6 +462,57 @@ function apiUploadRequest(
     body: form,
   });
 }
+
+describe("health routes", () => {
+  it("keeps liveness independent from dependencies and checks DB readiness", async () => {
+    const { env, handle, repo } = await createFixture();
+
+    const health = await handle(
+      new Request("https://admin.test/healthz"),
+      env,
+    );
+    expect(health.status).toBe(200);
+    expect(health.headers.get("Cache-Control")).toBe("no-store");
+    await expect(health.json()).resolves.toEqual({ status: "ok" });
+
+    const ready = await handle(
+      new Request("https://admin.test/readyz"),
+      env,
+    );
+    expect(ready.status).toBe(200);
+    await expect(ready.json()).resolves.toEqual({ status: "ready" });
+
+    repo.healthError = new Error("database unavailable");
+
+    const stillAlive = await handle(
+      new Request("https://admin.test/healthz"),
+      env,
+    );
+    expect(stillAlive.status).toBe(200);
+
+    const notReady = await handle(
+      new Request("https://admin.test/readyz"),
+      env,
+    );
+    expect(notReady.status).toBe(503);
+    await expect(notReady.json()).resolves.toEqual({
+      status: "not_ready",
+    });
+
+    const publicProbe = await handle(
+      new Request("https://public.test/readyz"),
+      env,
+    );
+    expect(publicProbe.status).toBe(404);
+
+    const head = await handle(
+      new Request("https://admin.test/healthz", { method: "HEAD" }),
+      env,
+    );
+    expect(head.status).toBe(200);
+    await expect(head.text()).resolves.toBe("");
+  });
+});
 
 describe("admin auth routes", () => {
   it("saves, batches, and deletes items without a Worker ExecutionContext in Node", async () => {

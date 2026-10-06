@@ -148,12 +148,27 @@ function apiKeyRow(row: Record<string, SQLOutputValue>): ApiKey {
 }
 
 export class NodeSqliteRepository implements MetadataRepository {
+  async healthCheck(): Promise<void> {
+    this.db.prepare("SELECT 1 AS ok").get();
+  }
+
+  checkpoint(): void {
+    this.db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+  }
+
+  close(): void {
+    this.db.close();
+  }
+
   constructor(private readonly db: DatabaseSync) {}
 
   static open(sqlitePath: string): NodeSqliteRepository {
     mkdirSync(dirname(sqlitePath), { recursive: true });
     const db = new DatabaseSync(sqlitePath);
     db.exec("PRAGMA journal_mode = WAL");
+    db.exec("PRAGMA synchronous = NORMAL");
+    db.exec("PRAGMA busy_timeout = 5000");
+    db.exec("PRAGMA wal_autocheckpoint = 1000");
     db.exec("PRAGMA foreign_keys = ON");
     return new NodeSqliteRepository(db);
   }

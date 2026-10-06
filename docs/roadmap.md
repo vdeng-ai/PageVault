@@ -37,38 +37,10 @@ PageVault intentionally does **not** plan to support DOCX/PPTX conversion or oth
 - **Phase D — Share Viewer / Raw Split:** stable `/p/:slug` viewer URLs plus `/raw/:slug` original content delivery.
 - **Phase E — Concurrent Idempotent API Uploads:** remove the global upload lock and provide retry-safe API uploads.
 - **Phase F — Reliability Baseline:** Playwright coverage for login, browser upload, public/raw delivery, lifecycle states, core formats, mobile layout, PDF ranges, and API idempotency.
+- **Phase G — Incremental GC and Storage Reconciliation:** bounded DB/storage cursor scans, safe deleted-object cleanup, dry-run diagnostics, and one shared daily maintenance path.
+- **Phase H — Free-tier and Deployment Hardening:** health/readiness probes, fail-closed migrations, non-root Docker, graceful SQLite shutdown, backup/restore verification, deployment parity checks, and enforceable free-tier guardrails.
 
 ## Remaining roadmap
-
-### Phase G — Incremental GC and Storage Reconciliation
-
-Extend the existing daily maintenance path without building a job system:
-
-- delete retention-expired objects;
-- prune expired idempotency rows;
-- incrementally verify DB -> storage existence;
-- incrementally identify storage -> DB orphans;
-- process bounded batches;
-- persist cursors where necessary;
-- expose dry-run/reporting for manual diagnosis.
-
-Never perform an unbounded D1 scan or full R2 bucket scan in one Worker invocation. The implementation uses persistent cursors, defaults to 100 records/objects per direction, caps a page at 500, and only auto-deletes storage objects whose matching metadata is already marked deleted.
-
-### Phase H — Free-tier and Deployment Hardening
-
-Make the free-tier constraint operational:
-
-- health/readiness endpoint;
-- fail loudly on migration errors;
-- remove migration error suppression from Docker startup;
-- non-root Docker runtime;
-- graceful shutdown;
-- SQLite WAL/checkpoint review;
-- backup/restore verification;
-- Cloudflare/Docker configuration parity checks;
-- document free-tier guardrails.
-
-Review every new feature for CPU cost, D1 read/write amplification, R2 list/read amplification, and additional platform dependencies.
 
 ### Phase I — Lightweight Admin Experience
 

@@ -43,7 +43,13 @@ MAX_UPLOAD_SIZE_MB: "10"
 PORT: "3000"
 ```
 
-The example mounts `/data/pagevault` from the host into the container. That directory contains both metadata and uploaded files, so it must be persistent and writable by the container.
+The example mounts `/data/pagevault` from the host into the container. The image runs as UID/GID `10001:10001`, so create the host directory with matching ownership before first start:
+
+```bash
+sudo install -d -o 10001 -g 10001 /data/pagevault
+```
+
+That directory contains both metadata and uploaded files, so it must be persistent and writable by the container. Do not make it world-writable.
 
 See [Configuration](./configuration.md) for every supported setting and default.
 
@@ -55,7 +61,7 @@ Build the image and start the service from the repository root:
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-The container entrypoint applies the current SQLite migrations before starting the Node.js server.
+The Node.js server applies all current SQLite migrations before it starts listening. Migration or database initialization failures terminate startup; the container does not suppress them.
 
 Check the service state and logs:
 
@@ -63,6 +69,8 @@ Check the service state and logs:
 docker compose -f docker/docker-compose.yml ps
 docker compose -f docker/docker-compose.yml logs -f pagevault
 ```
+
+The image includes a Docker `HEALTHCHECK` against local `/readyz`. `/healthz` reports process liveness, while `/readyz` additionally performs a lightweight SQLite readiness query.
 
 ## Reverse Proxy and TLS
 
@@ -103,6 +111,8 @@ docker compose -f docker/docker-compose.yml up -d --build
 ```
 
 The startup migrations are idempotent. Keep the backup until login, upload, and public retrieval have been verified on the new container.
+
+For point-in-time backups and an isolated restore verification procedure, see [Operations and Free-tier Guardrails](./operations.md).
 
 ## Maintenance and reconciliation
 

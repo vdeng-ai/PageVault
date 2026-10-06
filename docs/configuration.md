@@ -29,15 +29,21 @@ pnpm tsx scripts/hash-password.ts
 openssl rand -base64 32
 ```
 
-## Cloudflare Settings
+## Shared Runtime Tuning
 
-Cloudflare bindings and non-secret tuning values live in `apps/worker/wrangler.jsonc`. Keep the binding names `ASSETS`, `DB`, and `HTML_BUCKET` unless the application code is updated at the same time.
+The following lightweight tuning defaults are kept aligned between Cloudflare and Docker:
 
 | Name                         | Default    | Description                                                                                                                                                |
 | ---------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PUBLIC_HTML_CACHE_SECONDS`  | `3600`     | Maximum Cloudflare cache lifetime for public HTML and rendered Markdown. Effective cache lifetime never exceeds URL or file expiry. Set to `0` to disable. |
-| `ACCESS_COUNT_MODE`          | `windowed` | `windowed` batches counters, `exact` writes each access, and `off` disables access counting.                                                               |
+| `PUBLIC_HTML_CACHE_SECONDS`  | `3600`     | Maximum public share/raw cache lifetime. Effective cache lifetime never exceeds URL or file expiry. Set to `0` to disable.                               |
+| `ACCESS_COUNT_MODE`          | `windowed` | `windowed` batches counters, `exact` writes each access, and `off` disables access counting.                                                         |
 | `ACCESS_COUNT_FLUSH_SECONDS` | `300`      | Approximate flush interval for windowed access counters.                                                                                                   |
+
+Cloudflare stores these as Wrangler vars. Docker exposes the same values through environment variables.
+
+## Cloudflare Settings
+
+Cloudflare bindings and non-secret tuning values live in `apps/worker/wrangler.jsonc`. Keep the binding names `ASSETS`, `DB`, and `HTML_BUCKET` unless the application code is updated at the same time.
 
 For local development, Wrangler reads `apps/worker/.env`. Production deployment uses the ignored `apps/worker/.env.production` file through the repository's deploy script. See [Cloudflare Deploy](./cloudflare-deploy.md).
 
@@ -51,7 +57,7 @@ For local development, Wrangler reads `apps/worker/.env`. Production deployment 
 
 The current Docker image always uses the Node.js runtime, SQLite, and local object storage. The `RUNTIME`, `DB_DRIVER`, and `STORAGE_DRIVER` labels in the example Compose file are descriptive compatibility values, not runtime switches.
 
-Persist and back up both `SQLITE_PATH` and `LOCAL_STORAGE_DIR`. Do not expose either path through the reverse proxy. See [Docker Deploy](./docker-deploy.md).
+Persist and back up both `SQLITE_PATH` and `LOCAL_STORAGE_DIR`. The production container runs as UID/GID `10001:10001`, so host bind mounts must be writable by that identity. Do not expose either path through the reverse proxy. See [Docker Deploy](./docker-deploy.md) and [Operations](./operations.md).
 
 ## Secret Handling
 

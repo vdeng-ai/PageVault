@@ -131,6 +131,10 @@ export class PageVaultService {
     private readonly config: PageVaultConfig,
   ) {}
 
+  async readinessCheck(): Promise<void> {
+    await this.repository.healthCheck();
+  }
+
   async createApiKey(name: string, now = new Date()): Promise<CreatedApiKey> {
     const normalizedName = name.trim();
     if (normalizedName.length === 0 || normalizedName.length > 100) {

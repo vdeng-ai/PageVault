@@ -118,6 +118,7 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
    If you add Cloudflare Access, Zero Trust, Basic Auth, firewall challenges, or similar upstream authentication, apply those rules only to the admin hostname. Do not apply them to the public hostname or to a wildcard pattern such as `*.example.com`; generated public URLs like `https://h.example.com/p/report-ed559a5f` must load without an admin login.
 
 9. Verify the deployment:
+   - Confirm the admin hostname `/healthz` and `/readyz` endpoints return HTTP 200. These probes are not exposed on the public sharing hostname.
    - Sign in on the admin hostname.
    - Upload a small supported file.
    - Open the generated public URL on the public hostname from an unauthenticated browser, private window, or different device.

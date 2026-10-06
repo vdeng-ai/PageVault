@@ -15,6 +15,7 @@ import type {
 } from "./types.js";
 
 export interface MetadataRepository {
+  healthCheck(): Promise<void>;
   createApiKey(input: CreateApiKeyInput): Promise<ApiKey>;
   listApiKeys(): Promise<ApiKey[]>;
   getActiveApiKeyByHash(tokenHash: string): Promise<ApiKey | null>;
