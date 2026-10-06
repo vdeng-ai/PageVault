@@ -114,6 +114,6 @@ describe("public share viewer", () => {
     expect(html).toContain('<h1 id="notes">Notes</h1>');
     expect(html).toContain("reader-toc");
     expect(html).toContain("data-copy-share");
-    expect(html).not.toContain("data-fullscreen-toggle");
+    expect(html.match(/data-fullscreen-toggle/g)).toHaveLength(1);
   });
 });
