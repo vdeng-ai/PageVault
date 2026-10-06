@@ -804,6 +804,35 @@ describe("admin auth routes", () => {
     expect(repo.items.size).toBe(1);
   });
 
+  it("rejects spoofed file extensions before persisting uploads", async () => {
+    const { env, handle, repo, service, storage } = await createFixture();
+    const created = await service.createApiKey("Validator");
+
+    const form = new FormData();
+    form.set(
+      "file",
+      new File(["<html>not a pdf</html>"], "spoofed.pdf", {
+        type: "application/pdf",
+      }),
+    );
+    const response = await handle(
+      new Request("https://admin.test/api/admin/items", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${created.token}` },
+        body: form,
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "invalid_file_content",
+    });
+    expect(repo.items.size).toBe(0);
+    expect(storage.objects.size).toBe(0);
+    expect(repo.apiUploadLease).toBeNull();
+  });
+
   it("rejects concurrent uploads from different API keys and allows the next retry", async () => {
     const { env, handle, service, storage } = await createFixture();
     const firstKey = await service.createApiKey("First uploader");
