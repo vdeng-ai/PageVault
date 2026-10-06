@@ -14,6 +14,7 @@ import type { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
 import type { HonoRuntime } from "../bindings.js";
+import { checkRateLimit, resetRateLimit } from "../rate-limit.js";
 
 const loginSchema = z.object({
   email: z.email(),
@@ -49,8 +50,31 @@ async function readJson(c: Context<HonoRuntime>): Promise<unknown> {
   }
 }
 
+function clientKey(c: Context<HonoRuntime>): string {
+  const forwarded = c.req.header("CF-Connecting-IP")?.trim();
+  return forwarded || c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() || "unknown";
+}
+
+function logAuth(c: Context<HonoRuntime>, event: string): void {
+  console.log(
+    JSON.stringify({
+      message: event,
+      requestId: c.get("requestId"),
+    }),
+  );
+}
+
 export function registerAuthRoutes(app: Hono<HonoRuntime>): void {
   app.post("/api/auth/login", async (c) => {
+    const rateKey = `login:${clientKey(c)}`;
+    const rate = checkRateLimit(rateKey, 10, 15 * 60 * 1000);
+    c.header("X-RateLimit-Remaining", String(rate.remaining));
+    if (!rate.allowed) {
+      c.header("Retry-After", String(rate.retryAfterSeconds));
+      logAuth(c, "admin login rate limited");
+      return c.json({ error: "Too many login attempts" }, 429);
+    }
+
     const parsed = loginSchema.safeParse(await readJson(c));
     if (!parsed.success) {
       return c.json({ error: "Invalid credentials" }, 400);
@@ -63,9 +87,12 @@ export function registerAuthRoutes(app: Hono<HonoRuntime>): void {
       c.env.ADMIN_PASSWORD_HASH,
     );
     if (!validEmail || !validPassword) {
+      logAuth(c, "admin login failed");
       return c.json({ error: "Invalid credentials" }, 401);
     }
 
+    resetRateLimit(rateKey);
+    logAuth(c, "admin login succeeded");
     const { value } = await createSession(
       parsed.data.email,
       c.env.SESSION_SECRET,

@@ -21,6 +21,7 @@ import type {
   ListItemsInput,
   ListItemsResult,
   MetadataRepository,
+  OperationsSummary,
   StorageProvider,
   StoredObject,
   UpdateItemInput,
@@ -285,6 +286,14 @@ class MemoryRepository implements MetadataRepository {
       urlExpired: 0,
       fileDeletingSoon: 0,
       deleted: 0,
+    };
+  }
+  async getOperationsSummary(): Promise<OperationsSummary> {
+    return {
+      lastMaintenanceAt: null,
+      lastMaintenanceStatus: null,
+      lastMaintenanceSummary: null,
+      recentAuditEvents: [],
     };
   }
   async updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem> {
@@ -853,6 +862,31 @@ describe("admin auth routes", () => {
       publicUrl: "https://public.test/p/filter-item-a1b2c3d4",
       rawUrl: "https://public.test/raw/filter-item-a1b2c3d4",
     });
+  });
+
+  it("returns a request ID and rate limits repeated failed logins", async () => {
+    const { env, handle } = await createFixture();
+    let last: Response | null = null;
+    for (let index = 0; index < 11; index += 1) {
+      last = await handle(
+        new Request("https://admin.test/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CF-Connecting-IP": "203.0.113.77",
+            "X-Request-Id": "phase-k-test",
+          },
+          body: JSON.stringify({
+            email: env.ADMIN_EMAIL,
+            password: "wrong-password",
+          }),
+        }),
+        env,
+      );
+    }
+    expect(last?.status).toBe(429);
+    expect(last?.headers.get("X-Request-Id")).toBe("phase-k-test");
+    expect(Number(last?.headers.get("Retry-After"))).toBeGreaterThan(0);
   });
 
   it("returns 401 for incorrect credentials", async () => {

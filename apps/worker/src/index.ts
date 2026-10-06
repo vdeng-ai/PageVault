@@ -43,6 +43,11 @@ async function runMaintenance(env: WorkerEnv): Promise<void> {
       failed: reconciliation.failed.length,
     },
   };
+  await service.recordMaintenanceOutcome(
+    hasIssues ? "findings" : "ok",
+    `GC ${result.gc.deleted} deleted; reconciliation ${reconciliation.missingObjects.length + reconciliation.sizeMismatches.length + reconciliation.orphanObjects.length} findings`,
+  );
+
   if (hasIssues) {
     console.error(JSON.stringify(payload));
   } else {

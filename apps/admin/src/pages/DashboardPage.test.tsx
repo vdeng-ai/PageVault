@@ -2,11 +2,11 @@
 
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dashboard } from "../api/client.js";
+import { dashboard, operations } from "../api/client.js";
 import { SettingsProvider } from "../settings.js";
 import { DashboardPage } from "./DashboardPage.js";
 
-vi.mock("../api/client.js", () => ({ dashboard: vi.fn() }));
+vi.mock("../api/client.js", () => ({ dashboard: vi.fn(), operations: vi.fn() }));
 
 describe("DashboardPage", () => {
   beforeEach(() => {
@@ -19,6 +19,12 @@ describe("DashboardPage", () => {
       })),
     });
     window.localStorage.clear();
+    vi.mocked(operations).mockResolvedValue({
+      lastMaintenanceAt: "2026-10-06T08:00:00.000Z",
+      lastMaintenanceStatus: "ok",
+      lastMaintenanceSummary: "GC 0 deleted; reconciliation 0 findings",
+      recentAuditEvents: [{ action: "upload", createdAt: "2026-10-06T07:00:00.000Z" }],
+    });
     vi.mocked(dashboard).mockResolvedValue({
       total: 4,
       totalSizeBytes: 3 * 1024 ** 2,
@@ -49,5 +55,7 @@ describe("DashboardPage", () => {
     expect(screen.getByText("3 MB")).toBeTruthy();
     expect(sizeCard?.querySelector(".chip")).toBeNull();
     expect(document.querySelectorAll(".dashboard-metric-card")).toHaveLength(6);
+    expect(screen.getByText("Operations")).toBeTruthy();
+    expect(screen.getByText("GC 0 deleted; reconciliation 0 findings")).toBeTruthy();
   });
 });

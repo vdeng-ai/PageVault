@@ -47,6 +47,16 @@ Revoked keys remain as metadata for administrative history but cannot authentica
 
 External access controls may be added in front of the admin hostname, but they must not match the public hostname. Generated URLs under `PUBLIC_BASE_URL`, for example `https://h.example.com/p/report-ed559a5f`, are intended to be reachable without an admin session.
 
+### Lightweight abuse controls and request tracing
+
+Admin API responses include an `X-Request-Id`. A valid caller-supplied request ID is preserved; otherwise PageVault generates one. Unhandled API errors include the same identifier in structured logs so a failed request can be matched to its server-side error.
+
+Login failures are limited to 10 attempts per 15-minute in-memory window per source address. Invalid API-key attempts are limited to 30 per 15-minute window. These limits are deliberately best-effort: Docker has one process-local window, while Cloudflare may have multiple Worker isolates. They reduce casual brute force without creating D1 writes or requiring Redis/Durable Objects. They are not a replacement for a strong password, secret API keys, or optional upstream protection on the admin hostname.
+
+The public `/p` and `/raw` paths do not participate in these rate-limit maps and do not gain synchronous audit writes. Public access counting remains windowed/batched.
+
+The admin Operations summary reuses existing metadata only: logical stored bytes, item counts, the persisted result of the most recent scheduled maintenance run, and a capped list of recent administrative audit actions. PageVault does not add an external telemetry pipeline.
+
 ## HTML Content
 
 Uploaded HTML is stored unchanged. The public share URL under `/p/:slug` is a PageVault-owned viewer with its own share metadata and CSP; it loads HTML through `/raw/:slug` inside a sandboxed iframe with `allow-scripts` but without `allow-same-origin`. This preserves interactive HTML while preventing it from sharing the viewer origin. Direct raw HTML remains the original uploaded bytes: PageVault does not sanitize, rewrite, inject, remove scripts, rewrite links, or add analytics snippets.

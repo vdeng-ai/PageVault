@@ -10,6 +10,7 @@ import type {
   VaultItem,
   ListItemsInput,
   ListItemsResult,
+  OperationsSummary,
   ReconciliationItemPage,
   UpdateItemInput,
 } from "./types.js";
@@ -44,6 +45,7 @@ export interface MetadataRepository {
   getItemBySlug(slug: string): Promise<VaultItem | null>;
   listItems(input: ListItemsInput): Promise<ListItemsResult>;
   getDashboardStats(now: string, soon: string): Promise<DashboardStats>;
+  getOperationsSummary(): Promise<OperationsSummary>;
   updateItem(id: string, patch: UpdateItemInput): Promise<VaultItem>;
   markDeleted(id: string, deletedAt: string): Promise<void>;
   incrementAccess(id: string, accessedAt: string): Promise<void>;

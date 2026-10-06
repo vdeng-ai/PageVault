@@ -35,6 +35,7 @@ import type {
   CreatedApiKey,
   GcResult,
   MaintenanceResult,
+  OperationsSummary,
   PageVaultConfig,
   VaultItem,
   ListItemsInput,
@@ -869,6 +870,22 @@ export class PageVaultService {
     return this.repository.getDashboardStats(
       now.toISOString(),
       addDays(now, 7).toISOString(),
+    );
+  }
+
+  async getOperationsSummary(): Promise<OperationsSummary> {
+    return this.repository.getOperationsSummary();
+  }
+
+  async recordMaintenanceOutcome(
+    status: "ok" | "findings",
+    summary: string,
+    now = new Date(),
+  ): Promise<void> {
+    await this.repository.setMaintenanceState(
+      "last_maintenance",
+      JSON.stringify({ status, summary }),
+      now.toISOString(),
     );
   }
 
