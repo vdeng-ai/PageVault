@@ -5,6 +5,19 @@ async function rootFile(path: string): Promise<string> {
   return readFile(new URL("../../../../" + path, import.meta.url), "utf8");
 }
 
+function packageVersion(contents: string): string {
+  const parsed: unknown = JSON.parse(contents);
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("version" in parsed) ||
+    typeof parsed.version !== "string"
+  ) {
+    throw new Error("Package metadata is missing a string version");
+  }
+  return parsed.version;
+}
+
 describe("deployment hardening contract", () => {
   it("keeps the Cloudflare architecture inside the lightweight boundary", async () => {
     const config = await readFile(
@@ -80,10 +93,10 @@ describe("deployment hardening contract", () => {
       ]);
 
     const versions = [
-      JSON.parse(rootPackage).version,
-      JSON.parse(corePackage).version,
-      JSON.parse(workerPackage).version,
-      JSON.parse(adminPackage).version,
+      packageVersion(rootPackage),
+      packageVersion(corePackage),
+      packageVersion(workerPackage),
+      packageVersion(adminPackage),
     ];
     expect(new Set(versions)).toEqual(new Set(["1.0.0"]));
     expect(changelog).toContain("## [1.0.0]");
