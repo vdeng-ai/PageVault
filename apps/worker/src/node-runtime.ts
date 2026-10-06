@@ -47,6 +47,13 @@ export function createNodeRuntime(): NodeRuntime {
     DEFAULT_URL_EXPIRE_DAYS: String(numberEnv("DEFAULT_URL_EXPIRE_DAYS", 15)),
     DEFAULT_FILE_EXPIRE_DAYS: String(numberEnv("DEFAULT_FILE_EXPIRE_DAYS", 30)),
     MAX_UPLOAD_SIZE_MB: String(numberEnv("MAX_UPLOAD_SIZE_MB", 10)),
+    PUBLIC_HTML_CACHE_SECONDS: String(
+      numberEnv("PUBLIC_HTML_CACHE_SECONDS", 3600),
+    ),
+    ACCESS_COUNT_FLUSH_SECONDS: String(
+      numberEnv("ACCESS_COUNT_FLUSH_SECONDS", 300),
+    ),
+    ACCESS_COUNT_MODE: process.env.ACCESS_COUNT_MODE ?? "windowed",
   };
   const service = new PageVaultService(
     repository,
