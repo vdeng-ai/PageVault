@@ -808,11 +808,12 @@ export class PageVaultService {
     };
 
     if (
-      missingObjects.length > 0 ||
-      sizeMismatches.length > 0 ||
-      orphanObjects.length > 0 ||
-      deletedObjectsRemoved.length > 0 ||
-      failed.length > 0
+      !dryRun &&
+      (missingObjects.length > 0 ||
+        sizeMismatches.length > 0 ||
+        orphanObjects.length > 0 ||
+        deletedObjectsRemoved.length > 0 ||
+        failed.length > 0)
     ) {
       await this.audit(
         null,
