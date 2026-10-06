@@ -16,7 +16,7 @@ Docker mode uses Node.js, SQLite, and the local filesystem. Neither mode require
 
 ## Health and readiness
 
-PageVault exposes two unauthenticated, non-cached probe endpoints on either configured hostname:
+PageVault exposes two unauthenticated, non-cached probe endpoints on the admin hostname and on local loopback for container probes. They are not exposed on the public sharing hostname:
 
 - `GET /healthz` — process/Worker liveness only. It does not touch D1, SQLite, R2, or local object storage.
 - `GET /readyz` — lightweight database readiness. It executes a minimal database query and does not access R2/local object storage.
