@@ -7,6 +7,17 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { handlePublicRequest } from "./routes/public.js";
 import { hostnameFromBaseUrl, isLocalDevHost, serviceFromCloudflareEnv } from "./runtime.js";
 
+function healthResponse(status: 200 | 503, body: Record<string, string>): Response {
+  return Response.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Type": "application/json; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
 export interface RequestHandlerOptions {
   createService?: ServiceFactory;
   fetchAsset?: AssetFetcher;
@@ -80,6 +91,50 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
     ctx?: ExecutionContext
   ): Promise<Response> {
     const url = new URL(request.url);
+
+    if (
+      (request.method === "GET" || request.method === "HEAD") &&
+      url.pathname === "/healthz"
+    ) {
+      const response = healthResponse(200, { status: "ok" });
+      return request.method === "HEAD"
+        ? new Response(null, {
+            status: response.status,
+            headers: response.headers,
+          })
+        : response;
+    }
+
+    if (
+      (request.method === "GET" || request.method === "HEAD") &&
+      url.pathname === "/readyz"
+    ) {
+      try {
+        await createService(env).readinessCheck();
+        const response = healthResponse(200, { status: "ready" });
+        return request.method === "HEAD"
+          ? new Response(null, {
+              status: response.status,
+              headers: response.headers,
+            })
+          : response;
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            message: "readiness check failed",
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
+        const response = healthResponse(503, { status: "not_ready" });
+        return request.method === "HEAD"
+          ? new Response(null, {
+              status: response.status,
+              headers: response.headers,
+            })
+          : response;
+      }
+    }
+
     const hostname = url.hostname;
     const adminHost = hostnameFromBaseUrl(env.ADMIN_BASE_URL);
     const publicHost = hostnameFromBaseUrl(env.PUBLIC_BASE_URL);
