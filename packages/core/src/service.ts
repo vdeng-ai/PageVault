@@ -855,7 +855,7 @@ export class PageVaultService {
     const reconciliation = await this.reconcileStorage({
       now,
       limit: input.reconcileLimit ?? DEFAULT_RECONCILIATION_BATCH_SIZE,
-      dryRun: input.dryRun,
+      ...(input.dryRun === undefined ? {} : { dryRun: input.dryRun }),
     });
     return { gc, reconciliation };
   }
