@@ -110,6 +110,9 @@ test("HTML UI upload keeps share/raw behavior and works on a mobile viewport", a
   await expect(page.locator(".share-viewer-shell")).toBeVisible();
   await expect(page.locator(".share-viewer-title")).toContainText("产品介绍");
   await expect(page.locator(".share-viewer-frame")).toBeVisible();
+  await expect(page.getByRole("button", { name: "复制链接" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "全屏查看" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "打开原文件" })).toBeVisible();
 });
 
 test("Markdown, PDF range, and SVG use their lightweight public delivery paths", async ({
@@ -156,12 +159,22 @@ test("Markdown, PDF range, and SVG use their lightweight public delivery paths",
   const svgRawUrl = `${PUBLIC_URL}/raw/${encodeURIComponent(svg.slug)}`;
   const svgShare = await context.request.get(svg.publicUrl);
   expect(await svgShare.text()).toContain(
-    `<meta property="og:image" content="${svgRawUrl}">`,
+    `<meta property="og:image" content="${PUBLIC_URL}/share-card.png">`,
   );
   const svgRaw = await context.request.get(svgRawUrl);
   expect(svgRaw.status()).toBe(200);
   expect(svgRaw.headers()["content-type"]).toContain("image/svg+xml");
   expect(await svgRaw.text()).toBe(svgSource);
+
+  const shareArt = await context.request.get(`${PUBLIC_URL}/share-card.png`);
+  expect(shareArt.status()).toBe(200);
+  expect(shareArt.headers()["content-type"]).toContain("image/png");
+  expect((await shareArt.body()).byteLength).toBeGreaterThan(1000);
+
+  const hiddenAdminAsset = await context.request.get(
+    `${PUBLIC_URL}/favicon.svg`,
+  );
+  expect(hiddenAdminAsset.status()).toBe(404);
 });
 
 test("private, disabled, and expired records map to the expected public states", async ({
