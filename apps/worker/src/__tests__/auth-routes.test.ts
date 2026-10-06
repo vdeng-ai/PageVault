@@ -11,7 +11,9 @@ import { addDays } from "@pagevault/core";
 import type {
   AccessCountInput,
   ApiKey,
+  ApiUploadIdempotencyClaim,
   AuditLogInput,
+  ClaimApiUploadIdempotencyInput,
   CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
@@ -97,8 +99,17 @@ class MemoryStorage implements StorageProvider {
 class MemoryRepository implements MetadataRepository {
   readonly items = new Map<string, HtmlItem>();
   readonly apiKeys = new Map<string, { apiKey: ApiKey; tokenHash: string }>();
-  apiUploadLease: { owner: string; expiresAt: string } | null = null;
-  apiUploadLeaseAttempts = 0;
+  readonly idempotency = new Map<
+    string,
+    {
+      requestHash: string;
+      itemId: string;
+      status: "processing" | "completed";
+      owner: string;
+      expiresAt: string;
+    }
+  >();
+  idempotencyClaims = 0;
   accessWrites = 0;
 
   async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
@@ -134,22 +145,63 @@ class MemoryRepository implements MetadataRepository {
     return true;
   }
 
-  async tryAcquireApiUploadLease(
-    owner: string,
-    expiresAt: string,
-    now: string,
-  ): Promise<boolean> {
-    this.apiUploadLeaseAttempts += 1;
-    if (this.apiUploadLease && this.apiUploadLease.expiresAt > now) {
-      return false;
+  async claimApiUploadIdempotency(
+    input: ClaimApiUploadIdempotencyInput,
+  ): Promise<ApiUploadIdempotencyClaim> {
+    this.idempotencyClaims += 1;
+    const key = `${input.apiKeyId}\u0000${input.idempotencyKey}`;
+    const existing = this.idempotency.get(key);
+    if (existing && existing.expiresAt > input.now) {
+      if (existing.requestHash !== input.requestHash) {
+        return { kind: "conflict", itemId: existing.itemId };
+      }
+      return existing.status === "completed"
+        ? { kind: "completed", itemId: existing.itemId }
+        : { kind: "in_progress", itemId: existing.itemId };
     }
-    this.apiUploadLease = { owner, expiresAt };
-    return true;
+    const itemId =
+      existing?.status === "processing" &&
+      existing.requestHash === input.requestHash
+        ? existing.itemId
+        : input.candidateItemId;
+    this.idempotency.set(key, {
+      requestHash: input.requestHash,
+      itemId,
+      status: "processing",
+      owner: input.owner,
+      expiresAt: input.expiresAt,
+    });
+    return { kind: "acquired", itemId };
   }
 
-  async releaseApiUploadLease(owner: string): Promise<void> {
-    if (this.apiUploadLease?.owner === owner) {
-      this.apiUploadLease = null;
+  async completeApiUploadIdempotency(
+    apiKeyId: string,
+    idempotencyKey: string,
+    owner: string,
+    _updatedAt: string,
+    expiresAt: string,
+  ): Promise<void> {
+    const key = `${apiKeyId}\u0000${idempotencyKey}`;
+    const existing = this.idempotency.get(key);
+    if (!existing || existing.status !== "processing" || existing.owner !== owner) {
+      throw new Error("lost idempotency claim");
+    }
+    this.idempotency.set(key, {
+      ...existing,
+      status: "completed",
+      expiresAt,
+    });
+  }
+
+  async abandonApiUploadIdempotency(
+    apiKeyId: string,
+    idempotencyKey: string,
+    owner: string,
+  ): Promise<void> {
+    const key = `${apiKeyId}\u0000${idempotencyKey}`;
+    const existing = this.idempotency.get(key);
+    if (existing?.status === "processing" && existing.owner === owner) {
+      this.idempotency.delete(key);
     }
   }
 
@@ -321,12 +373,24 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
   return { promise, resolve };
 }
 
-function apiUploadRequest(token: string, filename: string): Request {
+function apiUploadRequest(
+  token: string,
+  filename: string,
+  options: { idempotencyKey?: string; body?: string } = {},
+): Request {
   const form = new FormData();
-  form.set("file", new File(["<h1>API</h1>"], filename));
+  form.set(
+    "file",
+    new File([options.body ?? "<h1>API</h1>"], filename),
+  );
   return new Request("https://admin.test/api/admin/items", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(options.idempotencyKey
+        ? { "Idempotency-Key": options.idempotencyKey }
+        : {}),
+    },
     body: form,
   });
 }
@@ -830,10 +894,9 @@ describe("admin auth routes", () => {
     });
     expect(repo.items.size).toBe(0);
     expect(storage.objects.size).toBe(0);
-    expect(repo.apiUploadLease).toBeNull();
   });
 
-  it("rejects concurrent uploads from different API keys and allows the next retry", async () => {
+  it("allows concurrent uploads from different API keys", async () => {
     const { env, handle, service, storage } = await createFixture();
     const firstKey = await service.createApiKey("First uploader");
     const secondKey = await service.createApiKey("Second uploader");
@@ -843,78 +906,149 @@ describe("admin auth routes", () => {
     storage.nextPutGate = releasePut.promise;
 
     const firstResponsePromise = handle(
-      apiUploadRequest(firstKey.token, "first.html"),
+      apiUploadRequest(firstKey.token, "first.html", {
+        idempotencyKey: "first-request",
+      }),
       env,
     );
     await putStarted.promise;
 
-    const busy = await handle(
-      apiUploadRequest(secondKey.token, "second.html"),
+    const second = await handle(
+      apiUploadRequest(secondKey.token, "second.html", {
+        idempotencyKey: "second-request",
+      }),
       env,
     );
-    expect(busy.status).toBe(409);
-    expect(busy.headers.get("Retry-After")).toBe("5");
-    await expect(busy.json()).resolves.toEqual({
-      error: "Another API key upload is already in progress",
-      code: "api_upload_busy",
-    });
+    expect(second.status).toBe(200);
+    expect(second.headers.get("Idempotency-Replayed")).toBe("false");
 
     releasePut.resolve();
     expect((await firstResponsePromise).status).toBe(200);
-    const retry = await handle(
-      apiUploadRequest(secondKey.token, "second-retry.html"),
-      env,
-    );
-    expect(retry.status).toBe(200);
   });
 
-  it("applies the same concurrency limit to repeated use of one API key", async () => {
+  it("allows one API key to run distinct idempotency keys concurrently", async () => {
     const { env, handle, service, storage } = await createFixture();
-    const created = await service.createApiKey("Single uploader");
+    const created = await service.createApiKey("Concurrent uploader");
     const putStarted = deferred();
     const releasePut = deferred();
     storage.nextPutStarted = putStarted.resolve;
     storage.nextPutGate = releasePut.promise;
 
-    const firstResponsePromise = handle(
-      apiUploadRequest(created.token, "same-first.html"),
+    const firstPromise = handle(
+      apiUploadRequest(created.token, "first.html", {
+        idempotencyKey: "request-a",
+      }),
       env,
     );
     await putStarted.promise;
-    const busy = await handle(
-      apiUploadRequest(created.token, "same-second.html"),
+
+    const second = await handle(
+      apiUploadRequest(created.token, "second.html", {
+        idempotencyKey: "request-b",
+      }),
       env,
     );
+    expect(second.status).toBe(200);
 
-    expect(busy.status).toBe(409);
-    expect(busy.headers.get("Retry-After")).toBe("5");
-    await expect(busy.json()).resolves.toMatchObject({
-      code: "api_upload_busy",
-    });
     releasePut.resolve();
-    expect((await firstResponsePromise).status).toBe(200);
+    expect((await firstPromise).status).toBe(200);
   });
 
-  it("rejects invalid and revoked keys before attempting to acquire a lease", async () => {
+  it("blocks only a duplicate in-flight idempotency key and replays it after completion", async () => {
+    const { env, handle, repo, service, storage } = await createFixture();
+    const created = await service.createApiKey("Idempotent uploader");
+    const putStarted = deferred();
+    const releasePut = deferred();
+    storage.nextPutStarted = putStarted.resolve;
+    storage.nextPutGate = releasePut.promise;
+
+    const firstPromise = handle(
+      apiUploadRequest(created.token, "same.html", {
+        idempotencyKey: "same-request",
+      }),
+      env,
+    );
+    await putStarted.promise;
+
+    const inProgress = await handle(
+      apiUploadRequest(created.token, "same.html", {
+        idempotencyKey: "same-request",
+      }),
+      env,
+    );
+    expect(inProgress.status).toBe(409);
+    await expect(inProgress.json()).resolves.toMatchObject({
+      code: "idempotency_in_progress",
+    });
+
+    releasePut.resolve();
+    const first = await firstPromise;
+    expect(first.status).toBe(200);
+    const firstBody: { id: string } = await first.json();
+
+    const replay = await handle(
+      apiUploadRequest(created.token, "same.html", {
+        idempotencyKey: "same-request",
+      }),
+      env,
+    );
+    expect(replay.status).toBe(200);
+    expect(replay.headers.get("Idempotency-Replayed")).toBe("true");
+    const replayBody: { id: string } = await replay.json();
+    expect(replayBody.id).toBe(firstBody.id);
+    expect(repo.items.size).toBe(1);
+  });
+
+  it("rejects reuse of an idempotency key with a different request", async () => {
+    const { env, handle, service } = await createFixture();
+    const created = await service.createApiKey("Conflict uploader");
+
+    const first = await handle(
+      apiUploadRequest(created.token, "same.html", {
+        idempotencyKey: "conflict-key",
+        body: "<h1>first</h1>",
+      }),
+      env,
+    );
+    expect(first.status).toBe(200);
+
+    const conflict = await handle(
+      apiUploadRequest(created.token, "same.html", {
+        idempotencyKey: "conflict-key",
+        body: "<h1>second</h1>",
+      }),
+      env,
+    );
+    expect(conflict.status).toBe(409);
+    await expect(conflict.json()).resolves.toMatchObject({
+      code: "idempotency_conflict",
+    });
+  });
+
+  it("rejects invalid and revoked keys before creating idempotency state", async () => {
     const { env, handle, repo, service } = await createFixture();
     const revoked = await service.createApiKey("Revoked uploader");
     await service.revokeApiKey(revoked.apiKey.id);
 
     const unknown = await handle(
-      apiUploadRequest(`pvk_${"0".repeat(64)}`, "unknown.html"),
+      apiUploadRequest(`pvk_${"0".repeat(64)}`, "unknown.html", {
+        idempotencyKey: "unknown-request",
+      }),
       env,
     );
     const revokedResponse = await handle(
-      apiUploadRequest(revoked.token, "revoked.html"),
+      apiUploadRequest(revoked.token, "revoked.html", {
+        idempotencyKey: "revoked-request",
+      }),
       env,
     );
 
     expect(unknown.status).toBe(401);
     expect(revokedResponse.status).toBe(401);
-    expect(repo.apiUploadLeaseAttempts).toBe(0);
+    expect(repo.idempotencyClaims).toBe(0);
   });
 
-  it("lets an administrator upload while an API key holds the global lease", async () => {
+  it("lets an administrator upload while an API upload is in flight", async () => {
     const { env, handle, service, storage } = await createFixture();
     const { cookie, csrfToken } = await adminSession(env, handle);
     const created = await service.createApiKey("Held uploader");
@@ -924,7 +1058,9 @@ describe("admin auth routes", () => {
     storage.nextPutGate = releasePut.promise;
 
     const keyResponsePromise = handle(
-      apiUploadRequest(created.token, "held.html"),
+      apiUploadRequest(created.token, "held.html", {
+        idempotencyKey: "held-request",
+      }),
       env,
     );
     await putStarted.promise;
@@ -945,33 +1081,29 @@ describe("admin auth routes", () => {
     expect((await keyResponsePromise).status).toBe(200);
   });
 
-  it("releases the API key lease after malformed input and upload failures", async () => {
+  it("abandons failed idempotency claims so the same request can retry immediately", async () => {
     const { env, handle, repo, service, storage } = await createFixture();
     const created = await service.createApiKey("Failure uploader");
-    const malformed = await handle(
-      new Request("https://admin.test/api/admin/items", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${created.token}` },
-        body: new FormData(),
-      }),
-      env,
-    );
-    expect(malformed.status).toBe(400);
-    expect(repo.apiUploadLease).toBeNull();
 
     storage.nextPutError = new Error("storage unavailable");
     const failed = await handle(
-      apiUploadRequest(created.token, "failed.html"),
+      apiUploadRequest(created.token, "failed.html", {
+        idempotencyKey: "retryable-request",
+      }),
       env,
     );
     expect(failed.status).toBe(500);
-    expect(repo.apiUploadLease).toBeNull();
+    expect(repo.idempotency.size).toBe(0);
 
     const retry = await handle(
-      apiUploadRequest(created.token, "recovered.html"),
+      apiUploadRequest(created.token, "failed.html", {
+        idempotencyKey: "retryable-request",
+      }),
       env,
     );
     expect(retry.status).toBe(200);
+    expect(retry.headers.get("Idempotency-Replayed")).toBe("false");
+    expect(repo.idempotency.size).toBe(1);
   });
 });
 
