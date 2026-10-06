@@ -5,6 +5,7 @@ export const HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 export const MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8";
 export const JPEG_CONTENT_TYPE = "image/jpeg";
 export const PNG_CONTENT_TYPE = "image/png";
+export const PDF_CONTENT_TYPE = "application/pdf";
 export const SVG_CONTENT_TYPE = "image/svg+xml";
 export const WEBP_CONTENT_TYPE = "image/webp";
 export const SESSION_COOKIE_NAME = "pagevault_session";
