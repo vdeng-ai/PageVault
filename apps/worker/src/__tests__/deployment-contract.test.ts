@@ -67,4 +67,29 @@ describe("deployment hardening contract", () => {
       expect(compose).toContain(`${name}:`);
     }
   });
+
+  it("keeps v1 release metadata aligned and tag automation present", async () => {
+    const [rootPackage, corePackage, workerPackage, adminPackage, changelog, releaseWorkflow] =
+      await Promise.all([
+        rootFile("package.json"),
+        rootFile("packages/core/package.json"),
+        rootFile("apps/worker/package.json"),
+        rootFile("apps/admin/package.json"),
+        rootFile("CHANGELOG.md"),
+        rootFile(".github/workflows/release.yml"),
+      ]);
+
+    const versions = [
+      JSON.parse(rootPackage).version,
+      JSON.parse(corePackage).version,
+      JSON.parse(workerPackage).version,
+      JSON.parse(adminPackage).version,
+    ];
+    expect(new Set(versions)).toEqual(new Set(["1.0.0"]));
+    expect(changelog).toContain("## [1.0.0]");
+    expect(releaseWorkflow).toContain('"v*.*.*"');
+    expect(releaseWorkflow).toContain("scripts/check-release.mjs");
+    expect(releaseWorkflow).toContain("gh release create");
+  });
+
 });
