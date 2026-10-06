@@ -35,6 +35,7 @@ import type {
   CreatedApiKey,
   GcResult,
   MaintenanceResult,
+  OperationsSummary,
   PageVaultConfig,
   VaultItem,
   ListItemsInput,
@@ -870,6 +871,10 @@ export class PageVaultService {
       now.toISOString(),
       addDays(now, 7).toISOString(),
     );
+  }
+
+  async getOperationsSummary(): Promise<OperationsSummary> {
+    return this.repository.getOperationsSummary();
   }
 
   publicUrl(slug: string): string {
