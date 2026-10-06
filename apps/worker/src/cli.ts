@@ -11,7 +11,12 @@ if (command === "gc") {
   console.log(
     JSON.stringify({
       ok: true,
-      migrations: ["0001_initial", "0002_api_keys", "0003_api_upload_lock"],
+      migrations: [
+        "0001_initial",
+        "0002_api_keys",
+        "0003_api_upload_lock",
+        "0004_api_upload_idempotency",
+      ],
     }),
   );
 } else {
