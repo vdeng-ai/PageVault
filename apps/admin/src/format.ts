@@ -33,3 +33,26 @@ export function formatFileSize(bytes: number, locale: string): string {
 
   return `${formatter.format(value / 1024 ** unitIndex)} ${FILE_SIZE_UNITS[unitIndex]}`;
 }
+
+
+export function fileTypeLabel(contentType: string): string {
+  const normalized = contentType.split(";")[0]?.trim().toLowerCase() ?? "";
+  switch (normalized) {
+    case "text/html":
+      return "HTML";
+    case "text/markdown":
+      return "Markdown";
+    case "application/pdf":
+      return "PDF";
+    case "image/svg+xml":
+      return "SVG";
+    case "image/png":
+      return "PNG";
+    case "image/jpeg":
+      return "JPEG";
+    case "image/webp":
+      return "WebP";
+    default:
+      return normalized || "File";
+  }
+}
