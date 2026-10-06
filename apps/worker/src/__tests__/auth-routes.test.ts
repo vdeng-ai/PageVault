@@ -3,6 +3,7 @@ import {
   PageVaultService,
   HTML_CONTENT_TYPE,
   MARKDOWN_CONTENT_TYPE,
+  PDF_CONTENT_TYPE,
   PNG_CONTENT_TYPE,
   pbkdf2Sha256,
 } from "@pagevault/core";
@@ -34,6 +35,7 @@ import type { AppBindings } from "../bindings.js";
 class MemoryStorage implements StorageProvider {
   readonly objects = new Map<string, StoredObject>();
   getReads = 0;
+  rangeReads = 0;
   nextPutGate: Promise<void> | null = null;
   nextPutStarted: (() => void) | null = null;
   nextPutError: Error | null = null;
@@ -58,10 +60,35 @@ class MemoryStorage implements StorageProvider {
     }
     this.objects.set(key, { body, contentType, size: body.byteLength });
   }
+  async headObject(key: string) {
+    const object = this.objects.get(key);
+    if (!object) return null;
+    return { size: object.size, ...(object.contentType ? { contentType: object.contentType } : {}) };
+  }
+
   async getObject(key: string): Promise<StoredObject | null> {
     this.getReads += 1;
     return this.objects.get(key) ?? null;
   }
+
+  async getObjectRange(key: string, offset: number, length: number) {
+    this.rangeReads += 1;
+    const object = this.objects.get(key);
+    if (!object) return null;
+    const body =
+      object.body instanceof ArrayBuffer
+        ? object.body
+        : await new Response(object.body).arrayBuffer();
+    const actualLength = Math.min(length, Math.max(0, body.byteLength - offset));
+    return {
+      body: body.slice(offset, offset + actualLength),
+      offset,
+      length: actualLength,
+      totalSize: body.byteLength,
+      ...(object.contentType ? { contentType: object.contentType } : {}),
+    };
+  }
+
   async deleteObject(key: string): Promise<void> {
     this.objects.delete(key);
   }
@@ -437,6 +464,49 @@ describe("admin auth routes", () => {
     expect(html).toContain('id="start"');
     expect(html).toContain('href="#start"');
     expect(html).not.toContain("<script>unsafe()");
+  });
+
+  it("serves authenticated PDF previews with byte ranges", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const bytes = new TextEncoder().encode("%PDF-1.7\n0123456789abcdef");
+    const privateItem = item({
+      visibility: "private",
+      originalFilename: "private.pdf",
+      objectKey: "objects/private/index.pdf",
+      contentType: PDF_CONTENT_TYPE,
+      sizeBytes: bytes.byteLength,
+    });
+    repo.items.set(privateItem.id, privateItem);
+    await storage.putObject(
+      privateItem.objectKey,
+      bytes.buffer,
+      PDF_CONTENT_TYPE,
+    );
+    const { cookie } = await adminSession(env, handle);
+
+    const preview = await handle(
+      new Request(
+        `https://admin.test/api/admin/items/${privateItem.id}/preview`,
+        {
+          headers: {
+            Cookie: cookie,
+            Range: "bytes=-4",
+          },
+        },
+      ),
+      env,
+    );
+
+    expect(preview.status).toBe(206);
+    expect(preview.headers.get("Accept-Ranges")).toBe("bytes");
+    expect(preview.headers.get("Content-Range")).toBe(
+      `bytes ${bytes.byteLength - 4}-${bytes.byteLength - 1}/${bytes.byteLength}`,
+    );
+    expect(preview.headers.get("Content-Length")).toBe("4");
+    expect(preview.headers.get("Content-Type")).toBe(PDF_CONTENT_TYPE);
+    expect(await preview.text()).toBe("cdef");
+    expect(storage.getReads).toBe(0);
+    expect(storage.rangeReads).toBe(1);
   });
 
   it("does not read deleted or expired files when previewing as an admin", async () => {
@@ -945,6 +1015,108 @@ describe("public routes", () => {
     expect(head.status).toBe(200);
     expect(storage.getReads).toBe(readsBeforeHead);
     await expect(head.text()).resolves.toBe("");
+  });
+
+  it("serves public PDF byte ranges without reading the full object", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const bytes = new TextEncoder().encode("%PDF-1.7\n0123456789abcdef");
+    const active = item({
+      title: "Report",
+      originalFilename: "report.pdf",
+      slug: "report-a1b2c3d4",
+      objectKey: "objects/report/index.pdf",
+      contentType: PDF_CONTENT_TYPE,
+      sizeBytes: bytes.byteLength,
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(active.objectKey, bytes.buffer, PDF_CONTENT_TYPE);
+
+    const response = await handle(
+      new Request("https://public.test/p/report-a1b2c3d4", {
+        headers: { Range: "bytes=9-13" },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(206);
+    expect(response.headers.get("Accept-Ranges")).toBe("bytes");
+    expect(response.headers.get("Content-Range")).toBe(
+      `bytes 9-13/${bytes.byteLength}`,
+    );
+    expect(response.headers.get("Content-Length")).toBe("5");
+    expect(response.headers.get("Content-Type")).toBe(PDF_CONTENT_TYPE);
+    expect(await response.text()).toBe("01234");
+    expect(storage.getReads).toBe(0);
+    expect(storage.rangeReads).toBe(1);
+
+    const head = await handle(
+      new Request("https://public.test/p/report-a1b2c3d4", {
+        method: "HEAD",
+      }),
+      env,
+    );
+    expect(head.status).toBe(200);
+    expect(head.headers.get("Accept-Ranges")).toBe("bytes");
+    expect(head.headers.get("Content-Length")).toBe(String(bytes.byteLength));
+  });
+
+  it("returns 416 for unsatisfiable public PDF ranges", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const bytes = new TextEncoder().encode("%PDF-1.7");
+    const active = item({
+      originalFilename: "report.pdf",
+      slug: "report-range-a1b2c3d4",
+      objectKey: "objects/report-range/index.pdf",
+      contentType: PDF_CONTENT_TYPE,
+      sizeBytes: bytes.byteLength,
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(active.objectKey, bytes.buffer, PDF_CONTENT_TYPE);
+
+    const response = await handle(
+      new Request("https://public.test/p/report-range-a1b2c3d4", {
+        headers: { Range: "bytes=999-" },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(416);
+    expect(response.headers.get("Content-Range")).toBe(
+      `bytes */${bytes.byteLength}`,
+    );
+    expect(response.headers.get("Content-Length")).toBe("0");
+    expect(storage.getReads).toBe(0);
+    expect(storage.rangeReads).toBe(0);
+  });
+
+  it("falls back to a full PDF response when If-Range is stale", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const bytes = new TextEncoder().encode("%PDF-1.7\nfull-body");
+    const active = item({
+      originalFilename: "report.pdf",
+      slug: "report-if-range-a1b2c3d4",
+      objectKey: "objects/report-if-range/index.pdf",
+      contentType: PDF_CONTENT_TYPE,
+      sizeBytes: bytes.byteLength,
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(active.objectKey, bytes.buffer, PDF_CONTENT_TYPE);
+
+    const response = await handle(
+      new Request("https://public.test/p/report-if-range-a1b2c3d4", {
+        headers: {
+          Range: "bytes=0-3",
+          "If-Range": 'W/"stale"',
+        },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Length")).toBe(String(bytes.byteLength));
+    expect(await response.text()).toBe("%PDF-1.7\nfull-body");
+    expect(storage.getReads).toBe(1);
+    expect(storage.rangeReads).toBe(0);
   });
 
   it("returns 304 for matching public validators without reading the object", async () => {
