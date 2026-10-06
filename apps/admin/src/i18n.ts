@@ -214,6 +214,7 @@ const en = {
   "detail.saveBeforeLeaving": "Save your changes before leaving.",
   "detail.objectKey": "Object key",
   "detail.sha256": "SHA-256",
+  "detail.rawLink": "Raw file link",
 
   "apiKeys.title": "API Keys",
   "apiKeys.subtitle": "Upload credentials",
@@ -519,6 +520,7 @@ const zh = {
   "detail.saveBeforeLeaving": "离开前请保存更改。",
   "detail.objectKey": "对象键",
   "detail.sha256": "SHA-256",
+  "detail.rawLink": "原文件链接",
 
   "apiKeys.title": "API 密钥",
   "apiKeys.subtitle": "管理自动化上传所使用的凭证。",
