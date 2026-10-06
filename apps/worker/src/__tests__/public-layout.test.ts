@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  pdfInlineHeaders,
   publicErrorPage,
   publicSvgHeaders,
   SVG_DOCUMENT_CONTENT_SECURITY_POLICY,
@@ -19,6 +20,13 @@ describe("public document chrome", () => {
       expect(body).not.toContain("内容管理");
     },
   );
+  it("marks PDF documents for inline browser display", () => {
+    expect(pdfInlineHeaders("application/pdf")).toEqual({
+      "Content-Disposition": "inline",
+    });
+    expect(pdfInlineHeaders("image/png")).toEqual({});
+  });
+
   it("locks down SVG documents while keeping browser preview inline", () => {
     const headers = publicSvgHeaders("image/svg+xml");
     expect(headers["Content-Disposition"]).toBe("inline");
