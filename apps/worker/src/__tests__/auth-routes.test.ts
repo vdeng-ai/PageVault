@@ -476,7 +476,7 @@ describe("health routes", () => {
     await expect(health.json()).resolves.toEqual({ status: "ok" });
 
     const ready = await handle(
-      new Request("https://public.test/readyz"),
+      new Request("https://admin.test/readyz"),
       env,
     );
     expect(ready.status).toBe(200);
@@ -491,13 +491,19 @@ describe("health routes", () => {
     expect(stillAlive.status).toBe(200);
 
     const notReady = await handle(
-      new Request("https://public.test/readyz"),
+      new Request("https://admin.test/readyz"),
       env,
     );
     expect(notReady.status).toBe(503);
     await expect(notReady.json()).resolves.toEqual({
       status: "not_ready",
     });
+
+    const publicProbe = await handle(
+      new Request("https://public.test/readyz"),
+      env,
+    );
+    expect(publicProbe.status).toBe(404);
 
     const head = await handle(
       new Request("https://admin.test/healthz", { method: "HEAD" }),
