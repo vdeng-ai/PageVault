@@ -1,11 +1,10 @@
-import type { PageVaultService, HtmlItem } from "@pagevault/core";
+import type { PageVaultService, VaultItem } from "@pagevault/core";
 import { HTML_CONTENT_TYPE, normalizePublicSlug } from "@pagevault/core";
 import type { AppBindings, WaitUntilContext } from "../bindings.js";
 import {
-  pdfInlineHeaders,
+  publicContentHeaders,
   publicErrorPage,
   publicSecurityHeaders,
-  publicSvgHeaders,
 } from "../middleware/security-headers.js";
 import { recordPublicAccess } from "../access-counter.js";
 import { decoratePublicHtmlForShare } from "../public-share-meta.js";
@@ -14,9 +13,9 @@ import {
   renderPublicMarkdownDocument,
 } from "../public-markdown.js";
 import {
-  cachePublicHtmlResponse,
-  effectivePublicHtmlCacheSeconds,
-  matchPublicHtmlCache,
+  cachePublicContentResponse,
+  effectivePublicContentCacheSeconds,
+  matchPublicContentCache,
 } from "../public-cache.js";
 
 export function publicSlugFromPath(pathname: string): string | null {
@@ -28,10 +27,10 @@ export function publicSlugFromPath(pathname: string): string | null {
   return slug && slug.length > 0 ? slug : null;
 }
 
-function publicHtmlHeaders(
+function publicResponseHeaders(
   contentType: string,
   ttlSeconds: number,
-  item: HtmlItem,
+  item: VaultItem,
 ): HeadersInit {
   const headers = { ...publicSecurityHeaders };
   delete headers["Cache-Control"];
@@ -40,8 +39,7 @@ function publicHtmlHeaders(
     "Cache-Control": `public, max-age=0, s-maxage=${ttlSeconds}`,
     "Content-Type": contentType,
   };
-  Object.assign(responseHeaders, publicSvgHeaders(contentType));
-  Object.assign(responseHeaders, pdfInlineHeaders(contentType));
+  Object.assign(responseHeaders, publicContentHeaders(contentType));
   responseHeaders.ETag = publicEntityTag(item);
   const lastModified = publicLastModified(item);
   if (lastModified) {
@@ -50,7 +48,7 @@ function publicHtmlHeaders(
   return responseHeaders;
 }
 
-function publicEntityTag(item: HtmlItem): string {
+function publicEntityTag(item: VaultItem): string {
   const digest = item.sha256.replace(/[^A-Za-z0-9._~-]/g, "") || item.id;
   const updatedMs = Date.parse(item.updatedAt);
   const createdMs = Date.parse(item.createdAt);
@@ -62,7 +60,7 @@ function publicEntityTag(item: HtmlItem): string {
   return `W/"${digest}-${version}"`;
 }
 
-function publicLastModified(item: HtmlItem): string | null {
+function publicLastModified(item: VaultItem): string | null {
   const updatedMs = Date.parse(item.updatedAt);
   const createdMs = Date.parse(item.createdAt);
   const timestamp = Number.isFinite(updatedMs)
@@ -141,7 +139,7 @@ export async function handlePublicRequest(
   }
   const now = new Date();
 
-  const cached = await matchPublicHtmlCache(env, slug, request.method);
+  const cached = await matchPublicContentCache(env, slug, request.method);
   if (cached) {
     if (cached.itemId) {
       recordPublicAccess(service, env, ctx, cached.itemId, slug);
@@ -163,7 +161,7 @@ export async function handlePublicRequest(
   }
 
   recordPublicAccess(service, env, ctx, result.item.id, slug);
-  const ttlSeconds = effectivePublicHtmlCacheSeconds(
+  const ttlSeconds = effectivePublicContentCacheSeconds(
     env,
     result.item.urlExpiresAt,
     result.item.fileExpiresAt,
@@ -173,7 +171,7 @@ export async function handlePublicRequest(
   const isMarkdown = isMarkdownContentType(contentType);
   const responseContentType = isMarkdown ? HTML_CONTENT_TYPE : contentType;
   const headers = new Headers(
-    publicHtmlHeaders(responseContentType, ttlSeconds, result.item),
+    publicResponseHeaders(responseContentType, ttlSeconds, result.item),
   );
   const conditional = notModifiedResponse(request, headers);
   if (conditional) {
@@ -216,6 +214,6 @@ export async function handlePublicRequest(
     status: 200,
     headers,
   });
-  cachePublicHtmlResponse(env, ctx, slug, result.item.id, response, ttlSeconds);
+  cachePublicContentResponse(env, ctx, slug, result.item.id, response, ttlSeconds);
   return response;
 }

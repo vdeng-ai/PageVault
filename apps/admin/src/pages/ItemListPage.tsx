@@ -14,7 +14,7 @@ import {
   listItems,
   updateItem,
   type BatchAction,
-  type HtmlItem,
+  type VaultItem,
 } from "../api/client.js";
 import { BatchToolbar } from "../components/BatchToolbar.js";
 import { ConfirmDialog, useFeedback } from "../components/Feedback.js";
@@ -31,8 +31,8 @@ function isAbortError(error: unknown): boolean {
 }
 
 type PendingConfirmation =
-  | { kind: "delete-item"; item: HtmlItem }
-  | { kind: "disable-item"; item: HtmlItem }
+  | { kind: "delete-item"; item: VaultItem }
+  | { kind: "disable-item"; item: VaultItem }
   | { kind: "batch-delete"; count: number }
   | { kind: "batch-disable"; count: number };
 
@@ -46,7 +46,7 @@ export function ItemListPage({
   const { t } = useSettings();
   const { notify } = useFeedback();
   const tRef = useRef(t);
-  const [items, setItems] = useState<HtmlItem[]>([]);
+  const [items, setItems] = useState<VaultItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState<number | null>(null);
@@ -169,7 +169,7 @@ export function ItemListPage({
   }
 
   function patchItem(
-    item: HtmlItem,
+    item: VaultItem,
     patch: Parameters<typeof updateItem>[1],
   ): void {
     setBusyId(item.id);
@@ -193,7 +193,7 @@ export function ItemListPage({
       .finally(() => setBusyId(null));
   }
 
-  function removeItem(item: HtmlItem): void {
+  function removeItem(item: VaultItem): void {
     setBusyId(item.id);
     setError(null);
     void deleteItem(item.id)

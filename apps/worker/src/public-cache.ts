@@ -1,29 +1,29 @@
 import type { AppBindings, WaitUntilContext } from "./bindings.js";
 
-const DEFAULT_PUBLIC_HTML_CACHE_SECONDS = 3600;
-const PUBLIC_HTML_CACHE_VERSION = "2";
+const DEFAULT_PUBLIC_CONTENT_CACHE_SECONDS = 3600;
+const PUBLIC_CONTENT_CACHE_VERSION = "2";
 const CACHE_ITEM_ID_HEADER = "X-PageVault-Cache-Item-Id";
 
-export interface CachedPublicHtml {
+export interface CachedPublicContent {
   itemId: string | null;
   response: Response;
 }
 
-export function publicHtmlCacheSeconds(env: AppBindings): number {
+export function publicContentCacheSeconds(env: AppBindings): number {
   const parsed = Number.parseInt(env.PUBLIC_HTML_CACHE_SECONDS ?? "", 10);
   if (Number.isFinite(parsed) && parsed >= 0) {
     return parsed;
   }
-  return DEFAULT_PUBLIC_HTML_CACHE_SECONDS;
+  return DEFAULT_PUBLIC_CONTENT_CACHE_SECONDS;
 }
 
-export function effectivePublicHtmlCacheSeconds(
+export function effectivePublicContentCacheSeconds(
   env: AppBindings,
   urlExpiresAt: string,
   fileExpiresAt: string,
   now = new Date(),
 ): number {
-  const configuredSeconds = publicHtmlCacheSeconds(env);
+  const configuredSeconds = publicContentCacheSeconds(env);
   if (configuredSeconds <= 0) {
     return 0;
   }
@@ -47,10 +47,10 @@ function defaultCache(): Cache | null {
   return (caches as CacheStorage & { default: Cache }).default;
 }
 
-function publicHtmlCacheRequest(env: AppBindings, slug: string): Request {
+function publicContentCacheRequest(env: AppBindings, slug: string): Request {
   const baseUrl = env.PUBLIC_BASE_URL.replace(/\/+$/g, "");
   return new Request(
-    `${baseUrl}/p/${encodeURIComponent(slug)}?pv-cache=${PUBLIC_HTML_CACHE_VERSION}`,
+    `${baseUrl}/p/${encodeURIComponent(slug)}?pv-cache=${PUBLIC_CONTENT_CACHE_VERSION}`,
     {
       method: "GET",
     },
@@ -60,7 +60,7 @@ function publicHtmlCacheRequest(env: AppBindings, slug: string): Request {
 function logCacheFailure(error: unknown, action: string, slug: string): void {
   console.error(
     JSON.stringify({
-      message: "public html cache failed",
+      message: "public content cache failed",
       action,
       slug,
       error: error instanceof Error ? error.message : String(error),
@@ -79,12 +79,12 @@ function scheduleCacheWork(
   }
 }
 
-export async function matchPublicHtmlCache(
+export async function matchPublicContentCache(
   env: AppBindings,
   slug: string,
   method: string,
-): Promise<CachedPublicHtml | null> {
-  if (publicHtmlCacheSeconds(env) <= 0) {
+): Promise<CachedPublicContent | null> {
+  if (publicContentCacheSeconds(env) <= 0) {
     return null;
   }
   const cache = defaultCache();
@@ -92,7 +92,7 @@ export async function matchPublicHtmlCache(
     return null;
   }
 
-  const cached = await cache.match(publicHtmlCacheRequest(env, slug));
+  const cached = await cache.match(publicContentCacheRequest(env, slug));
   if (!cached || cached.status !== 200) {
     return null;
   }
@@ -110,13 +110,13 @@ export async function matchPublicHtmlCache(
   };
 }
 
-export function cachePublicHtmlResponse(
+export function cachePublicContentResponse(
   env: AppBindings,
   ctx: WaitUntilContext | undefined,
   slug: string,
   itemId: string,
   response: Response,
-  ttlSeconds = publicHtmlCacheSeconds(env),
+  ttlSeconds = publicContentCacheSeconds(env),
 ): void {
   if (ttlSeconds <= 0 || response.status !== 200) {
     return;
@@ -135,7 +135,7 @@ export function cachePublicHtmlResponse(
   });
   scheduleCacheWork(
     cache
-      .put(publicHtmlCacheRequest(env, slug), cacheResponse)
+      .put(publicContentCacheRequest(env, slug), cacheResponse)
       .catch((error: unknown) => {
         logCacheFailure(error, "put", slug);
       }),
@@ -143,7 +143,7 @@ export function cachePublicHtmlResponse(
   );
 }
 
-export async function deletePublicHtmlCache(
+export async function deletePublicContentCache(
   env: AppBindings,
   slug: string,
 ): Promise<void> {
@@ -151,18 +151,34 @@ export async function deletePublicHtmlCache(
   if (!cache) {
     return;
   }
-  await cache.delete(publicHtmlCacheRequest(env, slug));
+  await cache.delete(publicContentCacheRequest(env, slug));
 }
 
-export function purgePublicHtmlCache(
+export function purgePublicContentCache(
   env: AppBindings,
   ctx: WaitUntilContext | undefined,
   slug: string,
 ): void {
   scheduleCacheWork(
-    deletePublicHtmlCache(env, slug).catch((error: unknown) => {
+    deletePublicContentCache(env, slug).catch((error: unknown) => {
       logCacheFailure(error, "delete", slug);
     }),
     ctx,
   );
 }
+
+
+/** @deprecated Use CachedPublicContent. */
+export type CachedPublicHtml = CachedPublicContent;
+/** @deprecated Use publicContentCacheSeconds. */
+export const publicHtmlCacheSeconds = publicContentCacheSeconds;
+/** @deprecated Use effectivePublicContentCacheSeconds. */
+export const effectivePublicHtmlCacheSeconds = effectivePublicContentCacheSeconds;
+/** @deprecated Use matchPublicContentCache. */
+export const matchPublicHtmlCache = matchPublicContentCache;
+/** @deprecated Use cachePublicContentResponse. */
+export const cachePublicHtmlResponse = cachePublicContentResponse;
+/** @deprecated Use deletePublicContentCache. */
+export const deletePublicHtmlCache = deletePublicContentCache;
+/** @deprecated Use purgePublicContentCache. */
+export const purgePublicHtmlCache = purgePublicContentCache;

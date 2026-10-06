@@ -1,8 +1,8 @@
+import { fileCapabilityForFilename } from "@pagevault/core";
 import { renderMarkdown } from "@pagevault/core/markdown";
 import { FileText, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSettings } from "../settings.js";
-import { fileKind } from "./FileIcon.js";
 
 const previewPolicy =
   "default-src 'none'; img-src https: data: blob:; style-src 'unsafe-inline' https:; font-src https: data:; base-uri 'none'; form-action 'none';";
@@ -34,29 +34,41 @@ export function ContentPreview({
     pdf?: string;
     error?: boolean;
   } | null>(null);
-  const kind = file ? fileKind(file.name) : null;
+  const capability = file ? fileCapabilityForFilename(file.name) : null;
+  const kind = capability?.label ?? null;
 
   useEffect(() => {
     if (!file) return;
-    const nextKind = fileKind(file.name);
-    if (nextKind === "Image" || nextKind === "PDF") {
+    const nextCapability = fileCapabilityForFilename(file.name);
+    if (!nextCapability) {
+      setPreview({ file, error: true });
+      return;
+    }
+    if (
+      nextCapability.preview === "image" ||
+      nextCapability.preview === "pdf-native"
+    ) {
       const url = URL.createObjectURL(file);
       setPreview(
-        nextKind === "Image" ? { file, image: url } : { file, pdf: url },
+        nextCapability.preview === "image"
+          ? { file, image: url }
+          : { file, pdf: url },
       );
       return () => URL.revokeObjectURL(url);
     }
+
     const reader = new FileReader();
     let cancelled = false;
     reader.onload = () => {
-      if (!cancelled)
+      if (!cancelled) {
         setPreview({
           file,
           document: previewDocument(
             typeof reader.result === "string" ? reader.result : "",
-            fileKind(file.name) as "Markdown" | "HTML",
+            nextCapability.preview === "markdown" ? "Markdown" : "HTML",
           ),
         });
+      }
     };
     reader.onerror = () => {
       if (!cancelled) setPreview({ file, error: true });

@@ -1,4 +1,4 @@
-import type { HtmlItem, ItemStatus, Visibility } from "@pagevault/core";
+import type { VaultItem, ItemStatus, Visibility } from "@pagevault/core";
 
 export interface HtmlItemRow {
   id: string;
@@ -20,7 +20,7 @@ export interface HtmlItemRow {
   deleted_at: string | null;
 }
 
-export function mapItemRow(row: HtmlItemRow): HtmlItem {
+export function mapItemRow(row: HtmlItemRow): VaultItem {
   return {
     id: row.id,
     title: row.title,
@@ -42,7 +42,7 @@ export function mapItemRow(row: HtmlItemRow): HtmlItem {
   };
 }
 
-export function itemToRowValues(item: HtmlItem): Array<string | number | null> {
+export function itemToRowValues(item: VaultItem): Array<string | number | null> {
   return [
     item.id,
     item.title,

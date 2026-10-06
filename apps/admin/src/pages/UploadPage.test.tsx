@@ -10,12 +10,12 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { uploadHtml } from "../api/client.js";
+import { uploadFile } from "../api/client.js";
 import { FeedbackProvider } from "../components/Feedback.js";
 import { SettingsProvider } from "../settings.js";
 import { UploadPage } from "./UploadPage.js";
 
-vi.mock("../api/client.js", () => ({ uploadHtml: vi.fn() }));
+vi.mock("../api/client.js", () => ({ uploadFile: vi.fn() }));
 
 function installBrowserStubs(): void {
   Object.defineProperty(window, "matchMedia", {
@@ -100,7 +100,7 @@ describe("UploadPage", () => {
   it("uploads once with the existing defaults and keeps the user on a success panel", async () => {
     const user = userEvent.setup();
     const onViewItem = vi.fn();
-    vi.mocked(uploadHtml).mockResolvedValue({
+    vi.mocked(uploadFile).mockResolvedValue({
       id: "item-1",
       title: "page",
       slug: "page-ab12",
@@ -122,8 +122,8 @@ describe("UploadPage", () => {
     );
 
     await screen.findByText("Your file is live");
-    expect(vi.mocked(uploadHtml)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(uploadHtml)).toHaveBeenCalledWith({
+    expect(vi.mocked(uploadFile)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(uploadFile)).toHaveBeenCalledWith({
       file,
       urlExpireDays: 15,
       fileExpireDays: 30,
@@ -202,11 +202,11 @@ describe("UploadPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/Choose a supported HTML/)).toBeTruthy();
     });
-    expect(vi.mocked(uploadHtml)).not.toHaveBeenCalled();
+    expect(vi.mocked(uploadFile)).not.toHaveBeenCalled();
   });
 
   it("shows retained custom expiry values when continuing with another upload", async () => {
-    vi.mocked(uploadHtml).mockResolvedValue({
+    vi.mocked(uploadFile).mockResolvedValue({
       id: "item-1",
       title: "page",
       slug: "page-ab12",
@@ -240,8 +240,8 @@ describe("UploadPage", () => {
     await user.click(
       screen.getByRole("button", { name: "Upload and publish" }),
     );
-    await waitFor(() => expect(uploadHtml).toHaveBeenCalledTimes(2));
-    expect(uploadHtml).toHaveBeenLastCalledWith({
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledTimes(2));
+    expect(uploadFile).toHaveBeenLastCalledWith({
       file,
       urlExpireDays: 45,
       fileExpireDays: 30,

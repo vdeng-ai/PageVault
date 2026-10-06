@@ -16,7 +16,7 @@ import {
   deleteItem,
   getItem,
   updateItem,
-  type HtmlItem,
+  type VaultItem,
   type Visibility,
 } from "../api/client.js";
 import { ExpiryEditor } from "../components/ExpiryEditor.js";
@@ -36,7 +36,7 @@ type EditableFields = {
   fileExpiresAt: string;
 };
 
-function fieldsFromItem(item: HtmlItem): EditableFields {
+function fieldsFromItem(item: VaultItem): EditableFields {
   return {
     title: item.title,
     visibility: item.visibility,
@@ -58,7 +58,7 @@ export function ItemDetailPage({
 }) {
   const { t, locale } = useSettings();
   const { notify } = useFeedback();
-  const [item, setItem] = useState<HtmlItem | null>(null);
+  const [item, setItem] = useState<VaultItem | null>(null);
   const [initial, setInitial] = useState<EditableFields | null>(null);
   const [fields, setFields] = useState<EditableFields>({
     title: "",

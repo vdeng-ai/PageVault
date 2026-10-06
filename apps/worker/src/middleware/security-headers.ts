@@ -1,3 +1,4 @@
+import { fileCapabilityForContentType } from "@pagevault/core";
 import { publicDocument, publicHeader } from "../public-layout.js";
 import { publicIcons } from "../public-icons.js";
 
@@ -12,13 +13,22 @@ export const SVG_DOCUMENT_CONTENT_SECURITY_POLICY =
   "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'";
 
 export function isSvgContentType(contentType: string): boolean {
-  return /^image\/svg\+xml(?:\s*;|$)/i.test(contentType.trim());
+  return fileCapabilityForContentType(contentType)?.securityProfile === "svg";
 }
 
 export function isPdfContentType(contentType: string): boolean {
-  return /^application\/pdf(?:\s*;|$)/i.test(contentType.trim());
+  return fileCapabilityForContentType(contentType)?.kind === "pdf";
 }
 
+export function inlineContentHeaders(
+  contentType: string,
+): Record<string, string> {
+  return fileCapabilityForContentType(contentType)?.delivery === "inline"
+    ? { "Content-Disposition": "inline" }
+    : {};
+}
+
+/** @deprecated Use inlineContentHeaders when the caller supports all file types. */
 export function pdfInlineHeaders(
   contentType: string,
 ): Record<string, string> {
@@ -27,15 +37,52 @@ export function pdfInlineHeaders(
     : {};
 }
 
+export function publicContentHeaders(
+  contentType: string,
+): Record<string, string> {
+  const capability = fileCapabilityForContentType(contentType);
+  if (!capability) {
+    return {};
+  }
+  const headers =
+    capability.delivery === "inline"
+      ? { "Content-Disposition": "inline" }
+      : {};
+  if (capability.securityProfile !== "svg") {
+    return headers;
+  }
+  return {
+    ...headers,
+    "Content-Security-Policy": SVG_DOCUMENT_CONTENT_SECURITY_POLICY,
+  };
+}
+
+/** @deprecated Use publicContentHeaders. */
 export function publicSvgHeaders(
   contentType: string,
 ): Record<string, string> {
-  if (!isSvgContentType(contentType)) {
-    return {};
+  return isSvgContentType(contentType)
+    ? publicContentHeaders(contentType)
+    : {};
+}
+
+export function adminPreviewContentHeaders(
+  contentType: string,
+): Record<string, string> {
+  const capability = fileCapabilityForContentType(contentType);
+  const headers = inlineContentHeaders(contentType);
+  if (capability?.securityProfile === "binary") {
+    return headers;
+  }
+  if (capability?.securityProfile === "svg") {
+    return {
+      ...headers,
+      "Content-Security-Policy": `${SVG_DOCUMENT_CONTENT_SECURITY_POLICY}; frame-ancestors 'self'`,
+    };
   }
   return {
-    "Content-Disposition": "inline",
-    "Content-Security-Policy": SVG_DOCUMENT_CONTENT_SECURITY_POLICY,
+    ...headers,
+    "Content-Security-Policy": "sandbox allow-scripts; frame-ancestors 'self'",
   };
 }
 

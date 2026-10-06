@@ -5,7 +5,7 @@ import type {
   CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
-  HtmlItem,
+  VaultItem,
   ListItemsInput,
   ListItemsResult,
   UpdateItemInput,
@@ -23,16 +23,16 @@ export interface MetadataRepository {
     now: string,
   ): Promise<boolean>;
   releaseApiUploadLease(owner: string): Promise<void>;
-  createItem(input: CreateItemInput): Promise<HtmlItem>;
-  getItemById(id: string): Promise<HtmlItem | null>;
-  getItemsByIds(ids: string[]): Promise<HtmlItem[]>;
-  getItemBySlug(slug: string): Promise<HtmlItem | null>;
+  createItem(input: CreateItemInput): Promise<VaultItem>;
+  getItemById(id: string): Promise<VaultItem | null>;
+  getItemsByIds(ids: string[]): Promise<VaultItem[]>;
+  getItemBySlug(slug: string): Promise<VaultItem | null>;
   listItems(input: ListItemsInput): Promise<ListItemsResult>;
   getDashboardStats(now: string, soon: string): Promise<DashboardStats>;
-  updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem>;
+  updateItem(id: string, patch: UpdateItemInput): Promise<VaultItem>;
   markDeleted(id: string, deletedAt: string): Promise<void>;
   incrementAccess(id: string, accessedAt: string): Promise<void>;
   incrementAccessBatch(input: AccessCountInput[]): Promise<void>;
-  findExpiredFiles(now: string, limit: number): Promise<HtmlItem[]>;
+  findExpiredFiles(now: string, limit: number): Promise<VaultItem[]>;
   writeAuditLog(input: AuditLogInput): Promise<void>;
 }
