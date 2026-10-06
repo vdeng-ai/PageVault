@@ -1,3 +1,12 @@
+export type FileKind =
+  | "html"
+  | "markdown"
+  | "jpeg"
+  | "pdf"
+  | "png"
+  | "svg"
+  | "webp";
+
 export type Visibility = "public" | "private";
 export type ItemStatus = "active" | "disabled" | "deleted";
 export type DerivedStatus =
@@ -21,6 +30,7 @@ export interface VaultItem {
   status: ItemStatus;
   derivedStatus: DerivedStatus;
   publicUrl: string;
+  rawUrl: string;
   urlExpiresAt: string;
   fileExpiresAt: string;
   accessCount: number;
@@ -170,6 +180,15 @@ export function listItems(
     q?: string;
     status?: string;
     visibility?: string;
+    fileKind?: FileKind | "";
+    createdAfter?: string;
+    createdBefore?: string;
+    urlExpiresAfter?: string;
+    urlExpiresBefore?: string;
+    fileExpiresAfter?: string;
+    fileExpiresBefore?: string;
+    minSizeBytes?: number;
+    maxSizeBytes?: number;
     includeTotal?: boolean;
   },
   init: Pick<RequestInit, "signal"> = {},
