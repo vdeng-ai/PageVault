@@ -19,6 +19,7 @@ export interface AppBindings {
 }
 
 export interface AppVariables {
+  requestId: string;
   session: AdminSession;
   apiKey: ApiKey | null;
 }
