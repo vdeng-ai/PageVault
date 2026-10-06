@@ -4,6 +4,7 @@ import {
   JPEG_CONTENT_TYPE,
   MARKDOWN_CONTENT_TYPE,
   PNG_CONTENT_TYPE,
+  SVG_CONTENT_TYPE,
   WEBP_CONTENT_TYPE,
 } from "../constants.js";
 import { addDays } from "../expiry.js";
@@ -391,6 +392,12 @@ describe("upload", () => {
         filename: "diagram.png",
         contentType: PNG_CONTENT_TYPE,
         storageExtension: ".png",
+        slugPattern: /^diagram-[0-9a-f]{8}$/,
+      },
+      {
+        filename: "diagram.svg",
+        contentType: SVG_CONTENT_TYPE,
+        storageExtension: ".svg",
         slugPattern: /^diagram-[0-9a-f]{8}$/,
       },
       {

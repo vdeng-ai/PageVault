@@ -3,10 +3,17 @@ import {
   JPEG_CONTENT_TYPE,
   MARKDOWN_CONTENT_TYPE,
   PNG_CONTENT_TYPE,
+  SVG_CONTENT_TYPE,
   WEBP_CONTENT_TYPE,
 } from "./constants.js";
 
-export type SupportedFileKind = "html" | "markdown" | "jpeg" | "png" | "webp";
+export type SupportedFileKind =
+  | "html"
+  | "markdown"
+  | "jpeg"
+  | "png"
+  | "svg"
+  | "webp";
 
 export interface SupportedUploadFileType {
   kind: SupportedFileKind;
@@ -39,6 +46,12 @@ export const SUPPORTED_UPLOAD_FILE_TYPES: readonly SupportedUploadFileType[] = [
     extensions: [".png"],
     contentType: PNG_CONTENT_TYPE,
     storageExtension: ".png",
+  },
+  {
+    kind: "svg",
+    extensions: [".svg"],
+    contentType: SVG_CONTENT_TYPE,
+    storageExtension: ".svg",
   },
   {
     kind: "webp",

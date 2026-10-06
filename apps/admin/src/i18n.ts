@@ -155,7 +155,7 @@ const en = {
   "upload.subtitle":
     "Drop a file, choose access, and share it in one focused flow.",
   "upload.file": "File",
-  "upload.acceptedTypes": ".html / .htm / .md / .jpg / .png / .webp",
+  "upload.acceptedTypes": ".html / .htm / .md / .jpg / .png / .svg / .webp",
   "upload.dropTitle": "Drop your file here",
   "upload.dropHint": "or choose a file from your device",
   "upload.browse": "Choose file",
@@ -183,7 +183,7 @@ const en = {
   "upload.viewDetails": "View details",
   "upload.uploadAnother": "Upload another",
   "upload.invalidType":
-    "Choose a supported HTML, Markdown, JPEG, PNG, or WebP file.",
+    "Choose a supported HTML, Markdown, JPEG, PNG, SVG, or WebP file.",
   "upload.invalidDays":
     "Expiry values must be whole numbers greater than zero.",
   "upload.chooseFile": "Choose a file before uploading.",
@@ -447,7 +447,7 @@ const zh = {
   "upload.eyebrow": "发布新内容",
   "upload.subtitle": "先看看打开效果，再生成分享链接。",
   "upload.file": "文件",
-  "upload.acceptedTypes": ".html / .htm / .md / .jpg / .png / .webp",
+  "upload.acceptedTypes": ".html / .htm / .md / .jpg / .png / .svg / .webp",
   "upload.dropTitle": "将文件拖到这里",
   "upload.dropHint": "或从设备中选择文件",
   "upload.browse": "选择文件",
@@ -473,7 +473,7 @@ const zh = {
   "upload.viewDetails": "查看详情",
   "upload.uploadAnother": "继续上传",
   "upload.invalidType":
-    "请选择受支持的 HTML、Markdown、JPEG、PNG 或 WebP 文件。",
+    "请选择受支持的 HTML、Markdown、JPEG、PNG、SVG 或 WebP 文件。",
   "upload.invalidDays": "有效期必须是大于零的整数。",
   "upload.chooseFile": "请先选择要上传的文件。",
 

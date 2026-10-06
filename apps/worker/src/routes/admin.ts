@@ -15,7 +15,11 @@ import {
   requireAdminWriteOrApiKey,
 } from "../middleware/admin-auth.js";
 import { purgePublicHtmlCache } from "../public-cache.js";
-import { publicErrorPage } from "../middleware/security-headers.js";
+import {
+  isSvgContentType,
+  publicErrorPage,
+  SVG_DOCUMENT_CONTENT_SECURITY_POLICY,
+} from "../middleware/security-headers.js";
 import {
   isMarkdownContentType,
   renderPublicMarkdownDocument,
@@ -240,9 +244,11 @@ export function registerAdminRoutes(
         "Content-Type": markdown ? HTML_CONTENT_TYPE : contentType,
         "Cache-Control": "no-store",
         // Uploaded HTML can run in an opaque origin, without access to the
-        // administrator's cookies, local storage, or parent window.
-        "Content-Security-Policy":
-          "sandbox allow-scripts; frame-ancestors 'self'",
+        // administrator's cookies, local storage, or parent window. SVG is
+        // intentionally stricter because it does not need script execution.
+        "Content-Security-Policy": isSvgContentType(contentType)
+          ? `${SVG_DOCUMENT_CONTENT_SECURITY_POLICY}; frame-ancestors 'self'`
+          : "sandbox allow-scripts; frame-ancestors 'self'",
       },
     });
   });

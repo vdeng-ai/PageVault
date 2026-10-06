@@ -11,7 +11,7 @@
 
 语言：[English](./README.md) | 简体中文
 
-PageVault 是一个为个人使用设计的自托管发布工具，用于在微信和其他聊天软件中分享 AI 生成的 HTML、Markdown 和信息图。它把不便在聊天窗口中直接预览的文件转换为可以在浏览器中一键打开的可控链接。
+PageVault 是一个为个人使用设计的自托管发布工具，用于在微信和其他聊天软件中分享 AI 生成的 HTML、Markdown、SVG 和图片信息图。它把不便在聊天窗口中直接预览的文件转换为可以在浏览器中一键打开的可控链接。
 
 **上传内容 → 生成可控链接 → 粘贴到任意聊天窗口。**
 
@@ -23,7 +23,7 @@ PageVault 是一个为个人使用设计的自托管发布工具，用于在微�
 
 ## 核心功能
 
-- **Chat-ready sharing** — 把 IM 软件无法直接预览的 HTML 和 Markdown 转换为浏览器链接。
+- **Chat-ready sharing** — 把 IM 软件无法直接预览的 HTML、Markdown、SVG 和图片转换为浏览器链接。
 - **Built for AI output** — 适合分享 AI 生成的交互页面、报告、说明文档和信息图。
 - **One upload, one link** — 上传完成即可复制链接，无需建立完整网站。
 - **Personal-first** — 单管理员设计，没有复杂的团队、租户和权限体系。

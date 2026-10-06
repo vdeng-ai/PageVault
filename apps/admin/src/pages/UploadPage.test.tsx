@@ -30,6 +30,14 @@ function installBrowserStubs(): void {
     configurable: true,
     value: { writeText: vi.fn().mockResolvedValue(undefined) },
   });
+  Object.defineProperty(URL, "createObjectURL", {
+    configurable: true,
+    value: vi.fn().mockReturnValue("blob:svg-preview"),
+  });
+  Object.defineProperty(URL, "revokeObjectURL", {
+    configurable: true,
+    value: vi.fn(),
+  });
 }
 
 function renderUpload(onViewItem = vi.fn()) {
@@ -132,6 +140,29 @@ describe("UploadPage", () => {
 
     await user.click(screen.getByRole("button", { name: /View details/ }));
     expect(onViewItem).toHaveBeenCalledWith("item-1");
+  });
+
+  it("accepts SVG files for local preview and upload", async () => {
+    const user = userEvent.setup();
+    const { container } = renderUpload();
+    const input =
+      container.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+
+    const file = new File(
+      ['<svg xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8"/></svg>'],
+      "diagram.svg",
+      { type: "image/svg+xml" },
+    );
+    await user.upload(input as HTMLInputElement, file);
+
+    expect(screen.getByText("diagram.svg")).toBeTruthy();
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Upload and publish",
+      }).disabled,
+    ).toBe(false);
+    expect(screen.queryByText(/Choose a supported HTML/)).toBeNull();
   });
 
   it("rejects unsupported files before making a request", async () => {
