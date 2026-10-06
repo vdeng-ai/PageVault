@@ -535,6 +535,10 @@ export class PageVaultService {
     return `${this.config.publicBaseUrl.replace(/\/+$/g, "")}/p/${slug}`;
   }
 
+  rawUrl(slug: string): string {
+    return `${this.config.publicBaseUrl.replace(/\/+$/g, "")}/raw/${slug}`;
+  }
+
   derivedStatus(item: VaultItem, now = new Date()): string {
     return getDerivedStatus(item, now);
   }
