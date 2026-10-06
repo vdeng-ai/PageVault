@@ -54,6 +54,11 @@ function mapApiKeyRow(row: ApiKeyRow): ApiKey {
 }
 
 export class CloudflareD1Repository implements MetadataRepository {
+  async healthCheck(): Promise<void> {
+    await this.db.prepare("SELECT 1 AS ok").first<{ ok: number }>();
+  }
+
+
   constructor(private readonly db: D1Database) {}
 
   async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
