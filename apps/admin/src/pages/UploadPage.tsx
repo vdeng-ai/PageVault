@@ -30,6 +30,7 @@ const supportedExtensions = new Set([
   "markdown",
   "jpg",
   "jpeg",
+  "pdf",
   "png",
   "svg",
   "webp",
