@@ -205,6 +205,10 @@ export function registerAdminRoutes(
     return c.json(await service(c, createService).getDashboardStats());
   });
 
+  app.get("/api/admin/operations", requireAdmin, async (c) => {
+    return c.json(await service(c, createService).getOperationsSummary());
+  });
+
   app.get("/api/admin/api-keys", requireAdmin, async (c) => {
     return c.json({ apiKeys: await service(c, createService).listApiKeys() });
   });
