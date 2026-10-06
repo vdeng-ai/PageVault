@@ -2,6 +2,7 @@ import type { PageVaultService, HtmlItem } from "@pagevault/core";
 import { HTML_CONTENT_TYPE, normalizePublicSlug } from "@pagevault/core";
 import type { AppBindings, WaitUntilContext } from "../bindings.js";
 import {
+  pdfInlineHeaders,
   publicErrorPage,
   publicSecurityHeaders,
   publicSvgHeaders,
@@ -40,6 +41,7 @@ function publicHtmlHeaders(
     "Content-Type": contentType,
   };
   Object.assign(responseHeaders, publicSvgHeaders(contentType));
+  Object.assign(responseHeaders, pdfInlineHeaders(contentType));
   responseHeaders.ETag = publicEntityTag(item);
   const lastModified = publicLastModified(item);
   if (lastModified) {

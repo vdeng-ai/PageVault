@@ -31,15 +31,19 @@ export function ContentPreview({
     file: File;
     document?: string;
     image?: string;
+    pdf?: string;
     error?: boolean;
   } | null>(null);
   const kind = file ? fileKind(file.name) : null;
 
   useEffect(() => {
     if (!file) return;
-    if (fileKind(file.name) === "Image") {
+    const nextKind = fileKind(file.name);
+    if (nextKind === "Image" || nextKind === "PDF") {
       const url = URL.createObjectURL(file);
-      setPreview({ file, image: url });
+      setPreview(
+        nextKind === "Image" ? { file, image: url } : { file, pdf: url },
+      );
       return () => URL.revokeObjectURL(url);
     }
     const reader = new FileReader();
@@ -91,6 +95,12 @@ export function ContentPreview({
               className="content-preview-image"
               src={current.image}
               alt={file.name}
+            />
+          ) : current.pdf ? (
+            <iframe
+              title={t("upload.preview")}
+              referrerPolicy="no-referrer"
+              src={current.pdf}
             />
           ) : (
             <iframe

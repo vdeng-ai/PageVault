@@ -16,7 +16,9 @@ import {
 } from "../middleware/admin-auth.js";
 import { purgePublicHtmlCache } from "../public-cache.js";
 import {
+  isPdfContentType,
   isSvgContentType,
+  pdfInlineHeaders,
   publicErrorPage,
   SVG_DOCUMENT_CONTENT_SECURITY_POLICY,
 } from "../middleware/security-headers.js";
@@ -239,16 +241,23 @@ export function registerAdminRoutes(
     const body = markdown
       ? await renderPublicMarkdownDocument({ item, object })
       : object.body;
+    const responseContentType = markdown ? HTML_CONTENT_TYPE : contentType;
     return new Response(body, {
       headers: {
-        "Content-Type": markdown ? HTML_CONTENT_TYPE : contentType,
+        "Content-Type": responseContentType,
         "Cache-Control": "no-store",
+        ...pdfInlineHeaders(responseContentType),
         // Uploaded HTML can run in an opaque origin, without access to the
         // administrator's cookies, local storage, or parent window. SVG is
         // intentionally stricter because it does not need script execution.
-        "Content-Security-Policy": isSvgContentType(contentType)
-          ? `${SVG_DOCUMENT_CONTENT_SECURITY_POLICY}; frame-ancestors 'self'`
-          : "sandbox allow-scripts; frame-ancestors 'self'",
+        // PDFs are left to the browser's native viewer without an HTML CSP.
+        ...(isPdfContentType(responseContentType)
+          ? {}
+          : {
+              "Content-Security-Policy": isSvgContentType(contentType)
+                ? `${SVG_DOCUMENT_CONTENT_SECURITY_POLICY}; frame-ancestors 'self'`
+                : "sandbox allow-scripts; frame-ancestors 'self'",
+            }),
       },
     });
   });

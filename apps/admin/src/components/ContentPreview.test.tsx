@@ -14,6 +14,14 @@ describe("content previews", () => {
         removeEventListener: vi.fn(),
       }),
     });
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: vi.fn().mockReturnValue("blob:pdf-preview"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: vi.fn(),
+    });
   });
   afterEach(cleanup);
 
@@ -36,6 +44,24 @@ describe("content previews", () => {
     expect(preview.getAttribute("sandbox")).toBe("");
     expect(preview.getAttribute("srcdoc")).toContain("body{background:red}");
     expect(preview.getAttribute("srcdoc")).toContain("default-src 'none'");
+  });
+
+  it("uses the browser PDF viewer for local PDF previews", async () => {
+    const file = new File(["%PDF-1.7"], "report.pdf", {
+      type: "application/pdf",
+    });
+    render(
+      <SettingsProvider>
+        <ContentPreview file={file} />
+      </SettingsProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTitle("Content preview").getAttribute("src")).toBe(
+        "blob:pdf-preview",
+      ),
+    );
+    expect(screen.getByText("PDF")).toBeTruthy();
   });
 
   it("renders Markdown with the same safe anchors used on the public document", () => {

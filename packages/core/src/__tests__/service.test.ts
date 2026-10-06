@@ -3,6 +3,7 @@ import {
   HTML_CONTENT_TYPE,
   JPEG_CONTENT_TYPE,
   MARKDOWN_CONTENT_TYPE,
+  PDF_CONTENT_TYPE,
   PNG_CONTENT_TYPE,
   SVG_CONTENT_TYPE,
   WEBP_CONTENT_TYPE,
@@ -387,6 +388,12 @@ describe("upload", () => {
         contentType: JPEG_CONTENT_TYPE,
         storageExtension: ".jpg",
         slugPattern: /^photo-[0-9a-f]{8}$/,
+      },
+      {
+        filename: "report.pdf",
+        contentType: PDF_CONTENT_TYPE,
+        storageExtension: ".pdf",
+        slugPattern: /^report-[0-9a-f]{8}$/,
       },
       {
         filename: "diagram.png",

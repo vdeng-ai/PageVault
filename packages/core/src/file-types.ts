@@ -2,6 +2,7 @@ import {
   HTML_CONTENT_TYPE,
   JPEG_CONTENT_TYPE,
   MARKDOWN_CONTENT_TYPE,
+  PDF_CONTENT_TYPE,
   PNG_CONTENT_TYPE,
   SVG_CONTENT_TYPE,
   WEBP_CONTENT_TYPE,
@@ -11,6 +12,7 @@ export type SupportedFileKind =
   | "html"
   | "markdown"
   | "jpeg"
+  | "pdf"
   | "png"
   | "svg"
   | "webp";
@@ -40,6 +42,12 @@ export const SUPPORTED_UPLOAD_FILE_TYPES: readonly SupportedUploadFileType[] = [
     extensions: [".jpg", ".jpeg"],
     contentType: JPEG_CONTENT_TYPE,
     storageExtension: ".jpg",
+  },
+  {
+    kind: "pdf",
+    extensions: [".pdf"],
+    contentType: PDF_CONTENT_TYPE,
+    storageExtension: ".pdf",
   },
   {
     kind: "png",
