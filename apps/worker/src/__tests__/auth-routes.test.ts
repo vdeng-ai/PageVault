@@ -58,10 +58,34 @@ class MemoryStorage implements StorageProvider {
     }
     this.objects.set(key, { body, contentType, size: body.byteLength });
   }
+  async headObject(key: string) {
+    const object = this.objects.get(key);
+    if (!object) return null;
+    return { size: object.size, ...(object.contentType ? { contentType: object.contentType } : {}) };
+  }
+
   async getObject(key: string): Promise<StoredObject | null> {
     this.getReads += 1;
     return this.objects.get(key) ?? null;
   }
+
+  async getObjectRange(key: string, offset: number, length: number) {
+    const object = this.objects.get(key);
+    if (!object) return null;
+    const body =
+      object.body instanceof ArrayBuffer
+        ? object.body
+        : await new Response(object.body).arrayBuffer();
+    const actualLength = Math.min(length, Math.max(0, body.byteLength - offset));
+    return {
+      body: body.slice(offset, offset + actualLength),
+      offset,
+      length: actualLength,
+      totalSize: body.byteLength,
+      ...(object.contentType ? { contentType: object.contentType } : {}),
+    };
+  }
+
   async deleteObject(key: string): Promise<void> {
     this.objects.delete(key);
   }
