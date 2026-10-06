@@ -1,7 +1,8 @@
 import type { AppBindings, WaitUntilContext } from "./bindings.js";
 
 const DEFAULT_PUBLIC_CONTENT_CACHE_SECONDS = 3600;
-const PUBLIC_CONTENT_CACHE_VERSION = "2";
+const PUBLIC_CONTENT_CACHE_VERSION = "3";
+export type PublicCacheVariant = "share" | "raw";
 const CACHE_ITEM_ID_HEADER = "X-PageVault-Cache-Item-Id";
 
 export interface CachedPublicContent {
@@ -47,10 +48,15 @@ function defaultCache(): Cache | null {
   return (caches as CacheStorage & { default: Cache }).default;
 }
 
-function publicContentCacheRequest(env: AppBindings, slug: string): Request {
+function publicContentCacheRequest(
+  env: AppBindings,
+  slug: string,
+  variant: PublicCacheVariant,
+): Request {
   const baseUrl = env.PUBLIC_BASE_URL.replace(/\/+$/g, "");
+  const path = variant === "share" ? "p" : "raw";
   return new Request(
-    `${baseUrl}/p/${encodeURIComponent(slug)}?pv-cache=${PUBLIC_CONTENT_CACHE_VERSION}`,
+    `${baseUrl}/${path}/${encodeURIComponent(slug)}?pv-cache=${PUBLIC_CONTENT_CACHE_VERSION}`,
     {
       method: "GET",
     },
@@ -83,6 +89,7 @@ export async function matchPublicContentCache(
   env: AppBindings,
   slug: string,
   method: string,
+  variant: PublicCacheVariant = "share",
 ): Promise<CachedPublicContent | null> {
   if (publicContentCacheSeconds(env) <= 0) {
     return null;
@@ -92,7 +99,7 @@ export async function matchPublicContentCache(
     return null;
   }
 
-  const cached = await cache.match(publicContentCacheRequest(env, slug));
+  const cached = await cache.match(publicContentCacheRequest(env, slug, variant));
   if (!cached || cached.status !== 200) {
     return null;
   }
@@ -117,6 +124,7 @@ export function cachePublicContentResponse(
   itemId: string,
   response: Response,
   ttlSeconds = publicContentCacheSeconds(env),
+  variant: PublicCacheVariant = "share",
 ): void {
   if (ttlSeconds <= 0 || response.status !== 200) {
     return;
@@ -135,7 +143,7 @@ export function cachePublicContentResponse(
   });
   scheduleCacheWork(
     cache
-      .put(publicContentCacheRequest(env, slug), cacheResponse)
+      .put(publicContentCacheRequest(env, slug, variant), cacheResponse)
       .catch((error: unknown) => {
         logCacheFailure(error, "put", slug);
       }),
@@ -151,7 +159,10 @@ export async function deletePublicContentCache(
   if (!cache) {
     return;
   }
-  await cache.delete(publicContentCacheRequest(env, slug));
+  await Promise.all([
+    cache.delete(publicContentCacheRequest(env, slug, "share")),
+    cache.delete(publicContentCacheRequest(env, slug, "raw")),
+  ]);
 }
 
 export function purgePublicContentCache(

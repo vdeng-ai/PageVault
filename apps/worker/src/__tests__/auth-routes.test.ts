@@ -976,7 +976,7 @@ describe("admin auth routes", () => {
 });
 
 describe("public routes", () => {
-  it("serves percent-encoded Chinese public slugs", async () => {
+  it("keeps share URLs stable while exposing raw content separately", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const active = item({
       title: "产品介绍",
@@ -991,18 +991,32 @@ describe("public routes", () => {
       HTML_CONTENT_TYPE,
     );
 
-    const response = await handle(
+    const share = await handle(
       new Request(
         `https://public.test/p/${encodeURIComponent("产品介绍-a1b2c3d4")}`,
       ),
       env,
     );
+    const shareHtml = await share.text();
+    expect(share.status).toBe(200);
+    expect(share.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
+    expect(shareHtml).toContain("产品介绍");
+    expect(shareHtml).toContain(
+      `https://public.test/raw/${encodeURIComponent("产品介绍-a1b2c3d4")}`,
+    );
 
-    expect(response.status).toBe(200);
-    await expect(response.text()).resolves.toBe("<h1>中文</h1>");
+    const raw = await handle(
+      new Request(
+        `https://public.test/raw/${encodeURIComponent("产品介绍-a1b2c3d4")}`,
+      ),
+      env,
+    );
+    expect(raw.status).toBe(200);
+    expect(raw.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
+    await expect(raw.text()).resolves.toBe("<h1>中文</h1>");
   });
 
-  it("serves active HTML on public slug variants", async () => {
+  it("renders HTML shares inside a sandboxed viewer and preserves slug aliases", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const active = item();
     await repo.createItem({ item: active });
@@ -1016,29 +1030,37 @@ describe("public routes", () => {
       new Request("https://public.test/p/product-a1b2c3d4"),
       env,
     );
+    const html = await plain.text();
     expect(plain.status).toBe(200);
     expect(plain.headers.get("Cache-Control")).toBe(
       "public, max-age=0, s-maxage=3600",
     );
     expect(plain.headers.get("ETag")).toBeTruthy();
     expect(plain.headers.get("Last-Modified")).toBeTruthy();
-    await expect(plain.text()).resolves.toBe("<h1>ok</h1>");
-
-    const withSlash = await handle(
-      new Request("https://public.test/p/product-a1b2c3d4/"),
-      env,
+    expect(plain.headers.get("Content-Security-Policy")).toContain(
+      "frame-src 'self'",
     );
-    expect(withSlash.status).toBe(200);
-
-    const withHtml = await handle(
-      new Request("https://public.test/p/product-a1b2c3d4.html"),
-      env,
+    expect(html).toContain(
+      'src="https://public.test/raw/product-a1b2c3d4"',
     );
-    expect(withHtml.status).toBe(200);
+    expect(html).toContain('sandbox="allow-scripts"');
+
+    for (const path of [
+      "/p/product-a1b2c3d4/",
+      "/p/product-a1b2c3d4.html",
+    ]) {
+      const response = await handle(
+        new Request(`https://public.test${path}`),
+        env,
+      );
+      expect(response.status).toBe(200);
+    }
 
     const readsBeforeHead = storage.getReads;
     const head = await handle(
-      new Request("https://public.test/p/product-a1b2c3d4", { method: "HEAD" }),
+      new Request("https://public.test/p/product-a1b2c3d4", {
+        method: "HEAD",
+      }),
       env,
     );
     expect(head.status).toBe(200);
@@ -1046,7 +1068,32 @@ describe("public routes", () => {
     await expect(head.text()).resolves.toBe("");
   });
 
-  it("serves public PDF byte ranges without reading the full object", async () => {
+  it("serves raw HTML unchanged", async () => {
+    const { env, handle, repo, storage } = await createFixture();
+    const source =
+      '<!doctype html><html><head><title>Original</title></head><body><script>window.x=1</script></body></html>';
+    const active = item({
+      slug: "raw-html-a1b2c3d4",
+      objectKey: "objects/raw-html/index.html",
+      sizeBytes: new TextEncoder().encode(source).byteLength,
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(
+      active.objectKey,
+      new TextEncoder().encode(source).buffer,
+      HTML_CONTENT_TYPE,
+    );
+
+    const response = await handle(
+      new Request("https://public.test/raw/raw-html-a1b2c3d4"),
+      env,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
+    await expect(response.text()).resolves.toBe(source);
+  });
+
+  it("serves public PDF byte ranges from the raw endpoint", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const bytes = new TextEncoder().encode("%PDF-1.7\n0123456789abcdef");
     const active = item({
@@ -1060,13 +1107,22 @@ describe("public routes", () => {
     await repo.createItem({ item: active });
     await storage.putObject(active.objectKey, bytes.buffer, PDF_CONTENT_TYPE);
 
+    const share = await handle(
+      new Request("https://public.test/p/report-a1b2c3d4"),
+      env,
+    );
+    const shareHtml = await share.text();
+    expect(share.status).toBe(200);
+    expect(shareHtml).toContain(
+      'src="https://public.test/raw/report-a1b2c3d4"',
+    );
+
     const response = await handle(
-      new Request("https://public.test/p/report-a1b2c3d4", {
+      new Request("https://public.test/raw/report-a1b2c3d4", {
         headers: { Range: "bytes=9-13" },
       }),
       env,
     );
-
     expect(response.status).toBe(206);
     expect(response.headers.get("Accept-Ranges")).toBe("bytes");
     expect(response.headers.get("Content-Range")).toBe(
@@ -1075,11 +1131,10 @@ describe("public routes", () => {
     expect(response.headers.get("Content-Length")).toBe("5");
     expect(response.headers.get("Content-Type")).toBe(PDF_CONTENT_TYPE);
     expect(await response.text()).toBe("01234");
-    expect(storage.getReads).toBe(0);
     expect(storage.rangeReads).toBe(1);
 
     const head = await handle(
-      new Request("https://public.test/p/report-a1b2c3d4", {
+      new Request("https://public.test/raw/report-a1b2c3d4", {
         method: "HEAD",
       }),
       env,
@@ -1089,7 +1144,7 @@ describe("public routes", () => {
     expect(head.headers.get("Content-Length")).toBe(String(bytes.byteLength));
   });
 
-  it("returns 416 for unsatisfiable public PDF ranges", async () => {
+  it("returns 416 for unsatisfiable raw PDF ranges", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const bytes = new TextEncoder().encode("%PDF-1.7");
     const active = item({
@@ -1103,7 +1158,7 @@ describe("public routes", () => {
     await storage.putObject(active.objectKey, bytes.buffer, PDF_CONTENT_TYPE);
 
     const response = await handle(
-      new Request("https://public.test/p/report-range-a1b2c3d4", {
+      new Request("https://public.test/raw/report-range-a1b2c3d4", {
         headers: { Range: "bytes=999-" },
       }),
       env,
@@ -1114,11 +1169,10 @@ describe("public routes", () => {
       `bytes */${bytes.byteLength}`,
     );
     expect(response.headers.get("Content-Length")).toBe("0");
-    expect(storage.getReads).toBe(0);
     expect(storage.rangeReads).toBe(0);
   });
 
-  it("falls back to a full PDF response when If-Range is stale", async () => {
+  it("falls back to a full raw PDF response when If-Range is stale", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const bytes = new TextEncoder().encode("%PDF-1.7\nfull-body");
     const active = item({
@@ -1132,7 +1186,7 @@ describe("public routes", () => {
     await storage.putObject(active.objectKey, bytes.buffer, PDF_CONTENT_TYPE);
 
     const response = await handle(
-      new Request("https://public.test/p/report-if-range-a1b2c3d4", {
+      new Request("https://public.test/raw/report-if-range-a1b2c3d4", {
         headers: {
           Range: "bytes=0-3",
           "If-Range": 'W/"stale"',
@@ -1148,7 +1202,7 @@ describe("public routes", () => {
     expect(storage.rangeReads).toBe(0);
   });
 
-  it("returns 304 for matching public validators without reading the object", async () => {
+  it("returns 304 for matching share-viewer validators without reading the object", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const active = item();
     await repo.createItem({ item: active });
@@ -1159,7 +1213,9 @@ describe("public routes", () => {
     );
 
     const head = await handle(
-      new Request("https://public.test/p/product-a1b2c3d4", { method: "HEAD" }),
+      new Request("https://public.test/p/product-a1b2c3d4", {
+        method: "HEAD",
+      }),
       env,
     );
     const etag = head.headers.get("ETag");
@@ -1178,56 +1234,52 @@ describe("public routes", () => {
     await expect(response.text()).resolves.toBe("");
   });
 
-  it("renders Markdown documents as public HTML", async () => {
+  it("renders Markdown in the share viewer while raw stays Markdown", async () => {
     const { env, handle, repo, storage } = await createFixture();
+    const markdown =
+      "# Release Notes\n\n- [Install](#install)\n\n## Install\n\n**Shipped**\n\n<script>alert(1)</script>";
+    const bytes = new TextEncoder().encode(markdown);
     const active = item({
       title: "Release Notes",
       originalFilename: "release-notes.md",
       slug: "release-notes-a1b2c3d4",
       objectKey: "objects/release-notes/index.md",
       contentType: MARKDOWN_CONTENT_TYPE,
+      sizeBytes: bytes.byteLength,
     });
     await repo.createItem({ item: active });
     await storage.putObject(
       active.objectKey,
-      new TextEncoder().encode(
-        "# Release Notes\n\n- [Install](#install)\n- [中文章节](#中文章节)\n- [Section 3](#section-3)\n- [Section 0.4](#section-0-4)\n\n## Install\n\n**Shipped**\n\n## 中文章节\n\n## Install\n\n<a id=“section-3”></a>\n\n## 3. Principal model\n\n<a id=“section-0-4”></a>\n\nStandalone anchor target.\n\n<script>alert(1)</script>",
-      ).buffer,
+      bytes.buffer,
       MARKDOWN_CONTENT_TYPE,
     );
 
-    const response = await handle(
+    const share = await handle(
       new Request("https://public.test/p/release-notes-a1b2c3d4"),
       env,
     );
-    const html = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
+    const html = await share.text();
+    expect(share.status).toBe(200);
+    expect(share.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
     expect(html).toContain('<h1 id="release-notes">Release Notes</h1>');
-    expect(html).toContain('<a href="#install">Install</a>');
-    expect(html).toContain(
-      '<a href="#%E4%B8%AD%E6%96%87%E7%AB%A0%E8%8A%82">中文章节</a>',
-    );
     expect(html).toContain('<h2 id="install">Install</h2>');
-    expect(html).toContain('<h2 id="中文章节">中文章节</h2>');
-    expect(html).toContain('<h2 id="install-1">Install</h2>');
-    expect(html).toContain('<a href="#section-3">Section 3</a>');
-    expect(html).toContain('<h2 id="section-3">3. Principal model</h2>');
-    expect(html).not.toContain("&lt;a id=“section-3”&gt;&lt;/a&gt;");
-    expect(html).toContain('<a href="#section-0-4">Section 0.4</a>');
-    expect(html).toContain('<a id="section-0-4"></a>');
-    expect(html).not.toContain("&lt;a id=“section-0-4”&gt;&lt;/a&gt;");
-    expect(html).toContain("<p>Standalone anchor target.</p>");
     expect(html).toContain("<strong>Shipped</strong>");
     expect(html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>alert(1)</script>");
     expect(html).toContain(
       '<meta property="og:url" content="https://public.test/p/release-notes-a1b2c3d4">',
     );
+
+    const raw = await handle(
+      new Request("https://public.test/raw/release-notes-a1b2c3d4"),
+      env,
+    );
+    expect(raw.status).toBe(200);
+    expect(raw.headers.get("Content-Type")).toBe(MARKDOWN_CONTENT_TYPE);
+    await expect(raw.text()).resolves.toBe(markdown);
   });
 
-  it("serves images without HTML decoration", async () => {
+  it("uses the raw image as the share preview image", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const bytes = new Uint8Array([137, 80, 78, 71]);
     const active = item({
@@ -1236,147 +1288,116 @@ describe("public routes", () => {
       slug: "diagram-a1b2c3d4",
       objectKey: "objects/diagram/index.png",
       contentType: PNG_CONTENT_TYPE,
+      sizeBytes: bytes.byteLength,
     });
     await repo.createItem({ item: active });
     await storage.putObject(active.objectKey, bytes.buffer, PNG_CONTENT_TYPE);
 
-    const response = await handle(
+    const share = await handle(
       new Request("https://public.test/p/diagram-a1b2c3d4"),
       env,
     );
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Type")).toBe(PNG_CONTENT_TYPE);
-    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
-  });
-
-  it("injects share metadata into public HTML documents", async () => {
-    const { env, handle, repo, storage } = await createFixture();
-    const active = item({
-      title: "Stored fallback",
-      slug: "report-a1b2c3d4",
-      objectKey: "objects/report/index.html",
-    });
-    await repo.createItem({ item: active });
-    await storage.putObject(
-      active.objectKey,
-      new TextEncoder().encode(`<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <title>中国可投资内存报告</title>
-</head>
-<body>
-  <h1>中国可投资内存报告</h1>
-  <p>围绕 &quot;HBM&quot; &amp; LPDDR，映射 &lt;关键&gt; 产业链节点。</p>
-  <img src="https://cdn.test/report-card.png" alt="">
-</body>
-</html>`).buffer,
-      HTML_CONTENT_TYPE,
+    const html = await share.text();
+    expect(share.status).toBe(200);
+    expect(share.headers.get("Content-Type")).toBe(HTML_CONTENT_TYPE);
+    expect(html).toContain(
+      '<meta property="og:image" content="https://public.test/raw/diagram-a1b2c3d4">',
+    );
+    expect(html).toContain(
+      'src="https://public.test/raw/diagram-a1b2c3d4"',
     );
 
-    const response = await handle(
-      new Request("https://public.test/p/report-a1b2c3d4.html"),
+    const raw = await handle(
+      new Request("https://public.test/raw/diagram-a1b2c3d4"),
       env,
     );
-    const html = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(html).toContain(
-      '<meta name="description" content="围绕 &quot;HBM&quot; &amp; LPDDR，映射 &lt;关键&gt; 产业链节点。">',
-    );
-    expect(html).toContain(
-      '<meta property="og:title" content="中国可投资内存报告">',
-    );
-    expect(html).toContain(
-      '<meta property="og:url" content="https://public.test/p/report-a1b2c3d4">',
-    );
-    expect(html).toContain(
-      '<link rel="canonical" href="https://public.test/p/report-a1b2c3d4">',
-    );
-    expect(html).toContain(
-      '<meta name="twitter:card" content="summary_large_image">',
-    );
-    expect(html).toContain(
-      '<meta property="og:image" content="https://cdn.test/report-card.png">',
-    );
+    expect(raw.status).toBe(200);
+    expect(raw.headers.get("Content-Type")).toBe(PNG_CONTENT_TYPE);
+    expect(new Uint8Array(await raw.arrayBuffer())).toEqual(bytes);
   });
 
-  it("preserves existing share metadata", async () => {
+  it("owns share metadata at the viewer layer instead of modifying raw HTML", async () => {
     const { env, handle, repo, storage } = await createFixture();
-    const active = item({
-      slug: "existing-meta-a1b2c3d4",
-      objectKey: "objects/existing-meta/index.html",
-    });
-    await repo.createItem({ item: active });
-    await storage.putObject(
-      active.objectKey,
-      new TextEncoder().encode(`<!doctype html>
+    const source = `<!doctype html>
 <html>
 <head>
   <title>Document title</title>
   <meta name="description" content="Pinned description">
-  <meta property="og:title" content="Pinned OG title">
-  <meta property="og:description" content="Pinned OG description">
-  <meta property="og:url" content="https://example.com/pinned">
-  <link rel="canonical" href="https://example.com/pinned">
 </head>
-<body>
-  <p>Body text that should not replace pinned metadata.</p>
-</body>
-</html>`).buffer,
-      HTML_CONTENT_TYPE,
-    );
+<body><p>Body text.</p></body>
+</html>`;
+    const bytes = new TextEncoder().encode(source);
+    const active = item({
+      title: "Stored fallback",
+      slug: "report-a1b2c3d4",
+      objectKey: "objects/report/index.html",
+      sizeBytes: bytes.byteLength,
+    });
+    await repo.createItem({ item: active });
+    await storage.putObject(active.objectKey, bytes.buffer, HTML_CONTENT_TYPE);
 
-    const response = await handle(
-      new Request("https://public.test/p/existing-meta-a1b2c3d4"),
+    const share = await handle(
+      new Request("https://public.test/p/report-a1b2c3d4.html"),
       env,
     );
-    const html = await response.text();
+    const shareHtml = await share.text();
+    expect(share.status).toBe(200);
+    expect(shareHtml).toContain(
+      '<meta property="og:title" content="Stored fallback">',
+    );
+    expect(shareHtml).toContain(
+      '<meta property="og:url" content="https://public.test/p/report-a1b2c3d4">',
+    );
+    expect(shareHtml).toContain(
+      '<link rel="canonical" href="https://public.test/p/report-a1b2c3d4">',
+    );
+    expect(shareHtml).not.toContain("Pinned description");
 
-    expect(response.status).toBe(200);
-    expect(html).toContain(
-      '<meta name="description" content="Pinned description">',
+    const raw = await handle(
+      new Request("https://public.test/raw/report-a1b2c3d4"),
+      env,
     );
-    expect(html).toContain(
-      '<meta property="og:title" content="Pinned OG title">',
-    );
-    expect(html).toContain(
-      '<meta property="og:description" content="Pinned OG description">',
-    );
-    expect(html.match(/name="description"/g) ?? []).toHaveLength(1);
-    expect(html.match(/property="og:title"/g) ?? []).toHaveLength(1);
-    expect(html.match(/property="og:description"/g) ?? []).toHaveLength(1);
-    expect(html.match(/rel="canonical"/g) ?? []).toHaveLength(1);
+    await expect(raw.text()).resolves.toBe(source);
   });
 
-  it("serves production public URLs without admin credentials", async () => {
+  it("serves production share and raw URLs without admin credentials", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const productionEnv = {
       ...env,
       ADMIN_BASE_URL: "https://admin-html.example.com",
       PUBLIC_BASE_URL: "https://h.example.com",
     };
+    const source = "<h1>public</h1>";
     const active = item({
       slug: "html-ed559a5f",
       objectKey: "objects/html-ed559a5f/index.html",
+      sizeBytes: new TextEncoder().encode(source).byteLength,
     });
     await repo.createItem({ item: active });
     await storage.putObject(
       active.objectKey,
-      new TextEncoder().encode("<h1>public</h1>").buffer,
+      new TextEncoder().encode(source).buffer,
       HTML_CONTENT_TYPE,
     );
 
-    const response = await handle(
+    const share = await handle(
       new Request("https://h.example.com/p/html-ed559a5f"),
       productionEnv,
     );
-    expect(response.status).toBe(200);
-    await expect(response.text()).resolves.toBe("<h1>public</h1>");
+    expect(share.status).toBe(200);
+    expect(await share.text()).toContain(
+      'src="https://h.example.com/raw/html-ed559a5f"',
+    );
+
+    const raw = await handle(
+      new Request("https://h.example.com/raw/html-ed559a5f"),
+      productionEnv,
+    );
+    expect(raw.status).toBe(200);
+    await expect(raw.text()).resolves.toBe(source);
   });
 
-  it("clamps public HTML cache TTL to item expiry", async () => {
+  it("clamps share viewer cache TTL to item expiry", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const urlExpiresAt = new Date(Date.now() + 60_000).toISOString();
     const active = item({
@@ -1405,31 +1426,13 @@ describe("public routes", () => {
 
   it("keeps public host enumeration and API paths hidden", async () => {
     const { env, handle } = await createFixture();
-    await expect(
-      handle(new Request("https://public.test/"), env),
-    ).resolves.toMatchObject({
-      status: 404,
-    });
-    await expect(
-      handle(new Request("https://public.test/api/admin/items"), env),
-    ).resolves.toMatchObject({
-      status: 404,
-    });
-    await expect(
-      handle(
-        new Request("https://public.test/api/admin/items", {
-          headers: { "Sec-Fetch-Mode": "navigate" },
-        }),
+    for (const path of ["/", "/api/admin/items", "/files", "/raw"]) {
+      const response = await handle(
+        new Request(`https://public.test${path}`),
         env,
-      ),
-    ).resolves.toMatchObject({
-      status: 404,
-    });
-    await expect(
-      handle(new Request("https://public.test/files"), env),
-    ).resolves.toMatchObject({
-      status: 404,
-    });
+      );
+      expect(response.status).toBe(404);
+    }
   });
 
   it("does not cache non-public item state responses", async () => {
@@ -1447,78 +1450,71 @@ describe("public routes", () => {
       HTML_CONTENT_TYPE,
     );
 
-    const response = await handle(
-      new Request("https://public.test/p/disabled-a1b2c3d4"),
-      env,
-    );
-
-    expect(response.status).toBe(403);
-    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    for (const path of [
+      "/p/disabled-a1b2c3d4",
+      "/raw/disabled-a1b2c3d4",
+    ]) {
+      const response = await handle(
+        new Request(`https://public.test${path}`),
+        env,
+      );
+      expect(response.status).toBe(403);
+      expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    }
   });
 
-  it("returns 404 for malformed encoded slugs", async () => {
+  it("returns 404 for malformed encoded slugs on share and raw routes", async () => {
     const { env, handle } = await createFixture();
-    const response = await handle(
-      new Request("https://public.test/p/%E0%A4%A"),
-      env,
-    );
-    expect(response.status).toBe(404);
+    for (const path of ["/p/%E0%A4%A", "/raw/%E0%A4%A"]) {
+      const response = await handle(
+        new Request(`https://public.test${path}`),
+        env,
+      );
+      expect(response.status).toBe(404);
+    }
   });
 
-  it("maps public item states to the planned status codes", async () => {
-    const { env, handle, repo, storage } = await createFixture();
+  it("maps share and raw item states to the same status codes", async () => {
+    const { env, handle, repo } = await createFixture();
     const disabled = item({
       id: "disabled",
       slug: "disabled-a1b2c3d4",
-      objectKey: "objects/disabled/index.html",
       status: "disabled",
     });
     const privateItem = item({
       id: "private",
       slug: "private-a1b2c3d4",
-      objectKey: "objects/private/index.html",
       visibility: "private",
     });
     const expired = item({
       id: "expired",
       slug: "expired-a1b2c3d4",
-      objectKey: "objects/expired/index.html",
       urlExpiresAt: "2026-01-01T00:00:00.000Z",
     });
     await repo.createItem({ item: disabled });
     await repo.createItem({ item: privateItem });
     await repo.createItem({ item: expired });
-    await storage.putObject(
-      disabled.objectKey,
-      new ArrayBuffer(1),
-      HTML_CONTENT_TYPE,
-    );
-    await storage.putObject(
-      privateItem.objectKey,
-      new ArrayBuffer(1),
-      HTML_CONTENT_TYPE,
-    );
-    await storage.putObject(
-      expired.objectKey,
-      new ArrayBuffer(1),
-      HTML_CONTENT_TYPE,
-    );
 
-    await expect(
-      handle(new Request("https://public.test/p/disabled-a1b2c3d4"), env),
-    ).resolves.toMatchObject({
-      status: 403,
-    });
-    await expect(
-      handle(new Request("https://public.test/p/private-a1b2c3d4"), env),
-    ).resolves.toMatchObject({
-      status: 404,
-    });
-    await expect(
-      handle(new Request("https://public.test/p/expired-a1b2c3d4"), env),
-    ).resolves.toMatchObject({
-      status: 410,
-    });
+    for (const prefix of ["/p/", "/raw/"]) {
+      await expect(
+        handle(
+          new Request(`https://public.test${prefix}disabled-a1b2c3d4`),
+          env,
+        ),
+      ).resolves.toMatchObject({ status: 403 });
+      await expect(
+        handle(
+          new Request(`https://public.test${prefix}private-a1b2c3d4`),
+          env,
+        ),
+      ).resolves.toMatchObject({ status: 404 });
+      await expect(
+        handle(
+          new Request(`https://public.test${prefix}expired-a1b2c3d4`),
+          env,
+        ),
+      ).resolves.toMatchObject({ status: 410 });
+    }
   });
 });
 
