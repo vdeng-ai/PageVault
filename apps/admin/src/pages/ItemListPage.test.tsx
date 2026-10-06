@@ -154,8 +154,10 @@ describe("ItemListPage request behavior", () => {
       within(menu).getByRole("menuitem", { name: "Copy raw URL" }),
     ).toBeTruthy();
     expect(
-      within(menu).getByRole("menuitem", { name: "Open raw file" }),
-    ).toHaveAttribute("href", item.rawUrl);
+      within(menu)
+        .getByRole("menuitem", { name: "Open raw file" })
+        .getAttribute("href"),
+    ).toBe(item.rawUrl);
   });
 
   it.each([false, true])(
