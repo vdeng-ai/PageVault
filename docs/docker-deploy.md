@@ -104,6 +104,25 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 The startup migrations are idempotent. Keep the backup until login, upload, and public retrieval have been verified on the new container.
 
+## Maintenance and reconciliation
+
+The Node runtime runs the same bounded maintenance pass once every 24 hours. You can also inspect it manually from the built application:
+
+```bash
+pnpm --filter @pagevault/worker run reconcile -- --dry-run
+pnpm --filter @pagevault/worker run maintenance -- --dry-run
+```
+
+A dry run reports missing objects, size mismatches, unreferenced objects, and deleted-row cleanup candidates without deleting objects or advancing reconciliation cursors.
+
+To run the normal reconciliation pass and advance its cursors:
+
+```bash
+pnpm --filter @pagevault/worker run reconcile
+```
+
+Only objects whose database row is already marked `deleted` are automatically removed by reconciliation. Unreferenced objects are reported for diagnosis instead of being deleted automatically.
+
 ## Troubleshooting
 
 - Login or startup failure: confirm `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, and `SESSION_SECRET` are set in the container.
