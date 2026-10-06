@@ -226,6 +226,16 @@ export interface DashboardStats {
   deleted: number;
 }
 
+export interface OperationsSummary {
+  lastMaintenanceAt: string | null;
+  lastMaintenanceStatus: "ok" | "findings" | null;
+  lastMaintenanceSummary: string | null;
+  recentAuditEvents: Array<{
+    action: string;
+    createdAt: string;
+  }>;
+}
+
 export interface PageVaultConfig {
   publicBaseUrl: string;
   defaultUrlExpireDays: number;
