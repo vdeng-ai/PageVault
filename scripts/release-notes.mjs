@@ -1,3 +1,5 @@
+import process from "node:process";
+import { URL } from "node:url";
 import { readFile } from "node:fs/promises";
 
 const tag = process.argv[2];
@@ -12,7 +14,23 @@ const changelog = await readFile(
 );
 const escapedVersion = version.replace(/\./g, "\\.");
 const headingPattern = new RegExp(
-  `^## \\\[${escapedVersion}\\\].*$`,
+  `^## \\[${escapedVersion}\\].*import process from "node:process";
+import { URL } from "node:url";
+import { readFile } from "node:fs/promises";
+
+const tag = process.argv[2];
+if (!tag || !/^v\d+\.\d+\.\d+$/.test(tag)) {
+  throw new Error("Usage: node scripts/release-notes.mjs vX.Y.Z");
+}
+
+const version = tag.slice(1);
+const changelog = await readFile(
+  new URL("../CHANGELOG.md", import.meta.url),
+  "utf8",
+);
+const escapedVersion = version.replace(/\./g, "\\.");
+const headingPattern = new RegExp(
+  ,
   "m",
 );
 const match = headingPattern.exec(changelog);
