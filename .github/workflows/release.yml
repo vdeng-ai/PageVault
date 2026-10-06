@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - "v*.*.*"
+    branches:
+      - main
+    paths:
+      - ".github/release-v1.0.0"
 
 permissions:
   contents: write
@@ -23,8 +27,17 @@ jobs:
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
 
+      - name: Resolve release tag
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            TAG="$GITHUB_REF_NAME"
+          else
+            TAG="v$(node -p "require('./package.json').version")"
+          fi
+          printf 'TAG=%s\n' "$TAG" >> "$GITHUB_ENV"
+
       - name: Verify release contract
-        run: node scripts/check-release.mjs "$GITHUB_REF_NAME"
+        run: node scripts/check-release.mjs "$TAG"
 
       - run: pnpm run typecheck
       - run: pnpm run lint
@@ -32,16 +45,28 @@ jobs:
       - run: pnpm run build
 
       - name: Build Docker image
-        run: docker build -f docker/Dockerfile -t "pagevault:$GITHUB_REF_NAME" .
+        run: docker build -f docker/Dockerfile -t "pagevault:$TAG" .
 
       - name: Generate release notes
-        run: node scripts/release-notes.mjs "$GITHUB_REF_NAME" > release-notes.md
+        run: node scripts/release-notes.mjs "$TAG" > release-notes.md
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --verify-tag \
-            --title "PageVault $GITHUB_REF_NAME" \
-            --notes-file release-notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; nothing to do."
+            exit 0
+          fi
+
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            gh release create "$TAG" \
+              --verify-tag \
+              --title "PageVault $TAG" \
+              --notes-file release-notes.md
+          else
+            gh release create "$TAG" \
+              --target "$GITHUB_SHA" \
+              --title "PageVault $TAG" \
+              --notes-file release-notes.md
+          fi
