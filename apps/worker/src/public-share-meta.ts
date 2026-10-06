@@ -1,4 +1,4 @@
-import type { HtmlItem, StoredObject } from "@pagevault/core";
+import type { VaultItem, StoredObject } from "@pagevault/core";
 
 const SHARE_META_MAX_BYTES = 10 * 1024 * 1024;
 const DESCRIPTION_MAX_CHARS = 180;
@@ -52,7 +52,7 @@ const EMPTY_EXISTING_TAGS: ExistingShareTags = {
 };
 
 export async function decoratePublicHtmlForShare(input: {
-  item: HtmlItem;
+  item: VaultItem;
   object: StoredObject;
   contentType: string;
   publicUrl: string;
@@ -144,7 +144,7 @@ function findHead(html: string): HeadSlice | null {
 function extractShareMetadata(
   html: string,
   head: HeadSlice,
-  item: HtmlItem,
+  item: VaultItem,
   publicUrl: string,
 ): ShareMetadata {
   const existing = { ...EMPTY_EXISTING_TAGS };
