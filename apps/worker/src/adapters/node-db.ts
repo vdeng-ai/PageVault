@@ -10,7 +10,7 @@ import type {
   CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
-  HtmlItem,
+  VaultItem,
   ListItemsInput,
   ListItemsResult,
   UpdateItemInput,
@@ -241,25 +241,25 @@ export class NodeSqliteRepository implements MetadataRepository {
       .run(owner);
   }
 
-  async createItem(input: CreateItemInput): Promise<HtmlItem> {
+  async createItem(input: CreateItemInput): Promise<VaultItem> {
     this.db.prepare(insertItemSql).run(...itemToRowValues(input.item));
     return input.item;
   }
 
-  async getItemById(id: string): Promise<HtmlItem | null> {
+  async getItemById(id: string): Promise<VaultItem | null> {
     const row = this.db
       .prepare("SELECT * FROM html_items WHERE id = ? LIMIT 1")
       .get(id);
     return row ? mapItemRow(htmlItemRow(row)) : null;
   }
 
-  async getItemsByIds(ids: string[]): Promise<HtmlItem[]> {
+  async getItemsByIds(ids: string[]): Promise<VaultItem[]> {
     const uniqueIds = Array.from(new Set(ids)).filter((id) => id.length > 0);
     if (uniqueIds.length === 0) {
       return [];
     }
 
-    const items: HtmlItem[] = [];
+    const items: VaultItem[] = [];
     const chunkSize = 50;
     for (let offset = 0; offset < uniqueIds.length; offset += chunkSize) {
       const chunk = uniqueIds.slice(offset, offset + chunkSize);
@@ -272,7 +272,7 @@ export class NodeSqliteRepository implements MetadataRepository {
     return items;
   }
 
-  async getItemBySlug(slug: string): Promise<HtmlItem | null> {
+  async getItemBySlug(slug: string): Promise<VaultItem | null> {
     const row = this.db
       .prepare("SELECT * FROM html_items WHERE slug = ? LIMIT 1")
       .get(slug);
@@ -338,7 +338,7 @@ export class NodeSqliteRepository implements MetadataRepository {
     };
   }
 
-  async updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem> {
+  async updateItem(id: string, patch: UpdateItemInput): Promise<VaultItem> {
     const assignments: string[] = [];
     const values: BindValue[] = [];
     const append = (column: string, value: BindValue): void => {
@@ -399,7 +399,7 @@ export class NodeSqliteRepository implements MetadataRepository {
     }
   }
 
-  async findExpiredFiles(now: string, limit: number): Promise<HtmlItem[]> {
+  async findExpiredFiles(now: string, limit: number): Promise<VaultItem[]> {
     const rows = this.db
       .prepare(
         "SELECT * FROM html_items WHERE file_expires_at <= ? AND status != 'deleted' ORDER BY file_expires_at ASC LIMIT ?",
