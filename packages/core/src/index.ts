@@ -3,6 +3,7 @@ export * from "./constants.js";
 export * from "./errors.js";
 export * from "./expiry.js";
 export * from "./file-types.js";
+export * from "./file-validation.js";
 export * from "./hash.js";
 export * from "./repository.js";
 export * from "./service.js";

@@ -16,6 +16,7 @@ import {
   type FileCapability,
   fileCapabilityForFilename,
 } from "./file-types.js";
+import { validateFileContent } from "./file-validation.js";
 import { randomHex, sha256Hex } from "./hash.js";
 import type { MetadataRepository } from "./repository.js";
 import { buildPublicSlug } from "./slug.js";
@@ -216,6 +217,15 @@ export class PageVaultService {
         "Uploaded file is too large",
         413,
         "payload_too_large",
+      );
+    }
+
+    const validation = validateFileContent(fileType, input.body);
+    if (!validation.valid) {
+      throw new AppError(
+        `Uploaded file content does not match ${fileType.extensions.join("/")}: ${validation.reason ?? "validation failed"}`,
+        400,
+        "invalid_file_content",
       );
     }
 
