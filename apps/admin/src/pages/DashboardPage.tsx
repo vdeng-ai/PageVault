@@ -10,7 +10,12 @@ import {
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { dashboard, type DashboardStats } from "../api/client.js";
+import {
+  dashboard,
+  operations,
+  type DashboardStats,
+  type OperationsSummary,
+} from "../api/client.js";
 import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
@@ -18,12 +23,16 @@ import { useSettings } from "../settings.js";
 export function DashboardPage({ onUpload }: { onUpload: () => void }) {
   const { locale, t } = useSettings();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [ops, setOps] = useState<OperationsSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void dashboard()
-      .then((data) => {
-        if (!cancelled) setStats(data);
+    void Promise.all([dashboard(), operations()])
+      .then(([data, operationsData]) => {
+        if (!cancelled) {
+          setStats(data);
+          setOps(operationsData);
+        }
       })
       .catch((nextError: unknown) => {
         if (!cancelled)
@@ -177,6 +186,35 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
       >
         {metrics.slice(3).map(renderMetric)}
       </div>
+      {ops && (
+        <section className="dashboard-panel">
+          <h2>{t("dashboard.operationsTitle")}</h2>
+          <p>{t("dashboard.operationsSubtitle")}</p>
+          <div className="dashboard-signal-row">
+            <div>
+              <strong>{t("dashboard.lastMaintenance")}</strong>
+              <small>
+                {ops.lastMaintenanceSummary ?? t("dashboard.noMaintenance")}
+              </small>
+            </div>
+            <strong>
+              {ops.lastMaintenanceAt
+                ? new Intl.DateTimeFormat(locale, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }).format(new Date(ops.lastMaintenanceAt))
+                : "—"}
+            </strong>
+          </div>
+          <div className="dashboard-signal-row">
+            <div>
+              <strong>{t("dashboard.recentAudit")}</strong>
+              <small>{t("dashboard.recentAuditDetail")}</small>
+            </div>
+            <strong>{number(ops.recentAuditEvents.length)}</strong>
+          </div>
+        </section>
+      )}
       {data && (
         <div className="dashboard-panels">
           <section className="dashboard-panel">
