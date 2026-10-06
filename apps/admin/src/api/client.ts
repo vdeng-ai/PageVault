@@ -173,24 +173,26 @@ export function revokeApiKey(id: string): Promise<{ ok: true }> {
   });
 }
 
+export interface ListItemsParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  status?: string;
+  visibility?: string;
+  fileKind?: FileKind | "";
+  createdAfter?: string;
+  createdBefore?: string;
+  urlExpiresAfter?: string;
+  urlExpiresBefore?: string;
+  fileExpiresAfter?: string;
+  fileExpiresBefore?: string;
+  minSizeBytes?: number;
+  maxSizeBytes?: number;
+  includeTotal?: boolean;
+}
+
 export function listItems(
-  params: {
-    page?: number;
-    pageSize?: number;
-    q?: string;
-    status?: string;
-    visibility?: string;
-    fileKind?: FileKind | "";
-    createdAfter?: string;
-    createdBefore?: string;
-    urlExpiresAfter?: string;
-    urlExpiresBefore?: string;
-    fileExpiresAfter?: string;
-    fileExpiresBefore?: string;
-    minSizeBytes?: number;
-    maxSizeBytes?: number;
-    includeTotal?: boolean;
-  },
+  params: ListItemsParams,
   init: Pick<RequestInit, "signal"> = {},
 ): Promise<ListItemsResult> {
   const query = new URLSearchParams();
