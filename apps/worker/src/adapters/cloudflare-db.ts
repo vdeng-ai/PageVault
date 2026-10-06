@@ -3,6 +3,8 @@ import type {
   AccessCountInput,
   ApiKey,
   AuditLogInput,
+  ApiUploadIdempotencyClaim,
+  ClaimApiUploadIdempotencyInput,
   CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
@@ -110,34 +112,144 @@ export class CloudflareD1Repository implements MetadataRepository {
     return result.meta.changes > 0;
   }
 
-  async tryAcquireApiUploadLease(
-    owner: string,
-    expiresAt: string,
-    now: string,
-  ): Promise<boolean> {
+  async claimApiUploadIdempotency(
+    input: ClaimApiUploadIdempotencyInput,
+  ): Promise<ApiUploadIdempotencyClaim> {
     const result = await this.db
-      .prepare(
-        `
-          INSERT INTO api_upload_lock (name, owner, expires_at)
-          VALUES ('global', ?, ?)
-          ON CONFLICT(name) DO UPDATE SET
+      .prepare(`
+          INSERT INTO api_upload_idempotency (
+            api_key_id,
+            idempotency_key,
+            request_hash,
+            item_id,
+            status,
+            owner,
+            created_at,
+            updated_at,
+            expires_at
+          )
+          VALUES (?, ?, ?, ?, 'processing', ?, ?, ?, ?)
+          ON CONFLICT(api_key_id, idempotency_key) DO UPDATE SET
+            request_hash = CASE
+              WHEN api_upload_idempotency.status = 'processing'
+                AND api_upload_idempotency.request_hash = excluded.request_hash
+              THEN api_upload_idempotency.request_hash
+              ELSE excluded.request_hash
+            END,
+            item_id = CASE
+              WHEN api_upload_idempotency.status = 'processing'
+                AND api_upload_idempotency.request_hash = excluded.request_hash
+              THEN api_upload_idempotency.item_id
+              ELSE excluded.item_id
+            END,
+            status = 'processing',
             owner = excluded.owner,
+            updated_at = excluded.updated_at,
             expires_at = excluded.expires_at
-          WHERE api_upload_lock.expires_at <= ?
-        `,
+          WHERE api_upload_idempotency.expires_at <= excluded.updated_at
+        `)
+      .bind(
+        input.apiKeyId,
+        input.idempotencyKey,
+        input.requestHash,
+        input.candidateItemId,
+        input.owner,
+        input.now,
+        input.now,
+        input.expiresAt,
       )
-      .bind(owner, expiresAt, now)
       .run();
-    return result.meta.changes > 0;
+
+    const row = await this.db
+      .prepare(
+        `SELECT request_hash, item_id, status, owner
+         FROM api_upload_idempotency
+         WHERE api_key_id = ? AND idempotency_key = ?
+         LIMIT 1`,
+      )
+      .bind(input.apiKeyId, input.idempotencyKey)
+      .first<{
+        request_hash: string;
+        item_id: string;
+        status: "processing" | "completed";
+        owner: string;
+      }>();
+    if (!row) {
+      throw new AppError(
+        "Idempotency record is unavailable",
+        500,
+        "idempotency_state_error",
+      );
+    }
+    if (row.request_hash !== input.requestHash) {
+      return { kind: "conflict", itemId: row.item_id };
+    }
+    if (row.status === "completed") {
+      return { kind: "completed", itemId: row.item_id };
+    }
+    return result.meta.changes > 0 && row.owner === input.owner
+      ? { kind: "acquired", itemId: row.item_id }
+      : { kind: "in_progress", itemId: row.item_id };
   }
 
-  async releaseApiUploadLease(owner: string): Promise<void> {
+  async completeApiUploadIdempotency(
+    apiKeyId: string,
+    idempotencyKey: string,
+    owner: string,
+    updatedAt: string,
+    expiresAt: string,
+  ): Promise<void> {
+    const result = await this.db
+      .prepare(
+        `UPDATE api_upload_idempotency
+         SET status = 'completed', updated_at = ?, expires_at = ?
+         WHERE api_key_id = ? AND idempotency_key = ?
+           AND status = 'processing' AND owner = ?`,
+      )
+      .bind(updatedAt, expiresAt, apiKeyId, idempotencyKey, owner)
+      .run();
+    if (result.meta.changes === 0) {
+      throw new AppError(
+        "Idempotency claim was lost before completion",
+        409,
+        "idempotency_claim_lost",
+      );
+    }
+  }
+
+  async abandonApiUploadIdempotency(
+    apiKeyId: string,
+    idempotencyKey: string,
+    owner: string,
+  ): Promise<void> {
     await this.db
       .prepare(
-        "DELETE FROM api_upload_lock WHERE name = 'global' AND owner = ?",
+        `DELETE FROM api_upload_idempotency
+         WHERE api_key_id = ? AND idempotency_key = ?
+           AND status = 'processing' AND owner = ?`,
       )
-      .bind(owner)
+      .bind(apiKeyId, idempotencyKey, owner)
       .run();
+  }
+
+  async deleteExpiredApiUploadIdempotency(
+    now: string,
+    limit: number,
+  ): Promise<number> {
+    const result = await this.db
+      .prepare(
+        `DELETE FROM api_upload_idempotency
+         WHERE rowid IN (
+           SELECT rowid
+           FROM api_upload_idempotency
+           WHERE expires_at <= ?
+           ORDER BY expires_at ASC
+           LIMIT ?
+         )`,
+      )
+      .bind(now, limit)
+      .run();
+    return result.meta.changes;
   }
 
   async createItem(input: CreateItemInput): Promise<VaultItem> {

@@ -15,7 +15,7 @@ PageVault 是一个为个人使用设计的自托管发布工具，用于在微�
 
 **上传内容 → 生成可控链接 → 粘贴到任意聊天窗口。**
 
-**免费层级友好：** PageVault 可以使用 Cloudflare Workers、D1 和 R2 提供的免费配额起步部署；超出免费配额后，将按照 Cloudflare 当前定价计费。
+**Cloudflare Free-first：** PageVault 明确面向个人使用，核心部署长期以 Workers、D1、R2、Workers Static Assets 和一个 Cron Trigger 的免费层为约束。项目主动避免重计算、Office 转换、复杂后台任务基础设施，以及会让核心部署变重的功能。
 
 ![PageVault 英文上传界面，展示 Markdown 预览、可见性和保留期限设置](./docs/assets/pagevault-upload-en.jpg)
 
@@ -29,7 +29,8 @@ PageVault 是一个为个人使用设计的自托管发布工具，用于在微�
 - **Personal-first** — 单管理员设计，没有复杂的团队、租户和权限体系。
 - **Controlled access** — 支持公开或私有、链接过期、文件保留期限、停用和删除。
 - **Private storage** — 原始文件不直接公开，所有访问统一经过 PageVault 网关。
-- **Deploy your way** — 可使用 Cloudflare Workers、D1 和 R2 免费配额起步，也支持 Docker。
+- **Deploy your way** — 可长期保持轻量运行在 Cloudflare 免费层，也支持 Docker。
+- **Deliberately small scope** — 仅支持 HTML、Markdown、PDF、SVG、PNG、JPEG 和 WebP；不规划 DOCX/PPTX 转换、OCR、视频处理或服务端渲染流水线。
 
 ## 架构
 
@@ -68,6 +69,7 @@ pnpm tsx scripts/hash-password.ts
 
 ## 文档
 
+- [产品方向与路线图](./docs/roadmap.md)
 - [配置参考](./docs/configuration.md)
 - [Cloudflare 部署](./docs/cloudflare-deploy.md)
 - [Docker 部署](./docs/docker-deploy.md)

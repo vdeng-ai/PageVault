@@ -56,8 +56,19 @@ export interface CreatedApiKey {
   token: string;
 }
 
-export interface ApiUploadLease {
+export type ApiUploadIdempotencyClaim =
+  | { kind: "acquired"; itemId: string }
+  | { kind: "completed"; itemId: string }
+  | { kind: "in_progress"; itemId: string }
+  | { kind: "conflict"; itemId: string };
+
+export interface ClaimApiUploadIdempotencyInput {
+  apiKeyId: string;
+  idempotencyKey: string;
+  requestHash: string;
+  candidateItemId: string;
   owner: string;
+  now: string;
   expiresAt: string;
 }
 
@@ -163,6 +174,7 @@ export interface GcResult {
   scanned: number;
   deleted: number;
   deletedSlugs: string[];
+  idempotencyDeleted: number;
   failed: Array<{ id: string; error: string }>;
 }
 

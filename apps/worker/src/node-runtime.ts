@@ -71,6 +71,9 @@ export function createNodeRuntime(): NodeRuntime {
       await repository.migrate(
         resolve(process.cwd(), "migrations/0003_api_upload_lock.sql"),
       );
+      await repository.migrate(
+        resolve(process.cwd(), "migrations/0004_api_upload_idempotency.sql"),
+      );
     },
   };
 }

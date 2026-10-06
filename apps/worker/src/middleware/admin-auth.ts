@@ -50,40 +50,18 @@ export function requireAdminWriteOrApiKey(
   return async (c, next) => {
     const authorization = c.req.header("Authorization");
     if (!authorization) {
+      c.set("apiKey", null);
       return requireAdminWrite(c, next);
     }
 
     const token = bearerToken(authorization);
     const api = createService(c.env);
-    if (!token || !(await api.authenticateApiKey(token))) {
+    const apiKey = token ? await api.authenticateApiKey(token) : null;
+    if (!apiKey) {
       return c.json({ error: "Invalid API key" }, 401);
     }
 
-    const lease = await api.tryAcquireApiUploadLease();
-    if (!lease) {
-      c.header("Retry-After", "5");
-      return c.json(
-        {
-          error: "Another API key upload is already in progress",
-          code: "api_upload_busy",
-        },
-        409,
-      );
-    }
-
-    try {
-      await next();
-    } finally {
-      try {
-        await api.releaseApiUploadLease(lease.owner);
-      } catch (error) {
-        console.error(
-          JSON.stringify({
-            message: "failed to release API upload lease",
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        );
-      }
-    }
+    c.set("apiKey", apiKey);
+    return next();
   };
 }

@@ -33,7 +33,6 @@ import type {
   AccessCountInput,
   DashboardStats,
   CreatedApiKey,
-  ApiUploadLease,
   GcResult,
   PageVaultConfig,
   VaultItem,
@@ -51,7 +50,8 @@ const ID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const API_KEY_TOKEN_PREFIX = "pvk_";
 const API_KEY_TOKEN_PATTERN = /^pvk_[0-9a-f]{64}$/;
 const API_KEY_USAGE_WRITE_INTERVAL_MS = 60 * 60 * 1000;
-const API_UPLOAD_LEASE_MS = 15 * 60 * 1000;
+const API_UPLOAD_PROCESSING_LEASE_MS = 15 * 60 * 1000;
+const API_UPLOAD_IDEMPOTENCY_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 function encodeTimePart(timeMs: number): string {
   let value = BigInt(timeMs);
@@ -109,6 +109,13 @@ function assertVisibility(value: Visibility): void {
   if (value !== "public" && value !== "private") {
     throw new AppError("Invalid visibility", 400, "invalid_visibility");
   }
+}
+
+function hasControlCharacter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint < 0x20 || codePoint === 0x7f;
+  });
 }
 
 export class PageVaultService {
@@ -190,26 +197,142 @@ export class PageVaultService {
     await this.audit(null, "api_key_revoke", JSON.stringify({ id }), now);
   }
 
-  async tryAcquireApiUploadLease(
-    now = new Date(),
-  ): Promise<ApiUploadLease | null> {
-    const owner = randomHex(16);
-    const expiresAt = new Date(
-      now.getTime() + API_UPLOAD_LEASE_MS,
-    ).toISOString();
-    const acquired = await this.repository.tryAcquireApiUploadLease(
-      owner,
-      expiresAt,
-      now.toISOString(),
-    );
-    return acquired ? { owner, expiresAt } : null;
-  }
-
-  async releaseApiUploadLease(owner: string): Promise<void> {
-    await this.repository.releaseApiUploadLease(owner);
-  }
-
   async uploadFile(input: UploadFileInput): Promise<UploadResult> {
+    return this.uploadFileWithId(input, createId(input.now ?? new Date()));
+  }
+
+  async uploadFileIdempotent(
+    apiKeyId: string,
+    idempotencyKey: string,
+    input: UploadFileInput,
+  ): Promise<UploadResult & { replayed: boolean }> {
+    const key = idempotencyKey.trim();
+    if (
+      key.length === 0 ||
+      key.length > 200 ||
+      hasControlCharacter(key)
+    ) {
+      throw new AppError(
+        "Idempotency-Key must be between 1 and 200 visible characters",
+        400,
+        "invalid_idempotency_key",
+      );
+    }
+
+    // Validate before reserving a key so malformed uploads do not leave
+    // idempotency state behind.
+    const fileType = this.validateUploadInput(input);
+    const now = input.now ?? new Date();
+    const bodyHash = await sha256Hex(input.body);
+    const requestHash = await sha256Hex(
+      JSON.stringify({
+        filename: input.filename,
+        bodyHash,
+        urlExpireDays: input.urlExpireDays ?? null,
+        fileExpireDays: input.fileExpireDays ?? null,
+        visibility: input.visibility ?? "public",
+      }),
+    );
+    const owner = randomHex(16);
+    const candidateItemId = createId(now);
+    const claim = await this.repository.claimApiUploadIdempotency({
+      apiKeyId,
+      idempotencyKey: key,
+      requestHash,
+      candidateItemId,
+      owner,
+      now: now.toISOString(),
+      expiresAt: new Date(
+        now.getTime() + API_UPLOAD_PROCESSING_LEASE_MS,
+      ).toISOString(),
+    });
+
+    if (claim.kind === "conflict") {
+      throw new AppError(
+        "Idempotency-Key was already used for a different upload",
+        409,
+        "idempotency_conflict",
+      );
+    }
+    if (claim.kind === "in_progress") {
+      throw new AppError(
+        "This idempotent upload is still in progress",
+        409,
+        "idempotency_in_progress",
+      );
+    }
+    if (claim.kind === "completed") {
+      const item = await this.repository.getItemById(claim.itemId);
+      if (!item) {
+        throw new AppError(
+          "Completed idempotency record points to a missing item",
+          500,
+          "idempotency_state_error",
+        );
+      }
+      return {
+        item,
+        publicUrl: this.publicUrl(item.slug),
+        replayed: true,
+      };
+    }
+
+    const recovered = await this.repository.getItemById(claim.itemId);
+    if (recovered) {
+      await this.completeIdempotencyClaim(apiKeyId, key, owner, now);
+      return {
+        item: recovered,
+        publicUrl: this.publicUrl(recovered.slug),
+        replayed: true,
+      };
+    }
+
+    try {
+      const result = await this.uploadFileWithId(
+        input,
+        claim.itemId,
+        fileType,
+        bodyHash,
+      );
+      await this.completeIdempotencyClaim(apiKeyId, key, owner, now);
+      return { ...result, replayed: false };
+    } catch (error) {
+      const existing = await this.repository
+        .getItemById(claim.itemId)
+        .catch(() => null);
+      if (existing) {
+        await this.completeIdempotencyClaim(apiKeyId, key, owner, now);
+        return {
+          item: existing,
+          publicUrl: this.publicUrl(existing.slug),
+          replayed: true,
+        };
+      }
+      await this.repository
+        .abandonApiUploadIdempotency(apiKeyId, key, owner)
+        .catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private async completeIdempotencyClaim(
+    apiKeyId: string,
+    idempotencyKey: string,
+    owner: string,
+    now: Date,
+  ): Promise<void> {
+    await this.repository.completeApiUploadIdempotency(
+      apiKeyId,
+      idempotencyKey,
+      owner,
+      now.toISOString(),
+      new Date(
+        now.getTime() + API_UPLOAD_IDEMPOTENCY_RETENTION_MS,
+      ).toISOString(),
+    );
+  }
+
+  private validateUploadInput(input: UploadFileInput): FileCapability {
     const fileType = assertSupportedFilename(input.filename);
     const maxBytes = this.config.maxUploadSizeMb * 1024 * 1024;
     if (input.body.byteLength > maxBytes) {
@@ -228,9 +351,18 @@ export class PageVaultService {
         "invalid_file_content",
       );
     }
+    assertVisibility(input.visibility ?? "public");
+    return fileType;
+  }
 
+  private async uploadFileWithId(
+    input: UploadFileInput,
+    id: string,
+    validatedFileType?: FileCapability,
+    knownBodyHash?: string,
+  ): Promise<UploadResult> {
+    const fileType = validatedFileType ?? this.validateUploadInput(input);
     const now = input.now ?? new Date();
-    const id = createId(now);
     const shortId = randomHex(4);
     let slug = buildPublicSlug(input.filename, shortId);
     if (await this.repository.getItemBySlug(slug)) {
@@ -238,7 +370,6 @@ export class PageVaultService {
     }
     const objectKey = `objects/${id}/index${fileType.storageExtension}`;
     const visibility = input.visibility ?? "public";
-    assertVisibility(visibility);
     const item: VaultItem = {
       id,
       title: titleFromFilename(input.filename),
@@ -247,7 +378,7 @@ export class PageVaultService {
       objectKey,
       contentType: fileType.contentType,
       sizeBytes: input.body.byteLength,
-      sha256: await sha256Hex(input.body),
+      sha256: knownBodyHash ?? (await sha256Hex(input.body)),
       visibility,
       status: "active",
       urlExpiresAt: addDays(
@@ -272,7 +403,13 @@ export class PageVaultService {
     };
 
     await this.storage.putObject(objectKey, input.body, fileType.contentType);
-    const created = await this.repository.createItem({ item });
+    let created: VaultItem;
+    try {
+      created = await this.repository.createItem({ item });
+    } catch (error) {
+      await this.storage.deleteObject(objectKey).catch(() => undefined);
+      throw error;
+    }
     await this.audit(
       created.id,
       "upload",
@@ -516,10 +653,17 @@ export class PageVaultService {
       }
     }
 
+    const idempotencyDeleted =
+      await this.repository.deleteExpiredApiUploadIdempotency(
+        now.toISOString(),
+        1_000,
+      );
+
     return {
       scanned: expired.length,
       deleted,
       deletedSlugs,
+      idempotencyDeleted,
       failed,
     };
   }

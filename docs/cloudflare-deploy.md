@@ -2,7 +2,7 @@
 
 PageVault deploys one Cloudflare Worker to two hostnames: the admin hostname and the public hostname. The Worker serves the admin SPA through Workers Static Assets, stores uploaded files in a private R2 bucket, stores metadata in D1, and runs a daily Cron Trigger for retention cleanup.
 
-PageVault can start within Cloudflare's included free usage quotas for Workers, D1, and R2. These quotas are limited rather than unlimited; review the current [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/), [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/), and [R2 pricing](https://developers.cloudflare.com/r2/pricing/) before production use.
+PageVault is intentionally engineered for personal use within Cloudflare's included free usage quotas for Workers, D1, R2, Workers Static Assets, and one daily Cron Trigger. The application avoids heavy conversion and background-compute services by design. These quotas are limited rather than unlimited; review the current [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/), [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/), and [R2 pricing](https://developers.cloudflare.com/r2/pricing/) before production use.
 
 The product name is `PageVault`; Cloudflare resources, package scopes, and GitHub Actions deployment identifiers use the lowercase `pagevault` form.
 
@@ -89,7 +89,7 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
 
    Set `PUBLIC_BASE_URL` and `ADMIN_BASE_URL` to your two real HTTPS origins, without trailing slashes. Set `ADMIN_PASSWORD_HASH` to the output from `scripts/hash-password.ts` and `SESSION_SECRET` to the generated random secret. Do not commit the filled file.
 
-   Existing secrets override application defaults, so existing deployments must also update `DEFAULT_URL_EXPIRE_DAYS` to `15` and `DEFAULT_FILE_EXPIRE_DAYS` to `30`. Apply all D1 migrations, including `0003_api_upload_lock.sql`, before deploying this Worker version. Existing item expiry timestamps are left unchanged.
+   Existing secrets override application defaults, so existing deployments must also update `DEFAULT_URL_EXPIRE_DAYS` to `15` and `DEFAULT_FILE_EXPIRE_DAYS` to `30`. Apply all D1 migrations, including `0004_api_upload_idempotency.sql`, before deploying this Worker version. The older `0003_api_upload_lock.sql` table is retained only for upgrade/rollback compatibility and is no longer used by the application. Existing item expiry timestamps are left unchanged.
 
    See [Configuration](./configuration.md) for all supported runtime values and defaults.
 
@@ -139,3 +139,18 @@ This repository includes `.github/workflows/deploy.yml` for automatic Cloudflare
 The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply pagevault-db --remote` before or alongside the deploy you intend to release.
 
 See [Security](./security.md) for the runtime trust model and required hostname isolation.
+
+
+## Free-tier architecture guardrails
+
+The supported Cloudflare architecture is intentionally limited to:
+
+```text
+Worker + Workers Static Assets
+          |
+        D1 + private R2
+          |
+      1 daily Cron
+```
+
+Do not add heavy document conversion, OCR, server-side screenshots, media processing, full-bucket scans, per-view D1 writes, or extra stateful Cloudflare products merely to expand feature breadth. See [Product Direction and Roadmap](./roadmap.md).

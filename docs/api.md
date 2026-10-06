@@ -22,7 +22,7 @@ JSON error responses use an `error` message and may include a stable `code`. Unl
 
 Successful login creates the signed `pagevault_session` cookie. All authenticated write requests require the `X-CSRF-Token` value returned by `GET /api/auth/me`.
 
-Upload API keys use `Authorization: Bearer <key>` and are accepted only by `POST /api/admin/items`. They cannot read items or call other admin endpoints, and they do not require a CSRF token. All API keys share one upload slot; a concurrent key upload receives `409` with code `api_upload_busy` and `Retry-After: 5`. Administrator uploads authenticated with the session cookie do not use this slot. The safety lease lasts 15 minutes, so a key upload that runs longer than 15 minutes can overlap with a later upload after the lease expires.
+Upload API keys use `Authorization: Bearer <key>` and are accepted only by `POST /api/admin/items`. They cannot read items or call other admin endpoints, and they do not require a CSRF token. API-key uploads no longer share a global upload slot, so independent requests may run concurrently. External clients should send an `Idempotency-Key` header for retry-safe uploads. Idempotency is scoped to the authenticated API key, so two API keys may reuse the same header value without colliding.
 
 ## API Keys
 
@@ -57,16 +57,28 @@ Supported file extensions are `.html`, `.htm`, `.md`, `.markdown`, `.jpg`, `.jpe
 
 When omitted, `urlExpireDays` defaults to 15 days and `fileExpireDays` defaults to 30 days. Explicit positive values remain authoritative.
 
-An external client can upload with a key created in the admin interface:
+An external client can upload with a key created in the admin interface. `Idempotency-Key` is optional for backward compatibility but strongly recommended for any client that may retry a request:
 
 ```bash
 curl "$ADMIN_BASE_URL/api/admin/items" \
   -H "Authorization: Bearer $PAGEVAULT_API_KEY" \
+  -H "Idempotency-Key: upload-20261006-001" \
   -F "file=@report.html" \
   -F "visibility=private" \
   -F "urlExpireDays=15" \
   -F "fileExpireDays=30"
 ```
+
+For an idempotent API upload:
+
+- the first successful request returns the normal upload response and `Idempotency-Replayed: false`;
+- retrying the same API key, idempotency key, file bytes, filename, visibility, and expiry inputs within the retention window returns the original item with `Idempotency-Replayed: true`;
+- reusing the same active key for different upload content returns `409 idempotency_conflict`;
+- sending the same key while the original request is still processing returns `409 idempotency_in_progress`;
+- processing claims expire after 15 minutes so a crashed upload can be recovered;
+- completed results remain replayable for 24 hours, after which that idempotency key may be reused.
+
+Different idempotency keys, including requests from the same API key, may upload concurrently. Administrator session uploads are not idempotency-scoped and also do not participate in a global upload lock.
 
 `GET /api/admin/items/:id`
 

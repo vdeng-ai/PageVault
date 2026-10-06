@@ -2,6 +2,8 @@ import type {
   AccessCountInput,
   ApiKey,
   AuditLogInput,
+  ClaimApiUploadIdempotencyInput,
+  ApiUploadIdempotencyClaim,
   CreateApiKeyInput,
   CreateItemInput,
   DashboardStats,
@@ -17,12 +19,22 @@ export interface MetadataRepository {
   getActiveApiKeyByHash(tokenHash: string): Promise<ApiKey | null>;
   updateApiKeyLastUsedAt(id: string, lastUsedAt: string): Promise<void>;
   revokeApiKey(id: string, revokedAt: string): Promise<boolean>;
-  tryAcquireApiUploadLease(
+  claimApiUploadIdempotency(
+    input: ClaimApiUploadIdempotencyInput,
+  ): Promise<ApiUploadIdempotencyClaim>;
+  completeApiUploadIdempotency(
+    apiKeyId: string,
+    idempotencyKey: string,
     owner: string,
+    updatedAt: string,
     expiresAt: string,
-    now: string,
-  ): Promise<boolean>;
-  releaseApiUploadLease(owner: string): Promise<void>;
+  ): Promise<void>;
+  abandonApiUploadIdempotency(
+    apiKeyId: string,
+    idempotencyKey: string,
+    owner: string,
+  ): Promise<void>;
+  deleteExpiredApiUploadIdempotency(now: string, limit: number): Promise<number>;
   createItem(input: CreateItemInput): Promise<VaultItem>;
   getItemById(id: string): Promise<VaultItem | null>;
   getItemsByIds(ids: string[]): Promise<VaultItem[]>;

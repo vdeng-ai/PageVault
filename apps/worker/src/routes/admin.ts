@@ -200,14 +200,27 @@ export function registerAdminRoutes(
       const urlExpireDays = formNumber(body.get("urlExpireDays"));
       const fileExpireDays = formNumber(body.get("fileExpireDays"));
       const nextVisibility = formVisibility(body.get("visibility"));
-      const result = await api.uploadFile({
+      const uploadInput = {
         filename: file.name,
         body: await file.arrayBuffer(),
         ...(urlExpireDays === undefined ? {} : { urlExpireDays }),
         ...(fileExpireDays === undefined ? {} : { fileExpireDays }),
         ...(nextVisibility === undefined ? {} : { visibility: nextVisibility }),
-      });
+      };
+      const apiKey = c.get("apiKey");
+      const idempotencyKey = c.req.header("Idempotency-Key");
+      const result =
+        apiKey && idempotencyKey
+          ? await api.uploadFileIdempotent(
+              apiKey.id,
+              idempotencyKey,
+              uploadInput,
+            )
+          : { ...(await api.uploadFile(uploadInput)), replayed: false };
 
+      if (apiKey && idempotencyKey) {
+        c.header("Idempotency-Replayed", result.replayed ? "true" : "false");
+      }
       return c.json({
         id: result.item.id,
         title: result.item.title,

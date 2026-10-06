@@ -1,4 +1,4 @@
-import type { AdminSession, PageVaultService } from "@pagevault/core";
+import type { AdminSession, ApiKey, PageVaultService } from "@pagevault/core";
 
 export interface AppBindings {
   ASSETS?: Fetcher;
@@ -20,6 +20,7 @@ export interface AppBindings {
 
 export interface AppVariables {
   session: AdminSession;
+  apiKey: ApiKey | null;
 }
 
 export type HonoRuntime = {
