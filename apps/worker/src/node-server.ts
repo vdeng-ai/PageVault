@@ -12,7 +12,19 @@ const handleRequest = createRequestHandler({
 
 const maintenanceIntervalMs = 24 * 60 * 60 * 1000;
 const maintenanceTimer = setInterval(() => {
-  void runtime.service.runMaintenance().catch((error: unknown) => {
+  void runtime.service.runMaintenance().then(async (result) => {
+    const reconciliation = result.reconciliation;
+    const findings =
+      result.gc.failed.length +
+      reconciliation.missingObjects.length +
+      reconciliation.sizeMismatches.length +
+      reconciliation.orphanObjects.length +
+      reconciliation.failed.length;
+    await runtime.service.recordMaintenanceOutcome(
+      findings > 0 ? "findings" : "ok",
+      `GC ${result.gc.deleted} deleted; reconciliation ${findings} findings`,
+    );
+  }).catch((error: unknown) => {
     console.error(
       JSON.stringify({
         message: "node maintenance failed",
