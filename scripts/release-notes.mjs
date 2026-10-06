@@ -10,15 +10,19 @@ const changelog = await readFile(
   new URL("../CHANGELOG.md", import.meta.url),
   "utf8",
 );
-const heading = `## [${version}]`;
-const start = changelog.indexOf(heading);
-if (start < 0) {
+const escapedVersion = version.replace(/\./g, "\\.");
+const headingPattern = new RegExp(
+  `^## \\\[${escapedVersion}\\\].*$`,
+  "m",
+);
+const match = headingPattern.exec(changelog);
+if (!match) {
   throw new Error(`No changelog section found for ${version}`);
 }
-const rest = changelog.slice(start + heading.length);
+const rest = changelog.slice((match.index ?? 0) + match[0].length);
 const next = rest.search(/\n## \[/);
 const body = (next >= 0 ? rest.slice(0, next) : rest).trim();
 if (!body) {
   throw new Error(`Changelog section for ${version} is empty`);
 }
-process.stdout.write(`${heading}\n\n${body}\n`);
+process.stdout.write(`${match[0]}\n\n${body}\n`);
