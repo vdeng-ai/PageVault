@@ -142,6 +142,27 @@ describe("UploadPage", () => {
     expect(onViewItem).toHaveBeenCalledWith("item-1");
   });
 
+  it("accepts PDF files for local preview and upload", async () => {
+    const user = userEvent.setup();
+    const { container } = renderUpload();
+    const input =
+      container.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+
+    const file = new File(["%PDF-1.7"], "report.pdf", {
+      type: "application/pdf",
+    });
+    await user.upload(input as HTMLInputElement, file);
+
+    expect(screen.getByText("report.pdf")).toBeTruthy();
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Upload and publish",
+      }).disabled,
+    ).toBe(false);
+    expect(screen.queryByText(/Choose a supported HTML/)).toBeNull();
+  });
+
   it("accepts SVG files for local preview and upload", async () => {
     const user = userEvent.setup();
     const { container } = renderUpload();
