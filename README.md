@@ -17,6 +17,8 @@ PageVault is a personal-first, self-hosted publisher for sharing AI-generated HT
 
 **Cloudflare Free-first:** PageVault is intentionally designed for personal use on the free tiers of Workers, D1, R2, Workers Static Assets, and one Cron Trigger. The project avoids heavy compute, Office conversion, background processing infrastructure, and other features that would push the core deployment beyond that lightweight boundary.
 
+**v1.0 stable baseline:** The A–L roadmap is complete. PageVault now follows SemVer and defaults to maintenance, reliability, security, performance, and small compatible UX improvements rather than continued feature expansion.
+
 ![PageVault English upload interface with Markdown preview, visibility, and retention settings](./docs/assets/pagevault-upload-en.jpg)
 
 English interface · Dark theme · Local Markdown preview before publishing.
@@ -70,6 +72,10 @@ For a contributor-oriented local setup, see [CONTRIBUTING.md](./CONTRIBUTING.md)
 ## Documentation
 
 - [Product direction and roadmap](./docs/roadmap.md)
+- [v1 upgrade and rollback guide](./docs/upgrading.md)
+- [Release process](./docs/releasing.md)
+- [Support boundaries](./docs/support.md)
+- [Changelog](./CHANGELOG.md)
 - [Configuration reference](./docs/configuration.md)
 - [Operations and free-tier guardrails](./docs/operations.md)
 - [Share compatibility checklist](./docs/share-compatibility.md)
