@@ -8,7 +8,7 @@ export type DerivedStatus =
   | "url_expired"
   | "file_expired";
 
-export interface HtmlItem {
+export interface VaultItem {
   id: string;
   title: string;
   originalFilename: string;
@@ -30,8 +30,11 @@ export interface HtmlItem {
   deletedAt: string | null;
 }
 
+/** @deprecated Use VaultItem. */
+export type HtmlItem = VaultItem;
+
 export interface ListItemsResult {
-  items: HtmlItem[];
+  items: VaultItem[];
   page: number;
   pageSize: number;
   total: number | null;
@@ -180,11 +183,11 @@ export function listItems(
   return request<ListItemsResult>(`/api/admin/items?${query.toString()}`, init);
 }
 
-export function getItem(id: string): Promise<HtmlItem> {
+export function getItem(id: string): Promise<VaultItem> {
   return request<HtmlItem>(`/api/admin/items/${id}`);
 }
 
-export function uploadHtml(input: {
+export function uploadFile(input: {
   file: File;
   urlExpireDays: number;
   fileExpireDays: number;
@@ -201,15 +204,18 @@ export function uploadHtml(input: {
   });
 }
 
+/** @deprecated Use uploadFile. */
+export const uploadHtml = uploadFile;
+
 export function updateItem(
   id: string,
   patch: Partial<
     Pick<
-      HtmlItem,
+      VaultItem,
       "title" | "visibility" | "status" | "urlExpiresAt" | "fileExpiresAt"
     >
   >,
-): Promise<HtmlItem> {
+): Promise<VaultItem> {
   return request<HtmlItem>(`/api/admin/items/${id}`, {
     method: "PATCH",
     body: JSON.stringify(patch),
