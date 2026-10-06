@@ -17,7 +17,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import type { HtmlItem } from "../api/client.js";
+import type { VaultItem } from "../api/client.js";
 import { itemPreviewUrl, encodeShareUrl, formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
 import { useExitPresence } from "../hooks/useExitPresence.js";
@@ -49,14 +49,14 @@ function ItemActionMenu({
   onRestore,
   onDelete,
 }: {
-  item: HtmlItem;
+  item: VaultItem;
   disabled: boolean;
   onCopy: (url: string) => void;
   onEdit: (id: string) => void;
-  onVisibility: (item: HtmlItem) => void;
-  onDisable: (item: HtmlItem) => void;
-  onRestore: (item: HtmlItem) => void;
-  onDelete: (item: HtmlItem) => void;
+  onVisibility: (item: VaultItem) => void;
+  onDisable: (item: VaultItem) => void;
+  onRestore: (item: VaultItem) => void;
+  onDelete: (item: VaultItem) => void;
 }) {
   const { t } = useSettings();
   const [open, setOpen] = useState(false);
@@ -301,17 +301,17 @@ export function ItemTable({
   onRestore,
   onDelete,
 }: {
-  items: HtmlItem[];
+  items: VaultItem[];
   selectedIds: Set<string>;
   busyId: string | null;
   onSelect: (id: string, checked: boolean) => void;
   onSelectAll: (checked: boolean) => void;
   onCopy: (url: string) => void;
   onEdit: (id: string) => void;
-  onVisibility: (item: HtmlItem) => void;
-  onDisable: (item: HtmlItem) => void;
-  onRestore: (item: HtmlItem) => void;
-  onDelete: (item: HtmlItem) => void;
+  onVisibility: (item: VaultItem) => void;
+  onDisable: (item: VaultItem) => void;
+  onRestore: (item: VaultItem) => void;
+  onDelete: (item: VaultItem) => void;
 }) {
   const { locale, t } = useSettings();
   const numberFormatter = new Intl.NumberFormat(locale);
