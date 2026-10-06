@@ -1,4 +1,4 @@
-import type { HtmlItem, StoredObject } from "@pagevault/core";
+import type { VaultItem, StoredObject } from "@pagevault/core";
 import { renderMarkdown } from "@pagevault/core/markdown";
 import {
   publicDocument,
@@ -12,7 +12,7 @@ export function isMarkdownContentType(contentType: string): boolean {
 }
 
 export async function renderPublicMarkdownDocument(input: {
-  item: HtmlItem;
+  item: VaultItem;
   object: StoredObject;
 }): Promise<ArrayBuffer> {
   const body =
