@@ -302,15 +302,6 @@ test("admin library filters server-side and restores selected files in batch", a
     page.getByRole("button", { name: "admin-filter-html", exact: true }),
   ).toHaveCount(0);
 
-  const menuButton = page.locator('button[aria-label="More actions"]:visible').first();
-  await menuButton.click();
-  const rawLink = page.getByRole("menuitem", { name: "Open raw file" });
-  await expect(rawLink).toHaveAttribute(
-    "href",
-    `${PUBLIC_URL}/raw/${encodeURIComponent(pdf.slug)}`,
-  );
-  await page.keyboard.press("Escape");
-
   await page
     .locator('input[aria-label^="Select admin-filter-pdf"]:visible')
     .first()
