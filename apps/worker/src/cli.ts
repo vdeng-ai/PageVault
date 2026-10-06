@@ -24,6 +24,7 @@ if (command === "gc") {
         "0003_api_upload_lock",
         "0004_api_upload_idempotency",
         "0005_maintenance_state",
+        "0006_admin_list_indexes",
       ],
     }),
   );
