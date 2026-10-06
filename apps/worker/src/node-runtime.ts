@@ -9,6 +9,7 @@ export interface NodeRuntime {
   env: AppBindings;
   service: PageVaultService;
   migrate(): Promise<void>;
+  shutdown(): Promise<void>;
 }
 
 function requiredEnv(name: string): string {
@@ -77,6 +78,10 @@ export function createNodeRuntime(): NodeRuntime {
       await repository.migrate(
         resolve(process.cwd(), "migrations/0005_maintenance_state.sql"),
       );
+    },
+    shutdown: async () => {
+      repository.checkpoint();
+      repository.close();
     },
   };
 }
