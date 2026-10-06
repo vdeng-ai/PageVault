@@ -115,7 +115,7 @@ function ItemActionMenu({
     }
     const rect = buttonRef.current?.getBoundingClientRect();
     if (rect) {
-      const estimatedHeight = 292;
+      const estimatedHeight = 372;
       const opensUp =
         window.innerHeight - rect.bottom < estimatedHeight &&
         rect.top > estimatedHeight;
