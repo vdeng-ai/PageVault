@@ -378,7 +378,7 @@ describe("upload", () => {
     });
     const explicit = await service.uploadHtml({
       filename: "explicit.html",
-      body: new ArrayBuffer(1),
+      body: new TextEncoder().encode("<p>explicit</p>").buffer,
       urlExpireDays: 2,
       fileExpireDays: 45,
       now,
