@@ -1,5 +1,6 @@
 import { isAppError } from "@pagevault/core";
 import { Hono } from "hono";
+import { randomHex } from "@pagevault/core";
 import type { AppBindings, AssetFetcher, HonoRuntime, ServiceFactory } from "./bindings.js";
 import { apiSecurityHeaders } from "./middleware/security-headers.js";
 import { registerAdminRoutes } from "./routes/admin.js";
@@ -23,12 +24,13 @@ export interface RequestHandlerOptions {
   fetchAsset?: AssetFetcher;
 }
 
-function jsonError(error: unknown): Response {
+function jsonError(error: unknown, requestId?: string): Response {
   if (isAppError(error)) {
     return Response.json(
       {
         error: error.message,
-        code: error.code
+        code: error.code,
+        ...(requestId ? { requestId } : {})
       },
       {
         status: error.status,
@@ -40,12 +42,14 @@ function jsonError(error: unknown): Response {
   console.error(
     JSON.stringify({
       message: "unhandled request error",
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      ...(requestId ? { requestId } : {})
     })
   );
   return Response.json(
     {
-      error: "Internal server error"
+      error: "Internal server error",
+      ...(requestId ? { requestId } : {})
     },
     {
       status: 500,
@@ -58,7 +62,15 @@ function createAdminApp(createService: ServiceFactory, fetchAsset: AssetFetcher)
   const app = new Hono<HonoRuntime>();
 
   app.use("/api/*", async (c, next) => {
+    const incoming = c.req.header("X-Request-Id")?.trim();
+    const requestId =
+      incoming && /^[A-Za-z0-9._:-]{1,80}$/.test(incoming)
+        ? incoming
+        : randomHex(12);
+    c.set("requestId", requestId);
+    c.header("X-Request-Id", requestId);
     await next();
+    c.header("X-Request-Id", requestId);
     for (const [key, value] of Object.entries(apiSecurityHeaders)) {
       c.header(key, value);
     }
@@ -68,7 +80,7 @@ function createAdminApp(createService: ServiceFactory, fetchAsset: AssetFetcher)
   registerAdminRoutes(app, createService);
 
   app.get("*", async (c) => fetchAsset(c.req.raw, c.env));
-  app.onError((error) => jsonError(error));
+  app.onError((error, c) => jsonError(error, c.get("requestId")));
 
   return app;
 }
