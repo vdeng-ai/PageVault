@@ -296,9 +296,11 @@ test("admin library filters server-side and restores selected files in batch", a
     .fill("admin-filter-pdf");
 
   await expect(
-    page.locator("text=admin-filter-pdf.pdf").filter({ visible: true }).first(),
+    page.getByRole("button", { name: "admin-filter-pdf", exact: true }).first(),
   ).toBeVisible();
-  await expect(page.getByText("admin-filter-html.html")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "admin-filter-html", exact: true }),
+  ).toHaveCount(0);
 
   const menuButton = page.locator('button[aria-label="More actions"]:visible').first();
   await menuButton.click();
@@ -317,7 +319,7 @@ test("admin library filters server-side and restores selected files in batch", a
 
   await page.getByLabel("All status").selectOption("active");
   await expect(
-    page.locator("text=admin-filter-pdf.pdf").filter({ visible: true }).first(),
+    page.getByRole("button", { name: "admin-filter-pdf", exact: true }).first(),
   ).toBeVisible();
   expect((await context.request.get(pdf.publicUrl)).status()).toBe(200);
 });
