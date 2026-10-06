@@ -40,23 +40,9 @@ PageVault intentionally does **not** plan to support DOCX/PPTX conversion or oth
 - **Phase G — Incremental GC and Storage Reconciliation:** bounded DB/storage cursor scans, safe deleted-object cleanup, dry-run diagnostics, and one shared daily maintenance path.
 - **Phase H — Free-tier and Deployment Hardening:** health/readiness probes, fail-closed migrations, non-root Docker, graceful SQLite shutdown, backup/restore verification, deployment parity checks, and enforceable free-tier guardrails.
 - **Phase I — Lightweight Admin Experience:** server-side type/time/expiry/size filters, targeted list indexes, clearer title/type metadata, share/raw link actions, and safer batch restore without introducing a search service.
+- **Phase J — Share Viewer 2.0:** stronger mobile controls, HTML/PDF fullscreen, image fit/background controls, client-side copy-link feedback, Markdown reading polish, verified Open Graph/Twitter metadata, and a fixed raster fallback share card without server-side rendering.
 
 ## Remaining roadmap
-
-### Phase J — Share Viewer 2.0
-
-Invest in the actual PageVault value proposition: opening shared AI output cleanly.
-
-- stronger mobile layout;
-- HTML full-screen/open-original controls;
-- Markdown long-form reading and TOC polish;
-- PDF metadata/open-original controls;
-- image fit/background/original-size controls;
-- Open Graph/Twitter metadata verification;
-- WeChat/Telegram/Slack/Discord opening tests;
-- copy-link and optional client-side QR code.
-
-Do not generate server-side screenshots or preview images. Use static fallback share art where a format lacks a natural image.
 
 ### Phase K — Security and Lightweight Observability
 
