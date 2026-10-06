@@ -8,6 +8,25 @@ export const publicSecurityHeaders: Record<string, string> = {
   "Cache-Control": "private, no-store",
 };
 
+export const SVG_DOCUMENT_CONTENT_SECURITY_POLICY =
+  "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'";
+
+export function isSvgContentType(contentType: string): boolean {
+  return /^image\/svg\+xml(?:\s*;|$)/i.test(contentType.trim());
+}
+
+export function publicSvgHeaders(
+  contentType: string,
+): Record<string, string> {
+  if (!isSvgContentType(contentType)) {
+    return {};
+  }
+  return {
+    "Content-Disposition": "inline",
+    "Content-Security-Policy": SVG_DOCUMENT_CONTENT_SECURITY_POLICY,
+  };
+}
+
 export const apiSecurityHeaders: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
