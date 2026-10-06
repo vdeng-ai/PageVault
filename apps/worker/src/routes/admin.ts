@@ -150,6 +150,13 @@ function listInput(c: Context<HonoRuntime>): ListItemsInput {
   const maxSizeBytes = nonNegativeNumberFromQuery(
     c.req.query("maxSizeBytes"),
   );
+  const createdAfter = isoDateFromQuery(c.req.query("createdAfter"));
+  const createdBefore = isoDateFromQuery(c.req.query("createdBefore"));
+  const urlExpiresAfter = isoDateFromQuery(c.req.query("urlExpiresAfter"));
+  const urlExpiresBefore = isoDateFromQuery(c.req.query("urlExpiresBefore"));
+  const fileExpiresAfter = isoDateFromQuery(c.req.query("fileExpiresAfter"));
+  const fileExpiresBefore = isoDateFromQuery(c.req.query("fileExpiresBefore"));
+
   return {
     page: numberFromQuery(c.req.query("page"), 1),
     pageSize: Math.min(numberFromQuery(c.req.query("pageSize"), 20), 100),
@@ -157,24 +164,12 @@ function listInput(c: Context<HonoRuntime>): ListItemsInput {
     status,
     visibility,
     fileKind: fileKindFromQuery(c.req.query("fileKind")),
-    ...(isoDateFromQuery(c.req.query("createdAfter"))
-      ? { createdAfter: isoDateFromQuery(c.req.query("createdAfter")) }
-      : {}),
-    ...(isoDateFromQuery(c.req.query("createdBefore"))
-      ? { createdBefore: isoDateFromQuery(c.req.query("createdBefore")) }
-      : {}),
-    ...(isoDateFromQuery(c.req.query("urlExpiresAfter"))
-      ? { urlExpiresAfter: isoDateFromQuery(c.req.query("urlExpiresAfter")) }
-      : {}),
-    ...(isoDateFromQuery(c.req.query("urlExpiresBefore"))
-      ? { urlExpiresBefore: isoDateFromQuery(c.req.query("urlExpiresBefore")) }
-      : {}),
-    ...(isoDateFromQuery(c.req.query("fileExpiresAfter"))
-      ? { fileExpiresAfter: isoDateFromQuery(c.req.query("fileExpiresAfter")) }
-      : {}),
-    ...(isoDateFromQuery(c.req.query("fileExpiresBefore"))
-      ? { fileExpiresBefore: isoDateFromQuery(c.req.query("fileExpiresBefore")) }
-      : {}),
+    ...(createdAfter ? { createdAfter } : {}),
+    ...(createdBefore ? { createdBefore } : {}),
+    ...(urlExpiresAfter ? { urlExpiresAfter } : {}),
+    ...(urlExpiresBefore ? { urlExpiresBefore } : {}),
+    ...(fileExpiresAfter ? { fileExpiresAfter } : {}),
+    ...(fileExpiresBefore ? { fileExpiresBefore } : {}),
     ...(minSizeBytes === undefined ? {} : { minSizeBytes }),
     ...(maxSizeBytes === undefined ? {} : { maxSizeBytes }),
     includeDeleted: status === "deleted",
