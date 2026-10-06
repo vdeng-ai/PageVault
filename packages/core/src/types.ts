@@ -195,6 +195,7 @@ export interface ReconciliationResult {
     actualSize: number;
   }>;
   orphanObjects: string[];
+  deletedObjectsPendingCleanup: string[];
   deletedObjectsRemoved: string[];
   failed: Array<{ target: string; error: string }>;
   dbNextCursor: string | null;
