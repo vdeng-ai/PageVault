@@ -4,57 +4,115 @@ import { HTML_CONTENT_TYPE } from "@pagevault/core";
 import { describe, expect, it } from "vitest";
 import { NodeSqliteRepository } from "../node-db.js";
 
-describe("NodeSqliteRepository API upload lease", () => {
-  it("applies the migration idempotently and preserves lease ownership", async () => {
+describe("NodeSqliteRepository API upload idempotency", () => {
+  it("applies the migration idempotently and scopes/replays claims safely", async () => {
     const db = new DatabaseSync(":memory:");
     const repository = new NodeSqliteRepository(db);
     const migrationPath = fileURLToPath(
-      new URL("../../../../../migrations/0003_api_upload_lock.sql", import.meta.url),
+      new URL(
+        "../../../../../migrations/0004_api_upload_idempotency.sql",
+        import.meta.url,
+      ),
     );
 
     try {
       await repository.migrate(migrationPath);
       await repository.migrate(migrationPath);
 
-      await expect(
-        repository.tryAcquireApiUploadLease(
-          "owner-a",
-          "2026-07-05T00:15:00.000Z",
-          "2026-07-05T00:00:00.000Z",
-        ),
-      ).resolves.toBe(true);
-      await expect(
-        repository.tryAcquireApiUploadLease(
-          "owner-b",
-          "2026-07-05T00:16:00.000Z",
-          "2026-07-05T00:01:00.000Z",
-        ),
-      ).resolves.toBe(false);
+      const first = await repository.claimApiUploadIdempotency({
+        apiKeyId: "api-a",
+        idempotencyKey: "request-1",
+        requestHash: "hash-a",
+        candidateItemId: "item-a",
+        owner: "owner-a",
+        now: "2026-07-05T00:00:00.000Z",
+        expiresAt: "2026-07-05T00:15:00.000Z",
+      });
+      expect(first).toEqual({ kind: "acquired", itemId: "item-a" });
 
       await expect(
-        repository.tryAcquireApiUploadLease(
-          "owner-b",
-          "2026-07-05T00:30:00.000Z",
-          "2026-07-05T00:15:00.000Z",
-        ),
-      ).resolves.toBe(true);
-      await repository.releaseApiUploadLease("owner-a");
-      await expect(
-        repository.tryAcquireApiUploadLease(
-          "owner-c",
-          "2026-07-05T00:31:00.000Z",
-          "2026-07-05T00:16:00.000Z",
-        ),
-      ).resolves.toBe(false);
+        repository.claimApiUploadIdempotency({
+          apiKeyId: "api-a",
+          idempotencyKey: "request-1",
+          requestHash: "hash-a",
+          candidateItemId: "item-b",
+          owner: "owner-b",
+          now: "2026-07-05T00:01:00.000Z",
+          expiresAt: "2026-07-05T00:16:00.000Z",
+        }),
+      ).resolves.toEqual({ kind: "in_progress", itemId: "item-a" });
 
-      await repository.releaseApiUploadLease("owner-b");
       await expect(
-        repository.tryAcquireApiUploadLease(
-          "owner-c",
-          "2026-07-05T00:31:00.000Z",
-          "2026-07-05T00:16:00.000Z",
-        ),
-      ).resolves.toBe(true);
+        repository.claimApiUploadIdempotency({
+          apiKeyId: "api-a",
+          idempotencyKey: "request-1",
+          requestHash: "hash-b",
+          candidateItemId: "item-c",
+          owner: "owner-c",
+          now: "2026-07-05T00:02:00.000Z",
+          expiresAt: "2026-07-05T00:17:00.000Z",
+        }),
+      ).resolves.toEqual({ kind: "conflict", itemId: "item-a" });
+
+      await repository.completeApiUploadIdempotency(
+        "api-a",
+        "request-1",
+        "owner-a",
+        "2026-07-05T00:03:00.000Z",
+        "2026-07-06T00:03:00.000Z",
+      );
+      await expect(
+        repository.claimApiUploadIdempotency({
+          apiKeyId: "api-a",
+          idempotencyKey: "request-1",
+          requestHash: "hash-a",
+          candidateItemId: "item-d",
+          owner: "owner-d",
+          now: "2026-07-05T01:00:00.000Z",
+          expiresAt: "2026-07-05T01:15:00.000Z",
+        }),
+      ).resolves.toEqual({ kind: "completed", itemId: "item-a" });
+
+      await expect(
+        repository.claimApiUploadIdempotency({
+          apiKeyId: "api-b",
+          idempotencyKey: "request-1",
+          requestHash: "hash-a",
+          candidateItemId: "item-b",
+          owner: "owner-b",
+          now: "2026-07-05T01:00:00.000Z",
+          expiresAt: "2026-07-05T01:15:00.000Z",
+        }),
+      ).resolves.toEqual({ kind: "acquired", itemId: "item-b" });
+
+      await expect(
+        repository.claimApiUploadIdempotency({
+          apiKeyId: "api-a",
+          idempotencyKey: "request-1",
+          requestHash: "hash-new",
+          candidateItemId: "item-new",
+          owner: "owner-new",
+          now: "2026-07-06T00:03:00.000Z",
+          expiresAt: "2026-07-06T00:18:00.000Z",
+        }),
+      ).resolves.toEqual({ kind: "acquired", itemId: "item-new" });
+
+      await repository.abandonApiUploadIdempotency(
+        "api-a",
+        "request-1",
+        "owner-new",
+      );
+      await expect(
+        repository.claimApiUploadIdempotency({
+          apiKeyId: "api-a",
+          idempotencyKey: "request-1",
+          requestHash: "hash-final",
+          candidateItemId: "item-final",
+          owner: "owner-final",
+          now: "2026-07-06T00:04:00.000Z",
+          expiresAt: "2026-07-06T00:19:00.000Z",
+        }),
+      ).resolves.toEqual({ kind: "acquired", itemId: "item-final" });
     } finally {
       db.close();
     }
