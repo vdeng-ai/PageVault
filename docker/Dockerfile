@@ -29,7 +29,8 @@ COPY --from=build /app/packages/core/dist ./packages/core/dist
 COPY --from=build /app/migrations ./migrations
 COPY --from=build /app/docker/entrypoint.sh ./docker/entrypoint.sh
 RUN pnpm install --prod --frozen-lockfile \
-  && chown -R pagevault:pagevault /app
+  && mkdir -p /data/pagevault \
+  && chown -R pagevault:pagevault /app /data/pagevault
 USER 10001:10001
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
