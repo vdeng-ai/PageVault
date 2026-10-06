@@ -9,6 +9,7 @@ import { getDerivedStatus, HTML_CONTENT_TYPE } from "@pagevault/core";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import type { HonoRuntime, ServiceFactory } from "../bindings.js";
+import { parseSingleByteRange } from "../byte-range.js";
 import {
   requireAdmin,
   requireAdminWrite,
@@ -17,6 +18,7 @@ import {
 import { purgePublicContentCache } from "../public-cache.js";
 import {
   adminPreviewContentHeaders,
+  isPdfContentType,
   publicErrorPage,
 } from "../middleware/security-headers.js";
 import {
@@ -230,6 +232,44 @@ export function registerAdminRoutes(
     if (Date.parse(item.fileExpiresAt) <= now.getTime()) {
       return publicErrorPage(410);
     }
+
+    const itemContentType = item.contentType ?? HTML_CONTENT_TYPE;
+    const rangeHeader = c.req.header("Range");
+    if (rangeHeader && isPdfContentType(itemContentType)) {
+      const headers = new Headers({
+        "Content-Type": itemContentType,
+        "Cache-Control": "no-store",
+        "Accept-Ranges": "bytes",
+        ...adminPreviewContentHeaders(itemContentType),
+      });
+      const parsed = parseSingleByteRange(rangeHeader, item.sizeBytes);
+      if (parsed.kind === "unsatisfiable") {
+        headers.set("Content-Range", `bytes */${item.sizeBytes}`);
+        headers.set("Content-Length", "0");
+        return new Response(null, { status: 416, headers });
+      }
+
+      const partial = await api.getObjectRange(
+        item,
+        parsed.range.start,
+        parsed.range.length,
+        now,
+      );
+      if (!partial) return publicErrorPage(404);
+      if (partial.length <= 0) {
+        headers.set("Content-Range", `bytes */${partial.totalSize}`);
+        headers.set("Content-Length", "0");
+        return new Response(null, { status: 416, headers });
+      }
+      headers.set(
+        "Content-Range",
+        `bytes ${partial.offset}-${partial.offset + partial.length - 1}/${partial.totalSize}`,
+      );
+      headers.set("Content-Length", String(partial.length));
+      headers.set("Content-Type", partial.contentType ?? itemContentType);
+      return new Response(partial.body, { status: 206, headers });
+    }
+
     const object = await api.getPublicObject(item, now);
     if (!object) return publicErrorPage(404);
     const contentType =
@@ -243,6 +283,12 @@ export function registerAdminRoutes(
       headers: {
         "Content-Type": responseContentType,
         "Cache-Control": "no-store",
+        ...(isPdfContentType(responseContentType)
+          ? {
+              "Accept-Ranges": "bytes",
+              "Content-Length": String(item.sizeBytes),
+            }
+          : {}),
         ...adminPreviewContentHeaders(responseContentType),
       },
     });
