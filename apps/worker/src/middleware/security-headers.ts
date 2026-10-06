@@ -9,6 +9,12 @@ export const publicSecurityHeaders: Record<string, string> = {
   "Cache-Control": "private, no-store",
 };
 
+export const publicShareViewerHeaders: Record<string, string> = {
+  ...publicSecurityHeaders,
+  "Content-Security-Policy":
+    "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' https: data:; frame-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'",
+};
+
 export const SVG_DOCUMENT_CONTENT_SECURITY_POLICY =
   "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'";
 
