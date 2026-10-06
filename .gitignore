@@ -8,3 +8,6 @@ coverage/
 .env.*
 !.env.example
 .trae/
+
+playwright-report/
+test-results/
