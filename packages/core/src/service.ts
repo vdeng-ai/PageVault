@@ -13,8 +13,8 @@ import {
 import {
   stripSupportedFileExtension,
   SUPPORTED_UPLOAD_EXTENSIONS,
-  type SupportedUploadFileType,
-  uploadFileTypeForFilename,
+  type FileCapability,
+  fileCapabilityForFilename,
 } from "./file-types.js";
 import { randomHex, sha256Hex } from "./hash.js";
 import type { MetadataRepository } from "./repository.js";
@@ -30,13 +30,13 @@ import type {
   ApiUploadLease,
   GcResult,
   PageVaultConfig,
-  HtmlItem,
+  VaultItem,
   ListItemsInput,
   ListItemsResult,
-  PublicHtmlResult,
+  PublicContentResult,
   PublicItemResult,
   UpdateItemInput,
-  UploadHtmlInput,
+  UploadFileInput,
   UploadResult,
   Visibility,
 } from "./types.js";
@@ -87,8 +87,8 @@ function titleFromFilename(filename: string): string {
   return title.length > 0 ? title : "HTML";
 }
 
-function assertSupportedFilename(filename: string): SupportedUploadFileType {
-  const type = uploadFileTypeForFilename(filename);
+function assertSupportedFilename(filename: string): FileCapability {
+  const type = fileCapabilityForFilename(filename);
   if (!type) {
     throw new AppError(
       `Only ${SUPPORTED_UPLOAD_EXTENSIONS.join(", ")} files are allowed`,
@@ -203,7 +203,7 @@ export class PageVaultService {
     await this.repository.releaseApiUploadLease(owner);
   }
 
-  async uploadHtml(input: UploadHtmlInput): Promise<UploadResult> {
+  async uploadFile(input: UploadFileInput): Promise<UploadResult> {
     const fileType = assertSupportedFilename(input.filename);
     const maxBytes = this.config.maxUploadSizeMb * 1024 * 1024;
     if (input.body.byteLength > maxBytes) {
@@ -224,7 +224,7 @@ export class PageVaultService {
     const objectKey = `objects/${id}/index${fileType.storageExtension}`;
     const visibility = input.visibility ?? "public";
     assertVisibility(visibility);
-    const item: HtmlItem = {
+    const item: VaultItem = {
       id,
       title: titleFromFilename(input.filename),
       originalFilename: input.filename,
@@ -271,10 +271,15 @@ export class PageVaultService {
     };
   }
 
-  async getPublicHtml(
+  /** @deprecated Use uploadFile. */
+  async uploadHtml(input: UploadFileInput): Promise<UploadResult> {
+    return this.uploadFile(input);
+  }
+
+  async getPublicContent(
     slug: string,
     now = new Date(),
-  ): Promise<PublicHtmlResult> {
+  ): Promise<PublicContentResult> {
     const itemResult = await this.publicItemForSlug(slug, now);
     if (itemResult.kind !== "ok") {
       return itemResult;
@@ -285,8 +290,16 @@ export class PageVaultService {
     return { kind: "ok", item, object };
   }
 
+  /** @deprecated Use getPublicContent. */
+  async getPublicHtml(
+    slug: string,
+    now = new Date(),
+  ): Promise<PublicContentResult> {
+    return this.getPublicContent(slug, now);
+  }
+
   async getPublicObject(
-    item: HtmlItem,
+    item: VaultItem,
     now = new Date(),
   ): Promise<StoredObject | null> {
     const object = await this.storage.getObject(item.objectKey);
@@ -348,7 +361,7 @@ export class PageVaultService {
     return this.repository.listItems(input);
   }
 
-  async getItem(id: string): Promise<HtmlItem> {
+  async getItem(id: string): Promise<VaultItem> {
     const item = await this.repository.getItemById(id);
     if (!item) {
       throw new AppError("Item not found", 404, "item_not_found");
@@ -356,7 +369,7 @@ export class PageVaultService {
     return item;
   }
 
-  async getItems(ids: string[]): Promise<HtmlItem[]> {
+  async getItems(ids: string[]): Promise<VaultItem[]> {
     const uniqueIds = Array.from(
       new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0)),
     );
@@ -370,7 +383,7 @@ export class PageVaultService {
     id: string,
     patch: UpdateItemInput,
     now = new Date(),
-  ): Promise<HtmlItem> {
+  ): Promise<VaultItem> {
     if (patch.visibility) {
       assertVisibility(patch.visibility);
     }
@@ -386,7 +399,7 @@ export class PageVaultService {
     id: string,
     input: Pick<UpdateItemInput, "urlExpiresAt" | "fileExpiresAt">,
     now = new Date(),
-  ): Promise<HtmlItem> {
+  ): Promise<VaultItem> {
     return this.updateItem(id, input, now);
   }
 
@@ -394,11 +407,11 @@ export class PageVaultService {
     id: string,
     visibility: Visibility,
     now = new Date(),
-  ): Promise<HtmlItem> {
+  ): Promise<VaultItem> {
     return this.updateItem(id, { visibility }, now);
   }
 
-  async disableItem(id: string, now = new Date()): Promise<HtmlItem> {
+  async disableItem(id: string, now = new Date()): Promise<VaultItem> {
     return this.updateItem(id, { status: "disabled" }, now);
   }
 
@@ -477,7 +490,7 @@ export class PageVaultService {
     return `${this.config.publicBaseUrl.replace(/\/+$/g, "")}/p/${slug}`;
   }
 
-  derivedStatus(item: HtmlItem, now = new Date()): string {
+  derivedStatus(item: VaultItem, now = new Date()): string {
     return getDerivedStatus(item, now);
   }
 
