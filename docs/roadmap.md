@@ -41,49 +41,28 @@ PageVault intentionally does **not** plan to support DOCX/PPTX conversion or oth
 - **Phase H — Free-tier and Deployment Hardening:** health/readiness probes, fail-closed migrations, non-root Docker, graceful SQLite shutdown, backup/restore verification, deployment parity checks, and enforceable free-tier guardrails.
 - **Phase I — Lightweight Admin Experience:** server-side type/time/expiry/size filters, targeted list indexes, clearer title/type metadata, share/raw link actions, and safer batch restore without introducing a search service.
 - **Phase J — Share Viewer 2.0:** stronger mobile controls, HTML/PDF fullscreen, image fit/background controls, client-side copy-link feedback, Markdown reading polish, verified Open Graph/Twitter metadata, and a fixed raster fallback share card without server-side rendering.
+- **Phase K — Security and Lightweight Observability:** request IDs, best-effort write-free login/API-key abuse limits, existing audit-log visibility, and persisted maintenance status without adding writes to the public fast path.
+- **Phase L — v1.0 and Maintenance Mode:** SemVer/version alignment, changelog and tag-driven GitHub Releases, migration/rollback guidance, stable v1 API behavior, documented support boundaries, and release-contract checks in CI.
 
-## Remaining roadmap
+## v1.0 maintenance mode
 
-### Phase K — Security and Lightweight Observability
+The A–L roadmap is complete at v1.0. Future work is intentionally not organized as another sequence of large feature phases.
 
-Keep security and diagnostics simple:
+The default priority order is:
 
-- login/API-key rate limiting;
-- API-key scopes only if needed by actual workflows;
-- request IDs;
-- audit log improvements;
-- upload/error/GC counters;
-- storage usage summary;
-- last successful maintenance run.
+1. correctness and data safety;
+2. security;
+3. reliability;
+4. performance and Cloudflare free-tier headroom;
+5. operational simplicity;
+6. small usability improvements.
 
-Do not add SIEM, Prometheus infrastructure, ClickHouse, Durable Object analytics, or other telemetry infrastructure.
+Compatible improvements ship as v1.x releases. Breaking API, schema, or architecture changes require an explicit major-version decision rather than silently expanding the v1 scope.
 
-### Phase L — v1.0 and Maintenance Mode
+The stable deployment boundary remains:
 
-Define v1.0 as the stable completion point:
-
-Cloudflare:
-- Worker;
-- Workers Static Assets;
-- D1;
-- private R2;
-- one daily Cron.
-
-Docker:
-- Node.js;
-- SQLite;
-- local filesystem.
-
-Finish:
-
-- migration compatibility guidance;
-- backup/restore documentation and tests;
-- release notes/changelog automation;
-- clean deployment/upgrade instructions;
-- stable API behavior;
-- documented support boundaries.
-
-After v1.0, favor maintenance, performance, reliability, and security over adding major product surfaces.
+- Cloudflare: Worker + Workers Static Assets + D1 + private R2 + one daily Cron;
+- Docker: Node.js + SQLite + local filesystem.
 
 ## Change acceptance checklist
 
