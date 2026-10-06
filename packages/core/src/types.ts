@@ -10,7 +10,7 @@ export type DerivedStatus =
   | "url_expired"
   | "file_expired";
 
-export interface HtmlItem {
+export interface VaultItem {
   id: string;
   title: string;
   originalFilename: string;
@@ -30,8 +30,11 @@ export interface HtmlItem {
   deletedAt: string | null;
 }
 
+/** @deprecated Use VaultItem. */
+export type HtmlItem = VaultItem;
+
 export interface CreateItemInput {
-  item: HtmlItem;
+  item: VaultItem;
 }
 
 export interface ApiKey {
@@ -78,7 +81,7 @@ export interface ListItemsInput {
 }
 
 export interface ListItemsResult {
-  items: HtmlItem[];
+  items: VaultItem[];
   page: number;
   pageSize: number;
   total: number | null;
@@ -99,7 +102,7 @@ export interface AccessCountInput {
   accessedAt: string;
 }
 
-export interface UploadHtmlInput {
+export interface UploadFileInput {
   filename: string;
   body: ArrayBuffer;
   urlExpireDays?: number;
@@ -108,19 +111,25 @@ export interface UploadHtmlInput {
   now?: Date;
 }
 
+/** @deprecated Use UploadFileInput. */
+export type UploadHtmlInput = UploadFileInput;
+
 export interface UploadResult {
-  item: HtmlItem;
+  item: VaultItem;
   publicUrl: string;
 }
 
-export type PublicHtmlResult =
-  | { kind: "ok"; item: HtmlItem; object: StoredObject }
+export type PublicContentResult =
+  | { kind: "ok"; item: VaultItem; object: StoredObject }
   | { kind: "not_found" }
   | { kind: "disabled" }
   | { kind: "gone" };
 
+/** @deprecated Use PublicContentResult. */
+export type PublicHtmlResult = PublicContentResult;
+
 export type PublicItemResult =
-  | { kind: "ok"; item: HtmlItem }
+  | { kind: "ok"; item: VaultItem }
   | { kind: "not_found" }
   | { kind: "disabled" }
   | { kind: "gone" };
