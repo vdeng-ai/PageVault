@@ -71,6 +71,7 @@ For a contributor-oriented local setup, see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 - [Product direction and roadmap](./docs/roadmap.md)
 - [Configuration reference](./docs/configuration.md)
+- [Operations and free-tier guardrails](./docs/operations.md)
 - [Cloudflare deployment](./docs/cloudflare-deploy.md)
 - [Docker deployment](./docs/docker-deploy.md)
 - [HTTP API](./docs/api.md)
