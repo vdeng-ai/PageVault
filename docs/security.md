@@ -7,6 +7,9 @@ Public requests are only accepted on the configured public hostname and only for
 - `GET /p/:slug`
 - `GET /p/:slug/`
 - `GET /p/:slug.html`
+- `GET /raw/:slug`
+- `GET /raw/:slug/`
+- `GET /raw/:slug.html`
 - the equivalent `HEAD` requests
 
 Everything else on the public hostname returns `404`, including `/`, `/api/*`, `/admin/*`, `/files`, `/list`, and `/sitemap.xml`.
@@ -45,9 +48,9 @@ External access controls may be added in front of the admin hostname, but they m
 
 ## HTML Content
 
-Uploaded HTML is stored and returned as original bytes. PageVault does not sanitize, rewrite, inject, remove scripts, rewrite links, or add analytics snippets.
+Uploaded HTML is stored unchanged. The public share URL under `/p/:slug` is a PageVault-owned viewer with its own share metadata and CSP; it loads HTML through `/raw/:slug` inside a sandboxed iframe with `allow-scripts` but without `allow-same-origin`. This preserves interactive HTML while preventing it from sharing the viewer origin. Direct raw HTML remains the original uploaded bytes: PageVault does not sanitize, rewrite, inject, remove scripts, rewrite links, or add analytics snippets.
 
-Markdown is stored as original bytes and rendered with raw HTML disabled. JPEG, PNG, SVG, and WebP files are returned as uploaded bytes with their corresponding image content type. PDF files are returned as original bytes with `application/pdf` and inline disposition, allowing supported browsers to use their native PDF viewer. SVG documents receive a dedicated CSP sandbox that blocks scripts and network-loaded resources while still allowing inline styles and data-URI images/fonts.
+Markdown is stored as original bytes. The share viewer renders it with raw HTML disabled, while `/raw/:slug` returns the original Markdown bytes. JPEG, PNG, SVG, and WebP share pages use the raw image as their viewer and Open Graph preview; raw image responses retain the corresponding image content type. PDF share pages embed the raw PDF, and raw PDF responses preserve `application/pdf`, inline disposition, and byte-range support. SVG raw responses receive a dedicated CSP sandbox that blocks scripts and network-loaded resources while still allowing inline styles and data-URI images/fonts.
 
 The administration interface previews selected files locally before publishing. HTML and Markdown previews use an iframe with an empty `sandbox` attribute; scripts, form submissions, and access to the admin origin are disabled. Image previews, including SVG, use a temporary object URL inside an `<img>` element. PDF previews use a temporary object URL inside an iframe so the browser can render its native PDF viewer. Temporary object URLs are revoked when the selected file changes.
 
