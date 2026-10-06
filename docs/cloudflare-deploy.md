@@ -139,6 +139,8 @@ This repository includes `.github/workflows/deploy.yml` for automatic Cloudflare
 
 The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply pagevault-db --remote` before or alongside the deploy you intend to release.
 
+For v1 upgrades, rollback rules, and the migration compatibility contract, see [Upgrading PageVault](./upgrading.md). Prefer deploying published release tags rather than arbitrary historical commits for long-lived installations.
+
 See [Security](./security.md) for the runtime trust model and required hostname isolation.
 
 
