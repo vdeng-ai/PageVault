@@ -11,6 +11,7 @@ import type {
   VaultItem,
   ListItemsInput,
   ListItemsResult,
+  ReconciliationItemPage,
   UpdateItemInput,
 } from "@pagevault/core";
 import {
@@ -288,6 +289,30 @@ export class CloudflareD1Repository implements MetadataRepository {
     return items;
   }
 
+  async getItemsByObjectKeys(objectKeys: string[]): Promise<VaultItem[]> {
+    const uniqueKeys = Array.from(new Set(objectKeys)).filter(
+      (key) => key.length > 0,
+    );
+    if (uniqueKeys.length === 0) {
+      return [];
+    }
+
+    const items: VaultItem[] = [];
+    const chunkSize = 50;
+    for (let offset = 0; offset < uniqueKeys.length; offset += chunkSize) {
+      const chunk = uniqueKeys.slice(offset, offset + chunkSize);
+      const placeholders = chunk.map(() => "?").join(", ");
+      const rows = await this.db
+        .prepare(
+          `SELECT * FROM html_items WHERE object_key IN (${placeholders})`,
+        )
+        .bind(...chunk)
+        .all<HtmlItemRow>();
+      items.push(...rows.results.map(mapItemRow));
+    }
+    return items;
+  }
+
   async getItemBySlug(slug: string): Promise<VaultItem | null> {
     const row = await this.db
       .prepare("SELECT * FROM html_items WHERE slug = ? LIMIT 1")
@@ -427,6 +452,56 @@ export class CloudflareD1Repository implements MetadataRepository {
       .bind(now, limit)
       .all<HtmlItemRow>();
     return rows.results.map(mapItemRow);
+  }
+
+  async listItemsForReconciliation(
+    cursor: string | null,
+    limit: number,
+  ): Promise<ReconciliationItemPage> {
+    const pageSize = Math.min(500, Math.max(1, limit));
+    const statement = cursor
+      ? this.db
+          .prepare(
+            "SELECT * FROM html_items WHERE status != 'deleted' AND id > ? ORDER BY id ASC LIMIT ?",
+          )
+          .bind(cursor, pageSize + 1)
+      : this.db
+          .prepare(
+            "SELECT * FROM html_items WHERE status != 'deleted' ORDER BY id ASC LIMIT ?",
+          )
+          .bind(pageSize + 1);
+    const rows = await statement.all<HtmlItemRow>();
+    const items = rows.results.slice(0, pageSize).map(mapItemRow);
+    return {
+      items,
+      nextCursor:
+        rows.results.length > pageSize ? (items.at(-1)?.id ?? null) : null,
+    };
+  }
+
+  async getMaintenanceState(key: string): Promise<string | null> {
+    const row = await this.db
+      .prepare("SELECT value FROM maintenance_state WHERE key = ? LIMIT 1")
+      .bind(key)
+      .first<{ value: string | null }>();
+    return row?.value ?? null;
+  }
+
+  async setMaintenanceState(
+    key: string,
+    value: string | null,
+    updatedAt: string,
+  ): Promise<void> {
+    await this.db
+      .prepare(
+        `INSERT INTO maintenance_state (key, value, updated_at)
+         VALUES (?, ?, ?)
+         ON CONFLICT(key) DO UPDATE SET
+           value = excluded.value,
+           updated_at = excluded.updated_at`,
+      )
+      .bind(key, value, updatedAt)
+      .run();
   }
 
   async writeAuditLog(input: AuditLogInput): Promise<void> {
