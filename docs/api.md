@@ -116,12 +116,22 @@ Runs expired-file cleanup immediately. Cloudflare deployments also invoke cleanu
 
 ## Public Files
 
-The public hostname accepts matching `GET` and `HEAD` requests for:
+The public hostname exposes two layers for public, active, URL-valid, and file-valid records.
+
+Share/viewer URLs stay stable:
 
 - `/p/:slug`
 - `/p/:slug/`
 - `/p/:slug.html`
 
-The file is returned only when the record is public, active, not deleted, URL-valid, and file-valid. HTML is returned as uploaded, Markdown is rendered to HTML with raw HTML disabled, JPEG, PNG, SVG, and WebP files retain their image content type, and PDF files are returned as `application/pdf`. PDF responses use inline disposition so supported browsers open their native PDF viewer. SVG responses are displayed inline with a dedicated CSP sandbox that blocks scripts and network-loaded resources.
+These routes always return a PageVault HTML share page with canonical/Open Graph/Twitter metadata. HTML is shown in a sandboxed iframe, Markdown is rendered into the viewer with raw HTML disabled, PDF uses the browser-native viewer, and JPEG/PNG/SVG/WebP are displayed as images.
+
+The original stored content is available separately at:
+
+- `/raw/:slug`
+- `/raw/:slug/`
+- `/raw/:slug.html`
+
+Raw responses retain the stored content type and bytes. PDF raw responses support byte ranges with `Accept-Ranges: bytes`, `206 Partial Content`, `Content-Range`, and `416` for unsatisfiable ranges. SVG raw responses retain the dedicated CSP sandbox. Existing PageVault share links remain `/p/:slug`; the raw URL is an implementation/detail link used by the viewer and by users who explicitly open the original file.
 
 See [Security](./security.md) for host isolation, storage, and content-handling details.
