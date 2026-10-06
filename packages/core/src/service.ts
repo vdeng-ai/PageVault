@@ -646,10 +646,17 @@ export class PageVaultService {
       }
     }
 
+    const idempotencyDeleted =
+      await this.repository.deleteExpiredApiUploadIdempotency(
+        now.toISOString(),
+        1_000,
+      );
+
     return {
       scanned: expired.length,
       deleted,
       deletedSlugs,
+      idempotencyDeleted,
       failed,
     };
   }
