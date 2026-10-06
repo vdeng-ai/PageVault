@@ -149,6 +149,23 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
     }
 
     if (hostname === publicHost) {
+      if (
+        (request.method === "GET" || request.method === "HEAD") &&
+        url.pathname === "/share-card.png"
+      ) {
+        const asset = await fetchAsset(request, env);
+        if (!asset.ok) return asset;
+        const headers = new Headers(asset.headers);
+        headers.set(
+          "Cache-Control",
+          "public, max-age=86400, s-maxage=604800, immutable",
+        );
+        headers.set("X-Content-Type-Options", "nosniff");
+        return new Response(request.method === "HEAD" ? null : asset.body, {
+          status: asset.status,
+          headers,
+        });
+      }
       return handlePublicRequest(request, env, ctx, createService(env));
     }
 
