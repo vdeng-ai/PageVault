@@ -16,6 +16,7 @@ import {
 } from "../middleware/admin-auth.js";
 import { purgePublicHtmlCache } from "../public-cache.js";
 import {
+  isPdfContentType,
   isSvgContentType,
   pdfInlineHeaders,
   publicErrorPage,
@@ -249,9 +250,14 @@ export function registerAdminRoutes(
         // Uploaded HTML can run in an opaque origin, without access to the
         // administrator's cookies, local storage, or parent window. SVG is
         // intentionally stricter because it does not need script execution.
-        "Content-Security-Policy": isSvgContentType(contentType)
-          ? `${SVG_DOCUMENT_CONTENT_SECURITY_POLICY}; frame-ancestors 'self'`
-          : "sandbox allow-scripts; frame-ancestors 'self'",
+        // PDFs are left to the browser's native viewer without an HTML CSP.
+        ...(isPdfContentType(responseContentType)
+          ? {}
+          : {
+              "Content-Security-Policy": isSvgContentType(contentType)
+                ? `${SVG_DOCUMENT_CONTENT_SECURITY_POLICY}; frame-ancestors 'self'`
+                : "sandbox allow-scripts; frame-ancestors 'self'",
+            }),
       },
     });
   });
