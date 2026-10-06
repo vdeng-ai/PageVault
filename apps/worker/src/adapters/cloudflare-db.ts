@@ -232,6 +232,26 @@ export class CloudflareD1Repository implements MetadataRepository {
       .run();
   }
 
+  async deleteExpiredApiUploadIdempotency(
+    now: string,
+    limit: number,
+  ): Promise<number> {
+    const result = await this.db
+      .prepare(
+        `DELETE FROM api_upload_idempotency
+         WHERE rowid IN (
+           SELECT rowid
+           FROM api_upload_idempotency
+           WHERE expires_at <= ?
+           ORDER BY expires_at ASC
+           LIMIT ?
+         )`,
+      )
+      .bind(now, limit)
+      .run();
+    return result.meta.changes;
+  }
+
   async createItem(input: CreateItemInput): Promise<VaultItem> {
     await this.db
       .prepare(insertItemSql)
