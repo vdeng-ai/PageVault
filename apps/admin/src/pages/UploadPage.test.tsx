@@ -10,12 +10,15 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { uploadFile } from "../api/client.js";
+import { uploadFile, uploadPolicy } from "../api/client.js";
 import { FeedbackProvider } from "../components/Feedback.js";
 import { SettingsProvider } from "../settings.js";
 import { UploadPage } from "./UploadPage.js";
 
-vi.mock("../api/client.js", () => ({ uploadFile: vi.fn() }));
+vi.mock("../api/client.js", () => ({
+  uploadFile: vi.fn(),
+  uploadPolicy: vi.fn(),
+}));
 
 function installBrowserStubs(): void {
   Object.defineProperty(window, "matchMedia", {
@@ -54,6 +57,9 @@ describe("UploadPage", () => {
   beforeEach(() => {
     installBrowserStubs();
     window.localStorage.clear();
+    vi.mocked(uploadPolicy).mockResolvedValue({
+      maxUploadSizeBytes: 10 * 1024 * 1024,
+    });
   });
 
   afterEach(() => {
@@ -201,6 +207,29 @@ describe("UploadPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Choose a supported HTML/)).toBeTruthy();
+    });
+    expect(vi.mocked(uploadFile)).not.toHaveBeenCalled();
+  });
+
+  it("rejects files larger than the server upload policy before upload", async () => {
+    const { container } = renderUpload();
+    const input =
+      container.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(input).not.toBeNull();
+
+    const file = new File(["x"], "large.html", { type: "text/html" });
+    Object.defineProperty(file, "size", {
+      configurable: true,
+      value: 10 * 1024 * 1024 + 1,
+    });
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: { 0: file, length: 1, item: () => file },
+    });
+    fireEvent.change(input as HTMLInputElement);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Maximum upload size is 10 MB/)).toBeTruthy();
     });
     expect(vi.mocked(uploadFile)).not.toHaveBeenCalled();
   });

@@ -6,7 +6,12 @@ import type {
   UpdateItemInput,
   Visibility,
 } from "@pagevault/core";
-import { getDerivedStatus, HTML_CONTENT_TYPE } from "@pagevault/core";
+import {
+  AppError,
+  DEFAULT_MAX_UPLOAD_SIZE_MB,
+  getDerivedStatus,
+  HTML_CONTENT_TYPE,
+} from "@pagevault/core";
 import type { Context, Hono } from "hono";
 import { z } from "zod";
 import type { HonoRuntime, ServiceFactory } from "../bindings.js";
@@ -191,10 +196,65 @@ function formVisibility(
   return value === "public" || value === "private" ? value : undefined;
 }
 
+const MAX_MULTIPART_OVERHEAD_BYTES = 64 * 1024;
+
 function maxUploadBytes(c: Context<HonoRuntime>): number {
-  const parsed = Number.parseInt(c.env.MAX_UPLOAD_SIZE_MB ?? "10", 10);
-  const mb = Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+  const parsed = Number.parseInt(
+    c.env.MAX_UPLOAD_SIZE_MB ?? String(DEFAULT_MAX_UPLOAD_SIZE_MB),
+    10,
+  );
+  const mb =
+    Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_UPLOAD_SIZE_MB;
   return mb * 1024 * 1024;
+}
+
+function payloadTooLarge(): AppError {
+  return new AppError("Uploaded file is too large", 413, "payload_too_large");
+}
+
+async function limitedFormData(c: Context<HonoRuntime>): Promise<FormData> {
+  const bodyLimit = maxUploadBytes(c) + MAX_MULTIPART_OVERHEAD_BYTES;
+  const contentLength = Number.parseInt(c.req.header("Content-Length") ?? "", 10);
+  if (Number.isFinite(contentLength) && contentLength > bodyLimit) {
+    throw payloadTooLarge();
+  }
+
+  const stream = c.req.raw.body;
+  if (!stream) {
+    return c.req.formData();
+  }
+
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      total += next.value.byteLength;
+      if (total > bodyLimit) {
+        await reader.cancel().catch(() => undefined);
+        throw payloadTooLarge();
+      }
+      chunks.push(next.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const buffered = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buffered.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  const boundedRequest = new Request(c.req.url, {
+    method: c.req.method,
+    headers: c.req.raw.headers,
+    body: buffered.buffer,
+  });
+  return boundedRequest.formData();
 }
 
 export function registerAdminRoutes(
@@ -207,6 +267,10 @@ export function registerAdminRoutes(
 
   app.get("/api/admin/operations", requireAdmin, async (c) => {
     return c.json(await service(c, createService).getOperationsSummary());
+  });
+
+  app.get("/api/admin/upload-policy", requireAdmin, (c) => {
+    return c.json({ maxUploadSizeBytes: maxUploadBytes(c) });
   });
 
   app.get("/api/admin/api-keys", requireAdmin, async (c) => {
@@ -242,7 +306,7 @@ export function registerAdminRoutes(
     "/api/admin/items",
     requireAdminWriteOrApiKey(createService),
     async (c) => {
-      const body = await c.req.formData();
+      const body = await limitedFormData(c);
       const file = body.get("file");
       if (!(file instanceof File)) {
         return c.json({ error: "File is required" }, 400);

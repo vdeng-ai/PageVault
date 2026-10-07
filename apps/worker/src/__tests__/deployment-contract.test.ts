@@ -81,6 +81,27 @@ describe("deployment hardening contract", () => {
     }
   });
 
+  it("gates main deployment on checks, browser tests, migrations, and readiness", async () => {
+    const [ciWorkflow, e2eWorkflow, deployWorkflow] = await Promise.all([
+      rootFile(".github/workflows/ci.yml"),
+      rootFile(".github/workflows/e2e.yml"),
+      rootFile(".github/workflows/deploy.yml"),
+    ]);
+
+    expect(ciWorkflow).not.toContain("branches:\n      - main");
+    expect(e2eWorkflow).not.toContain("branches:\n      - main");
+    expect(deployWorkflow).toContain("needs: [verify, playwright]");
+    expect(deployWorkflow).toContain("pnpm run lint");
+    expect(deployWorkflow).toContain(
+      "d1 migrations list pagevault-db --remote",
+    );
+    expect(deployWorkflow).toContain(
+      "d1 migrations apply pagevault-db --remote",
+    );
+    expect(deployWorkflow).toContain("$admin_base/readyz");
+    expect(deployWorkflow).toContain("$public_base/share-card.png");
+  });
+
   it("keeps v1 release metadata aligned and tag automation present", async () => {
     const [rootPackage, corePackage, workerPackage, adminPackage, changelog, releaseWorkflow] =
       await Promise.all([
@@ -98,8 +119,8 @@ describe("deployment hardening contract", () => {
       packageVersion(workerPackage),
       packageVersion(adminPackage),
     ];
-    expect(new Set(versions)).toEqual(new Set(["1.0.0"]));
-    expect(changelog).toContain("## [1.0.0]");
+    expect(new Set(versions)).toEqual(new Set(["1.0.1"]));
+    expect(changelog).toContain("## [1.0.1]");
     expect(releaseWorkflow).toContain('"v*.*.*"');
     expect(releaseWorkflow).toContain("scripts/check-release.mjs");
     expect(releaseWorkflow).toContain("gh release create");

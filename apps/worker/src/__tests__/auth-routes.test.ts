@@ -978,6 +978,42 @@ describe("admin auth routes", () => {
     expect(response.status).toBe(403);
   });
 
+  it("rejects an oversized streaming request before multipart parsing", async () => {
+    const { env, handle, service } = await createFixture();
+    env.MAX_UPLOAD_SIZE_MB = "1";
+    const created = await service.createApiKey("Bounded uploader");
+    const chunk = new Uint8Array(600 * 1024);
+    let sent = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= 2) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(chunk);
+        sent += 1;
+      },
+    });
+
+    const response = await handle(
+      new Request("https://admin.test/api/admin/items", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${created.token}`,
+          "Content-Type": "multipart/form-data; boundary=bounded",
+        },
+        body,
+        duplex: "half",
+      } as RequestInit & { duplex: "half" }),
+      env,
+    );
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "payload_too_large",
+    });
+  });
+
   it("creates, lists, uses, and revokes an upload-only API key", async () => {
     const { env, handle, repo, storage } = await createFixture();
     const { cookie, csrfToken } = await adminSession(env, handle);

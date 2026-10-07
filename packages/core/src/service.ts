@@ -983,13 +983,27 @@ export class PageVaultService {
     detail: string | null,
     now: Date,
   ): Promise<void> {
-    await this.repository.writeAuditLog({
-      id: createId(now),
-      itemId,
-      action,
-      detail,
-      createdAt: now.toISOString(),
-    });
+    try {
+      await this.repository.writeAuditLog({
+        id: createId(now),
+        itemId,
+        action,
+        detail,
+        createdAt: now.toISOString(),
+      });
+    } catch (error) {
+      // Audit visibility is best-effort. Once the primary operation commits,
+      // a logging failure must not make the caller retry an already-applied
+      // upload, update, or deletion.
+      console.error(
+        JSON.stringify({
+          message: "audit log write failed",
+          itemId,
+          action,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
   }
 }
 

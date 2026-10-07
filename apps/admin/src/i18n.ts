@@ -202,6 +202,8 @@ const en = {
     "Choose a supported HTML, Markdown, JPEG, PDF, PNG, SVG, or WebP file.",
   "upload.invalidDays":
     "Expiry values must be whole numbers greater than zero.",
+  "upload.fileTooLarge": ({ maxMb }) =>
+    `File is too large. Maximum upload size is ${maxMb} MB.`,
   "upload.chooseFile": "Choose a file before uploading.",
 
   "detail.eyebrow": "File details",
@@ -514,6 +516,7 @@ const zh = {
   "upload.invalidType":
     "请选择受支持的 HTML、Markdown、JPEG、PDF、PNG、SVG 或 WebP 文件。",
   "upload.invalidDays": "有效期必须是大于零的整数。",
+  "upload.fileTooLarge": ({ maxMb }) => `文件过大，最大允许上传 ${maxMb} MB。`,
   "upload.chooseFile": "请先选择要上传的文件。",
 
   "detail.eyebrow": "文件详情",
