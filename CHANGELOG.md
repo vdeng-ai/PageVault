@@ -2,6 +2,23 @@
 
 All notable PageVault changes are documented here. PageVault follows Semantic Versioning from v1.0.0 onward.
 
+## [1.0.1] - 2026-10-07
+
+PageVault v1.0.1 is a focused reliability release for public revocation, operation outcomes, uploads, and production deployment.
+
+### Fixed
+
+- validate current public visibility, status, and expiry before serving cached share or raw content, so disabling or making an item private takes effect without waiting for another Cloudflare cache location to expire;
+- exclude HEAD requests from public access counting;
+- treat audit-log persistence as best-effort after the primary operation commits, preventing successful uploads, updates, or deletes from being reported as failures solely because audit logging failed;
+- bound multipart request bodies before full form parsing and expose the configured upload limit to the admin UI for client-side rejection of oversized files.
+
+### Operations
+
+- gate production deployment on release checks, typechecking, linting, unit tests, build, and Playwright browser tests for the same commit;
+- inspect and apply pending D1 migrations in the production workflow before deployment;
+- verify the admin readiness endpoint and public static share asset after deployment.
+
 ## [1.0.0] - 2026-10-06
 
 PageVault v1.0 is the first stable release of the personal-first, Cloudflare-Free-first publishing architecture.
@@ -40,3 +57,5 @@ PageVault v1.0 is the first stable release of the personal-first, Cloudflare-Fre
 - schema downgrades are not automatic. Restore a pre-upgrade backup when a true rollback is required.
 
 [1.0.0]: https://github.com/vdeng-ai/PageVault/releases/tag/v1.0.0
+
+[1.0.1]: https://github.com/vdeng-ai/PageVault/releases/tag/v1.0.1
