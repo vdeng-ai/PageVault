@@ -29,6 +29,7 @@ import type {
 
 class MemoryStorage implements StorageProvider {
   readonly objects = new Map<string, StoredObject>();
+  deleteError: Error | null = null;
 
   async putObject(
     key: string,
@@ -66,6 +67,7 @@ class MemoryStorage implements StorageProvider {
   }
 
   async deleteObject(key: string): Promise<void> {
+    if (this.deleteError) throw this.deleteError;
     this.objects.delete(key);
   }
 
@@ -88,6 +90,8 @@ class MemoryRepository implements MetadataRepository {
   readonly items = new Map<string, HtmlItem>();
   readonly apiKeys = new Map<string, { apiKey: ApiKey; tokenHash: string }>();
   readonly audits: AuditLogInput[] = [];
+  auditError: Error | null = null;
+  updateError: Error | null = null;
   readonly idempotency = new Map<
     string,
     {
@@ -293,6 +297,7 @@ class MemoryRepository implements MetadataRepository {
   }
 
   async updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem> {
+    if (this.updateError) throw this.updateError;
     const item = this.items.get(id);
     if (!item) {
       throw new Error("missing");
@@ -366,6 +371,7 @@ class MemoryRepository implements MetadataRepository {
   }
 
   async writeAuditLog(input: AuditLogInput): Promise<void> {
+    if (this.auditError) throw this.auditError;
     this.audits.push(input);
   }
 }
@@ -406,6 +412,51 @@ function item(overrides: Partial<HtmlItem> = {}): HtmlItem {
     ...overrides,
   };
 }
+
+describe("operation failure semantics", () => {
+  it("keeps a successful upload successful when audit logging fails", async () => {
+    const { service, repo, storage } = createService();
+    repo.auditError = new Error("audit unavailable");
+
+    const result = await service.uploadFile({
+      filename: "page.html",
+      body: new TextEncoder().encode("<h1>Hello</h1>").buffer,
+    });
+
+    expect(repo.items.get(result.item.id)?.slug).toBe(result.item.slug);
+    expect(storage.objects.has(result.item.objectKey)).toBe(true);
+  });
+
+  it("does not apply an update when the metadata write fails", async () => {
+    const { service, repo } = createService();
+    const existing = item();
+    await repo.createItem({ item: existing });
+    repo.updateError = new Error("database unavailable");
+
+    await expect(
+      service.updateItem(existing.id, { visibility: "private" }),
+    ).rejects.toThrow("database unavailable");
+    expect(repo.items.get(existing.id)?.visibility).toBe("public");
+  });
+
+  it("does not mark metadata deleted when object deletion fails", async () => {
+    const { service, repo, storage } = createService();
+    const existing = item();
+    await repo.createItem({ item: existing });
+    await storage.putObject(
+      existing.objectKey,
+      new TextEncoder().encode("<h1>Hello</h1>").buffer,
+      existing.contentType,
+    );
+    storage.deleteError = new Error("storage unavailable");
+
+    await expect(service.deleteItem(existing.id)).rejects.toThrow(
+      "storage unavailable",
+    );
+    expect(repo.items.get(existing.id)?.status).toBe("active");
+    expect(storage.objects.has(existing.objectKey)).toBe(true);
+  });
+});
 
 describe("access counting", () => {
   it("records access counts in batches", async () => {

@@ -337,6 +337,19 @@ export async function handlePublicRequest(
     return publicErrorPage(404);
   }
 
+  // Public state is intentionally checked before consulting the content cache.
+  // Cache API entries are local to a Cloudflare data center, so an admin-side
+  // cache.delete() cannot provide global revocation semantics by itself.
+  const now = new Date();
+  const result = await service.getPublicItem(route.slug, now);
+  const stateError = itemStateError(result);
+  if (stateError) {
+    return stateError;
+  }
+  if (result.kind !== "ok") {
+    return publicErrorPage(404);
+  }
+
   const rangeHeader =
     route.kind === "raw" && request.method === "GET"
       ? request.headers.get("Range")
@@ -350,25 +363,15 @@ export async function handlePublicRequest(
         route.kind,
       );
   if (cached) {
-    if (route.kind === "share" && cached.itemId) {
-      recordPublicAccess(service, env, ctx, cached.itemId, route.slug);
+    if (route.kind === "share" && request.method === "GET") {
+      recordPublicAccess(service, env, ctx, result.item.id, route.slug);
     }
     return (
       notModifiedResponse(request, cached.response.headers) ?? cached.response
     );
   }
 
-  const now = new Date();
-  const result = await service.getPublicItem(route.slug, now);
-  const stateError = itemStateError(result);
-  if (stateError) {
-    return stateError;
-  }
-  if (result.kind !== "ok") {
-    return publicErrorPage(404);
-  }
-
-  if (route.kind === "share") {
+  if (route.kind === "share" && request.method === "GET") {
     recordPublicAccess(service, env, ctx, result.item.id, route.slug);
   }
 
