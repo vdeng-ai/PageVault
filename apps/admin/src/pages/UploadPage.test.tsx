@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -177,7 +178,9 @@ describe("UploadPage", () => {
     expect(input).not.toBeNull();
 
     const file = new File(
-      ['<svg xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8"/></svg>'],
+      [
+        '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8"/></svg>',
+      ],
       "diagram.svg",
       { type: "image/svg+xml" },
     );
@@ -233,6 +236,84 @@ describe("UploadPage", () => {
     });
     expect(vi.mocked(uploadFile)).not.toHaveBeenCalled();
   });
+
+  it("rechecks a selected file when a delayed policy lowers the limit", async () => {
+    let resolvePolicy!: (policy: { maxUploadSizeBytes: number }) => void;
+    vi.mocked(uploadPolicy).mockReturnValue(
+      new Promise((resolve) => {
+        resolvePolicy = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderUpload();
+    const file = new File(["Hello"], "page.md", { type: "text/markdown" });
+    Object.defineProperty(file, "size", { value: 5 * 1024 * 1024 });
+    await user.upload(screen.getByLabelText("Choose file"), file);
+    const submit = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Upload and publish",
+    });
+    expect(submit.disabled).toBe(true);
+    await user.click(submit);
+    expect(uploadFile).not.toHaveBeenCalled();
+
+    await act(async () => resolvePolicy({ maxUploadSizeBytes: 1024 * 1024 }));
+    expect(screen.getByText(/Maximum upload size is 1 MB/)).toBeTruthy();
+    expect(submit.disabled).toBe(true);
+    await user.click(submit);
+    expect(uploadFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps a file above the default limit while a larger server policy loads", async () => {
+    let resolvePolicy!: (policy: { maxUploadSizeBytes: number }) => void;
+    vi.mocked(uploadPolicy).mockReturnValue(
+      new Promise((resolve) => {
+        resolvePolicy = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderUpload();
+    const file = new File(["Hello"], "page.md", { type: "text/markdown" });
+    Object.defineProperty(file, "size", { value: 15 * 1024 * 1024 });
+    await user.upload(screen.getByLabelText("Choose file"), file);
+    expect(screen.getByText("page.md")).toBeTruthy();
+    const submit = screen.getByRole<HTMLButtonElement>("button", {
+      name: "Upload and publish",
+    });
+    expect(submit.disabled).toBe(true);
+    await act(async () =>
+      resolvePolicy({ maxUploadSizeBytes: 20 * 1024 * 1024 }),
+    );
+    expect(submit.disabled).toBe(false);
+    expect(screen.queryByText(/Maximum upload size/)).toBeNull();
+    vi.mocked(uploadFile).mockRejectedValue(new Error("test upload response"));
+    await user.click(submit);
+    expect(uploadFile).toHaveBeenCalledWith(expect.objectContaining({ file }));
+    await screen.findByText("test upload response");
+  });
+
+  it.each(["failed", "invalid"])(
+    "uses the fallback for a %s upload policy",
+    async (mode) => {
+      if (mode === "failed") {
+        vi.mocked(uploadPolicy).mockRejectedValue(
+          new Error("policy unavailable"),
+        );
+      } else {
+        vi.mocked(uploadPolicy).mockResolvedValue({ maxUploadSizeBytes: 0 });
+      }
+      const user = userEvent.setup();
+      renderUpload();
+      const file = new File(["Hello"], "page.md", { type: "text/markdown" });
+      await user.upload(screen.getByLabelText("Choose file"), file);
+      await waitFor(() => {
+        expect(
+          screen.getByRole<HTMLButtonElement>("button", {
+            name: "Upload and publish",
+          }).disabled,
+        ).toBe(false);
+      });
+    },
+  );
 
   it("shows retained custom expiry values when continuing with another upload", async () => {
     vi.mocked(uploadFile).mockResolvedValue({

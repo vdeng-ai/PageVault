@@ -62,7 +62,9 @@ describe("deployment hardening contract", () => {
       ["ACCESS_COUNT_MODE", "windowed"],
     ]) {
       expect(config).toContain(`"${name}": "${value}"`);
-      expect(compose).toContain(`${name}: ${value === "windowed" ? value : `"${value}"`}`);
+      expect(compose).toContain(
+        `${name}: ${value === "windowed" ? value : `"${value}"`}`,
+      );
     }
 
     for (const name of [
@@ -102,16 +104,36 @@ describe("deployment hardening contract", () => {
     expect(deployWorkflow).toContain("$public_base/share-card.png");
   });
 
+  it("builds artifacts on the deployment runner before using Wrangler", async () => {
+    const workflow = await rootFile(".github/workflows/deploy.yml");
+    const deployJob = workflow.split("\n  deploy:\n")[1];
+    expect(deployJob).toBeDefined();
+    const install = deployJob!.indexOf("run: pnpm install --frozen-lockfile");
+    const build = deployJob!.indexOf("run: pnpm run build");
+    const migrations = deployJob!.indexOf("command: d1 migrations list");
+    const deploy = deployJob!.indexOf("command: deploy --keep-vars");
+    expect(install).toBeGreaterThanOrEqual(0);
+    expect(build).toBeGreaterThan(install);
+    expect(migrations).toBeGreaterThan(build);
+    expect(deploy).toBeGreaterThan(migrations);
+  });
+
   it("keeps v1 release metadata aligned and tag automation present", async () => {
-    const [rootPackage, corePackage, workerPackage, adminPackage, changelog, releaseWorkflow] =
-      await Promise.all([
-        rootFile("package.json"),
-        rootFile("packages/core/package.json"),
-        rootFile("apps/worker/package.json"),
-        rootFile("apps/admin/package.json"),
-        rootFile("CHANGELOG.md"),
-        rootFile(".github/workflows/release.yml"),
-      ]);
+    const [
+      rootPackage,
+      corePackage,
+      workerPackage,
+      adminPackage,
+      changelog,
+      releaseWorkflow,
+    ] = await Promise.all([
+      rootFile("package.json"),
+      rootFile("packages/core/package.json"),
+      rootFile("apps/worker/package.json"),
+      rootFile("apps/admin/package.json"),
+      rootFile("CHANGELOG.md"),
+      rootFile(".github/workflows/release.yml"),
+    ]);
 
     const versions = [
       packageVersion(rootPackage),
@@ -125,5 +147,4 @@ describe("deployment hardening contract", () => {
     expect(releaseWorkflow).toContain("scripts/check-release.mjs");
     expect(releaseWorkflow).toContain("gh release create");
   });
-
 });

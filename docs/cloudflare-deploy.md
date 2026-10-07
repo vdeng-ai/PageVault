@@ -137,7 +137,20 @@ The product name is `PageVault`; Cloudflare resources, package scopes, and GitHu
 
 This repository includes `.github/workflows/deploy.yml` for automatic Cloudflare deployment. It runs on pushes to `main` and through `workflow_dispatch`, installs the root `packageManager` version with Corepack, runs checks and builds, writes `apps/worker/.env.production` from GitHub Secrets, then deploys with `wrangler deploy --keep-vars --secrets-file .env.production`.
 
-The deploy workflow does not apply D1 migrations automatically. When schema migrations change, apply them explicitly with `pnpm wrangler d1 migrations apply pagevault-db --remote` before or alongside the deploy you intend to release.
+The workflow gates deployment on release checks, typechecking, linting, unit tests, build, and Playwright for the same commit. The deployment job rebuilds artifacts on its own runner, checks and applies pending D1 migrations, publishes the Worker, then verifies admin readiness and the public share-card asset. Back up D1 and preserve R2 objects before upgrades that include migrations.
+
+### GitHub Secrets and D1 authorization
+
+Set `CLOUDFLARE_ACCOUNT_ID` to the account that owns the D1 database configured in `apps/worker/wrangler.jsonc`. The `CLOUDFLARE_API_TOKEN` must include the existing Worker deployment permissions and **Account > D1 > Edit** for that same account. A token that can publish Workers does not necessarily have permission to query or migrate D1. See [Cloudflare API token permissions](https://developers.cloudflare.com/fundamentals/api/reference/permissions/).
+
+If a migration step fails with authorization error `7403`:
+
+1. Confirm the configured database ID belongs to the account in `CLOUDFLARE_ACCOUNT_ID`.
+2. In Cloudflare's API token settings, grant D1 Edit and include that account in the token's resource scope.
+3. Update `CLOUDFLARE_API_TOKEN` in the GitHub repository or its `production` environment Secrets if you replaced the token. Check environment Secrets first because they take precedence over repository Secrets.
+4. Re-run the deployment workflow. Do not skip the migration check to bypass an authorization failure.
+
+The workflow summary links these requirements when a D1 step fails; inspect the original Wrangler log to distinguish authorization failures from migration SQL errors. Tokens and secret values must never be committed or pasted into logs.
 
 For v1 upgrades, rollback rules, and the migration compatibility contract, see [Upgrading PageVault](./upgrading.md). Prefer deploying published release tags rather than arbitrary historical commits for long-lived installations.
 
