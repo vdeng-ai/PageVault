@@ -81,6 +81,10 @@ export interface CreatedApiKey {
   token: string;
 }
 
+export interface UploadPolicy {
+  maxUploadSizeBytes: number;
+}
+
 export interface UploadResult {
   id: string;
   title: string;
@@ -164,6 +168,10 @@ export function dashboard(): Promise<DashboardStats> {
 
 export function operations(): Promise<OperationsSummary> {
   return request<OperationsSummary>("/api/admin/operations");
+}
+
+export function uploadPolicy(): Promise<UploadPolicy> {
+  return request<UploadPolicy>("/api/admin/upload-policy");
 }
 
 export async function listApiKeys(): Promise<ApiKey[]> {

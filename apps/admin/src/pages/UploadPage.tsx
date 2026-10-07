@@ -1,4 +1,7 @@
-import { fileCapabilityForFilename } from "@pagevault/core";
+import {
+  DEFAULT_MAX_UPLOAD_SIZE_MB,
+  fileCapabilityForFilename,
+} from "@pagevault/core";
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,9 +14,10 @@ import {
   Plus,
   Settings,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   uploadFile,
+  uploadPolicy,
   type UploadResult,
   type Visibility,
 } from "../api/client.js";
@@ -25,6 +29,7 @@ import { useSettings } from "../settings.js";
 import { copyText } from "../clipboard.js";
 
 const durationPresets = [7, 15, 30, 90, 365];
+const BYTES_PER_MB = 1024 * 1024;
 function positiveInteger(value: string): number | null {
   if (!/^\d+$/.test(value)) return null;
   const parsed = Number(value);
@@ -106,9 +111,31 @@ export function UploadPage({
   const [fileError, setFileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [maxUploadBytes, setMaxUploadBytes] = useState(
+    DEFAULT_MAX_UPLOAD_SIZE_MB * BYTES_PER_MB,
+  );
   const parsedUrlDays = positiveInteger(urlExpireDays);
   const parsedFileDays = positiveInteger(fileExpireDays);
   const expiryValid = parsedUrlDays !== null && parsedFileDays !== null;
+
+  useEffect(() => {
+    let active = true;
+    void uploadPolicy()
+      .then((policy) => {
+        if (
+          active &&
+          Number.isFinite(policy.maxUploadSizeBytes) &&
+          policy.maxUploadSizeBytes > 0
+        ) {
+          setMaxUploadBytes(policy.maxUploadSizeBytes);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function clear() {
     setFile(null);
     setFileError(null);
@@ -121,6 +148,15 @@ export function UploadPage({
     if (!fileCapabilityForFilename(nextFile.name)) {
       setFile(null);
       setFileError(t("upload.invalidType"));
+      return;
+    }
+    if (nextFile.size > maxUploadBytes) {
+      setFile(null);
+      setFileError(
+        t("upload.fileTooLarge", {
+          maxMb: Math.max(1, Math.floor(maxUploadBytes / BYTES_PER_MB)),
+        }),
+      );
       return;
     }
     setFile(nextFile);
