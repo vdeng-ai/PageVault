@@ -111,26 +111,34 @@ export function UploadPage({
   const [fileError, setFileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [maxUploadBytes, setMaxUploadBytes] = useState(
-    DEFAULT_MAX_UPLOAD_SIZE_MB * BYTES_PER_MB,
-  );
+  const [maxUploadBytes, setMaxUploadBytes] = useState<number | null>(null);
   const parsedUrlDays = positiveInteger(urlExpireDays);
   const parsedFileDays = positiveInteger(fileExpireDays);
   const expiryValid = parsedUrlDays !== null && parsedFileDays !== null;
+  const sizeError =
+    file && maxUploadBytes !== null && file.size > maxUploadBytes
+      ? t("upload.fileTooLarge", {
+          maxMb: Math.max(1, Math.floor(maxUploadBytes / BYTES_PER_MB)),
+        })
+      : null;
 
   useEffect(() => {
     let active = true;
     void uploadPolicy()
       .then((policy) => {
-        if (
-          active &&
-          Number.isFinite(policy.maxUploadSizeBytes) &&
-          policy.maxUploadSizeBytes > 0
-        ) {
-          setMaxUploadBytes(policy.maxUploadSizeBytes);
+        if (active) {
+          setMaxUploadBytes(
+            Number.isFinite(policy.maxUploadSizeBytes) &&
+              policy.maxUploadSizeBytes > 0
+              ? policy.maxUploadSizeBytes
+              : DEFAULT_MAX_UPLOAD_SIZE_MB * BYTES_PER_MB,
+          );
         }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active)
+          setMaxUploadBytes(DEFAULT_MAX_UPLOAD_SIZE_MB * BYTES_PER_MB);
+      });
     return () => {
       active = false;
     };
@@ -150,7 +158,7 @@ export function UploadPage({
       setFileError(t("upload.invalidType"));
       return;
     }
-    if (nextFile.size > maxUploadBytes) {
+    if (maxUploadBytes !== null && nextFile.size > maxUploadBytes) {
       setFile(null);
       setFileError(
         t("upload.fileTooLarge", {
@@ -174,7 +182,15 @@ export function UploadPage({
       .catch(() => notify(t("common.copyFailed"), "error"));
   }
   function submit() {
-    if (!file || busy) return;
+    if (!file || busy || maxUploadBytes === null) return;
+    if (file.size > maxUploadBytes) {
+      setFileError(
+        t("upload.fileTooLarge", {
+          maxMb: Math.max(1, Math.floor(maxUploadBytes / BYTES_PER_MB)),
+        }),
+      );
+      return;
+    }
     if (parsedUrlDays === null || parsedFileDays === null) {
       setError(t("upload.invalidDays"));
       return;
@@ -225,7 +241,7 @@ export function UploadPage({
       </header>
       <UploadDropzone
         file={file}
-        error={fileError}
+        error={fileError ?? sizeError}
         onFile={chooseFile}
         onClear={clear}
         disabled={busy}
@@ -394,7 +410,13 @@ export function UploadPage({
                 <button
                   className="btn btn-primary btn-lg"
                   type="button"
-                  disabled={!file || !expiryValid || busy}
+                  disabled={
+                    !file ||
+                    !expiryValid ||
+                    busy ||
+                    maxUploadBytes === null ||
+                    sizeError !== null
+                  }
                   aria-busy={busy}
                   onClick={submit}
                 >

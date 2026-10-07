@@ -87,6 +87,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build deployment artifacts
+        run: pnpm run build
+
       - name: Write production secrets file
         working-directory: apps/worker
         env:
@@ -136,6 +139,7 @@ jobs:
           chmod 600 .env.production
 
       - name: Check D1 migration status
+        id: d1_status
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -145,6 +149,7 @@ jobs:
           command: d1 migrations list pagevault-db --remote
 
       - name: Apply D1 migrations
+        id: d1_migrate
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -152,6 +157,19 @@ jobs:
           packageManager: pnpm
           workingDirectory: apps/worker
           command: d1 migrations apply pagevault-db --remote
+
+      - name: Explain D1 authorization requirements
+        if: failure() && (steps.d1_status.outcome == 'failure' || steps.d1_migrate.outcome == 'failure')
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ### D1 migration check failed
+          Inspect the failed Wrangler step for the original error. For authorization error 7403:
+          - Confirm CLOUDFLARE_ACCOUNT_ID is the account that owns the configured D1 database.
+          - Confirm CLOUDFLARE_API_TOKEN covers that account and includes Account > D1 > Edit.
+          - Update the production environment's GitHub Secrets if the account or token changed.
+          - Re-run the workflow after correcting authorization. Deployment remains blocked until migrations succeed.
+          See docs/cloudflare-deploy.md for the token setup and troubleshooting steps.
+          EOF
 
       - name: Deploy
         uses: cloudflare/wrangler-action@v4

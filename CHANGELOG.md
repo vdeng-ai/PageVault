@@ -2,6 +2,14 @@
 
 All notable PageVault changes are documented here. PageVault follows Semantic Versioning from v1.0.0 onward.
 
+## [Unreleased]
+
+### Fixed
+
+- build deployment artifacts in the deployment job itself instead of depending on files created on another GitHub Actions runner;
+- wait for upload policy resolution before publishing, revalidate selected files when the limit arrives, and check the current limit again at submission;
+- document D1 migration token permissions and surface authorization troubleshooting in failed deployment summaries.
+
 ## [1.0.1] - 2026-10-07
 
 PageVault v1.0.1 is a focused reliability release for public revocation, operation outcomes, uploads, and production deployment.
