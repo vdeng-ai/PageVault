@@ -14,9 +14,62 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    name: Verify production commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run release:check
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+      - run: pnpm run test
+      - run: pnpm run build
+
+  playwright:
+    name: Verify browser flows
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: verify
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+
+      - name: Install Playwright test dependency
+        working-directory: e2e
+        run: npm install --no-package-lock
+
+      - name: Install Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        working-directory: e2e
+        run: npm test
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          if-no-files-found: ignore
+
   deploy:
     name: Deploy Cloudflare Worker
     runs-on: ubuntu-latest
+    needs: [verify, playwright]
     environment: production
 
     steps:
@@ -33,18 +86,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Verify release contract
-        run: pnpm run release:check
-
-      - name: Typecheck
-        run: pnpm run typecheck
-
-      - name: Test
-        run: pnpm run test
-
-      - name: Build
-        run: pnpm run build
 
       - name: Write production secrets file
         working-directory: apps/worker
@@ -94,6 +135,24 @@ jobs:
 
           chmod 600 .env.production
 
+      - name: Check D1 migration status
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: pnpm
+          workingDirectory: apps/worker
+          command: d1 migrations list pagevault-db --remote
+
+      - name: Apply D1 migrations
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: pnpm
+          workingDirectory: apps/worker
+          command: d1 migrations apply pagevault-db --remote
+
       - name: Deploy
         uses: cloudflare/wrangler-action@v4
         with:
@@ -102,3 +161,18 @@ jobs:
           packageManager: pnpm
           workingDirectory: apps/worker
           command: deploy --keep-vars --secrets-file .env.production
+
+      - name: Verify production readiness
+        env:
+          ADMIN_BASE_URL: ${{ secrets.ADMIN_BASE_URL }}
+          PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL }}
+        run: |
+          set -eu
+          admin_base="${ADMIN_BASE_URL%/}"
+          public_base="${PUBLIC_BASE_URL%/}"
+          curl --fail --silent --show-error \
+            --retry 5 --retry-delay 2 --retry-all-errors \
+            "$admin_base/readyz"
+          curl --fail --silent --show-error --head \
+            --retry 5 --retry-delay 2 --retry-all-errors \
+            "$public_base/share-card.png"
