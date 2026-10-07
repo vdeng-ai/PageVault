@@ -20,7 +20,11 @@ vi.mock("./api/client.js", () => ({
   me: vi.fn(),
   revokeApiKey: vi.fn(),
   updateItem: vi.fn(),
+  uploadFile: vi.fn(),
   uploadHtml: vi.fn(),
+  uploadPolicy: vi.fn().mockResolvedValue({
+    maxUploadSizeBytes: 10 * 1024 * 1024,
+  }),
 }));
 
 function installMatchMedia(): void {
