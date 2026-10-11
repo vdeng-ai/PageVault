@@ -6,7 +6,10 @@ import { dashboard, operations } from "../api/client.js";
 import { SettingsProvider } from "../settings.js";
 import { DashboardPage } from "./DashboardPage.js";
 
-vi.mock("../api/client.js", () => ({ dashboard: vi.fn(), operations: vi.fn() }));
+vi.mock("../api/client.js", () => ({
+  dashboard: vi.fn(),
+  operations: vi.fn(),
+}));
 
 describe("DashboardPage", () => {
   beforeEach(() => {
@@ -23,7 +26,9 @@ describe("DashboardPage", () => {
       lastMaintenanceAt: "2026-10-06T08:00:00.000Z",
       lastMaintenanceStatus: "ok",
       lastMaintenanceSummary: "GC 0 deleted; reconciliation 0 findings",
-      recentAuditEvents: [{ action: "upload", createdAt: "2026-10-06T07:00:00.000Z" }],
+      recentAuditEvents: [
+        { action: "upload", createdAt: "2026-10-06T07:00:00.000Z" },
+      ],
     });
     vi.mocked(dashboard).mockResolvedValue({
       total: 4,
@@ -56,7 +61,9 @@ describe("DashboardPage", () => {
     expect(sizeCard?.querySelector(".chip")).toBeNull();
     expect(document.querySelectorAll(".dashboard-metric-card")).toHaveLength(6);
     expect(screen.getByText("Operations")).toBeTruthy();
-    expect(screen.getByText("GC 0 deleted; reconciliation 0 findings")).toBeTruthy();
+    expect(
+      screen.getByText("GC 0 deleted; reconciliation 0 findings"),
+    ).toBeTruthy();
   });
 
   it("shows each lifecycle metric once and links to its matching file filter", async () => {
@@ -75,5 +82,60 @@ describe("DashboardPage", () => {
       expect(labels).toHaveLength(1);
       expect(labels[0]?.closest("a")?.getAttribute("href")).toBe(`#/items?${filter}`);
     }
+  });
+
+  it("renders statistics while operations is still pending", async () => {
+    vi.mocked(operations).mockReturnValue(new Promise(() => {}));
+    render(
+      <SettingsProvider>
+        <DashboardPage onUpload={vi.fn()} />
+      </SettingsProvider>,
+    );
+
+    expect(await screen.findByText("3 MB")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen
+        .getByText("Operations")
+        .closest("section")
+        ?.getAttribute("aria-busy"),
+    ).toBe("true");
+  });
+
+  it("keeps statistics visible when operations fails", async () => {
+    vi.mocked(operations).mockRejectedValue(
+      new Error("Operations unavailable"),
+    );
+    render(
+      <SettingsProvider>
+        <DashboardPage onUpload={vi.fn()} />
+      </SettingsProvider>,
+    );
+
+    expect(await screen.findByText("3 MB")).toBeTruthy();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Operations unavailable");
+    expect(alert.closest("section")?.querySelector("h2")?.textContent).toBe(
+      "Operations",
+    );
+    expect(
+      document.querySelectorAll(".dashboard-metric-card .skeleton"),
+    ).toHaveLength(0);
+  });
+
+  it("keeps operations visible when statistics fails", async () => {
+    vi.mocked(dashboard).mockRejectedValue(new Error("Statistics unavailable"));
+    render(
+      <SettingsProvider>
+        <DashboardPage onUpload={vi.fn()} />
+      </SettingsProvider>,
+    );
+
+    expect(
+      await screen.findByText("GC 0 deleted; reconciliation 0 findings"),
+    ).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Statistics unavailable",
+    );
   });
 });

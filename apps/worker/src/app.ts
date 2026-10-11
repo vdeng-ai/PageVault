@@ -163,7 +163,7 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
     if (hostname === publicHost) {
       if (
         (request.method === "GET" || request.method === "HEAD") &&
-        url.pathname === "/share-card.png"
+        (url.pathname === "/share-card.png" || url.pathname === "/favicon.svg")
       ) {
         const asset = await fetchAsset(request, env);
         if (!asset.ok) return asset;

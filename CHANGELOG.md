@@ -6,6 +6,8 @@ All notable PageVault changes are documented here. PageVault follows Semantic Ve
 
 ### Fixed
 
+- align the browser tab icon with the muted violet visual system, support light and dark browser themes, and share the versioned favicon across admin, public viewers, and error pages;
+- load dashboard statistics independently of operations metadata, and report missing operations tables with an explicit database-migration error;
 - build deployment artifacts in the deployment job itself instead of depending on files created on another GitHub Actions runner;
 - wait for upload policy resolution before publishing, revalidate selected files when the limit arrives, and check the current limit again at submission;
 - document D1 migration token permissions and surface authorization troubleshooting in failed deployment summaries.
