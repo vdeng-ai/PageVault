@@ -497,7 +497,7 @@ export function ItemTable({
               />
               <div className="min-w-0 flex-1">
                 <button
-                  className="link-button item-card-file-name block w-full text-left text-base font-bold"
+                  className="link-button item-card-file-name block w-full text-left text-base font-semibold"
                   type="button"
                   onClick={() => onEdit(item.id)}
                 >
@@ -505,40 +505,16 @@ export function ItemTable({
                 </button>
                 <div className="mt-1 text-xs font-medium text-muted">
                   {fileTypeLabel(item.contentType)} · {item.originalFilename} ·{" "}
-                  {formatDate(item.createdAt, locale)}
+                  {formatFileSize(item.sizeBytes, locale)}
                 </div>
               </div>
               <StatusBadge status={item.derivedStatus} />
             </div>
 
-            <button
-              className="inline-code item-card-url mt-4 block w-full truncate rounded-lg px-3 py-2 text-left font-mono text-xs"
-              type="button"
-              title={item.publicUrl}
-              onClick={() => onCopy(item.publicUrl)}
-            >
-              {item.publicUrl}
-            </button>
-
-            <dl className="item-card-meta">
-              <div>
-                <dt>{t("common.urlExpiry")}</dt>
-                <dd>{formatDate(item.urlExpiresAt, locale)}</dd>
-              </div>
-              <div>
-                <dt>{t("common.fileExpiry")}</dt>
-                <dd>{formatDate(item.fileExpiresAt, locale)}</dd>
-              </div>
-              <div>
-                <dt>{t("table.size")}</dt>
-                <dd>{formatFileSize(item.sizeBytes, locale)}</dd>
-              </div>
-              <div>
-                <dt>{t("table.access")}</dt>
-                <dd>{numberFormatter.format(item.accessCount)}</dd>
-              </div>
-            </dl>
-
+            <p className="item-card-expiry">
+              {t("common.urlExpiry")} ·{" "}
+              {formatDate(item.urlExpiresAt, locale, true)}
+            </p>
             <div className="item-card-actions">
               <button
                 className="btn btn-secondary btn-sm"
@@ -557,20 +533,46 @@ export function ItemTable({
                 <ExternalLink className="h-4 w-4" aria-hidden />
                 {t("common.preview")}
               </a>
-              <button
-                className="btn btn-secondary btn-sm"
-                type="button"
-                onClick={() => onEdit(item.id)}
-              >
-                <Pencil className="h-4 w-4" aria-hidden />
-                {t("table.edit")}
-              </button>
               <ItemActionMenu
                 item={item}
                 disabled={busyId === item.id}
                 {...actionProps}
               />
             </div>
+            <details className="item-card-details">
+              <summary>{t("table.details")}</summary>
+              <button
+                className="inline-code item-card-url mt-4 block w-full truncate rounded-lg px-3 py-2 text-left font-mono text-xs"
+                type="button"
+                title={item.publicUrl}
+                onClick={() => onCopy(item.publicUrl)}
+              >
+                {item.publicUrl}
+              </button>
+
+              <dl className="item-card-meta">
+                <div>
+                  <dt>{t("common.urlExpiry")}</dt>
+                  <dd>{formatDate(item.urlExpiresAt, locale)}</dd>
+                </div>
+                <div>
+                  <dt>{t("common.fileExpiry")}</dt>
+                  <dd>{formatDate(item.fileExpiresAt, locale)}</dd>
+                </div>
+                <div>
+                  <dt>{t("table.size")}</dt>
+                  <dd>{formatFileSize(item.sizeBytes, locale)}</dd>
+                </div>
+                <div>
+                  <dt>{t("table.access")}</dt>
+                  <dd>{numberFormatter.format(item.accessCount)}</dd>
+                </div>
+              </dl>
+
+              <p className="item-secondary">
+                {t("files.created")} · {formatDate(item.createdAt, locale)}
+              </p>
+            </details>
           </article>
         ))}
       </div>

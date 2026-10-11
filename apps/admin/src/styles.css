@@ -2589,3 +2589,98 @@ select option {
     left: 0;
   }
 }
+
+/* Mobile publishing and content summaries */
+.upload-preview-region {
+  min-width: 0;
+}
+.mobile-preview-toggle {
+  display: none;
+}
+.item-card {
+  padding: 16px;
+}
+.item-card:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.item-card-expiry {
+  margin: 16px 0 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.item-card-details {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.item-card-details summary {
+  min-height: 36px;
+  width: fit-content;
+}
+.item-card-details .item-card-meta {
+  margin-block: 12px;
+}
+.item-card-actions .btn {
+  flex: 1;
+}
+@media (max-width: 960px) {
+  .upload-settings-column {
+    order: 0;
+  }
+  .upload-preview-region {
+    order: 1;
+  }
+  .upload-preview-region[data-has-file="false"] {
+    display: none;
+  }
+  .mobile-preview-toggle {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .mobile-preview-toggle svg:last-child {
+    margin-left: auto;
+    transition: transform 180ms;
+  }
+  .mobile-preview-toggle[aria-expanded="true"] svg:last-child {
+    transform: rotate(180deg);
+  }
+  .upload-preview-body[data-mobile-open="false"] {
+    display: none;
+  }
+  .upload-preview-body[data-mobile-open="true"] {
+    margin-top: 16px;
+  }
+  .upload-preview-body .content-preview,
+  .upload-preview-body .content-preview iframe {
+    height: clamp(240px, calc(100dvh - 340px), 460px);
+  }
+  .upload-page .upload-submit-bar > .btn-primary {
+    position: fixed;
+    z-index: 36;
+    left: 18px;
+    right: 18px;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    box-shadow: 0 8px 24px #18181c26;
+  }
+  .app-main:has(.upload-page) {
+    padding-bottom: calc(176px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 700px) {
+  .upload-page .selected-file-card {
+    padding: 12px;
+  }
+  .upload-page .visibility-selector {
+    grid-template-columns: 1fr;
+  }
+  .upload-page .selected-file-actions {
+    margin-top: 4px;
+  }
+  .upload-page .expiry-fields {
+    grid-template-columns: 1fr;
+  }
+}

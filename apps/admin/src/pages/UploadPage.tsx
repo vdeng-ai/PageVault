@@ -4,6 +4,7 @@ import {
 } from "@pagevault/core";
 import {
   ArrowRight,
+  ChevronDown,
   CheckCircle2,
   Copy,
   ExternalLink,
@@ -111,6 +112,7 @@ export function UploadPage({
   const [fileError, setFileError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [maxUploadBytes, setMaxUploadBytes] = useState<number | null>(null);
   const parsedUrlDays = positiveInteger(urlExpireDays);
   const parsedFileDays = positiveInteger(fileExpireDays);
@@ -151,6 +153,7 @@ export function UploadPage({
     setError(null);
   }
   function chooseFile(nextFile: File) {
+    setPreviewOpen(false);
     setResult(null);
     setError(null);
     if (!fileCapabilityForFilename(nextFile.name)) {
@@ -248,7 +251,29 @@ export function UploadPage({
         published={result ? visibility : undefined}
       />
       <div className="upload-preview-layout">
-        <ContentPreview file={file} published={result !== null} />
+        <section
+          className="upload-preview-region"
+          data-has-file={Boolean(file)}
+        >
+          <button
+            className="btn btn-secondary mobile-preview-toggle"
+            type="button"
+            aria-expanded={previewOpen}
+            aria-controls="upload-preview-body"
+            onClick={() => setPreviewOpen((open) => !open)}
+          >
+            <FileText aria-hidden />
+            {t("upload.preview")}
+            <ChevronDown aria-hidden />
+          </button>
+          <div
+            id="upload-preview-body"
+            className="upload-preview-body"
+            data-mobile-open={previewOpen}
+          >
+            <ContentPreview file={file} published={result !== null} />
+          </div>
+        </section>
         <section
           className="upload-settings-column"
           aria-labelledby="upload-settings-heading"
