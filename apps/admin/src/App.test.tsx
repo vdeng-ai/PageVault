@@ -50,6 +50,18 @@ describe("admin routing", () => {
     });
     expect(parseRouteHash("#/missing")).toEqual({ name: "upload" });
   });
+
+  it("keeps existing routes and supports dashboard filter links", () => {
+    expect(parseRouteHash("#/items")).toEqual({ name: "items" });
+    expect(parseRouteHash("#/items?expiry=url-expired")).toEqual({
+      name: "items",
+      filters: "expiry=url-expired",
+    });
+    expect(parseRouteHash("#/items?status=deleted")).toEqual({
+      name: "items",
+      filters: "status=deleted",
+    });
+  });
 });
 
 describe("App navigation", () => {

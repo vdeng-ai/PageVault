@@ -40,7 +40,9 @@ function shareHead(input: {
   label: string;
   rasterImagePreview: boolean;
 }): string {
-  const title = escapeAttribute(input.item.title || input.item.originalFilename);
+  const title = escapeAttribute(
+    input.item.title || input.item.originalFilename,
+  );
   const description = escapeAttribute(
     shareDescription(input.item, input.label),
   );
@@ -125,10 +127,12 @@ export async function renderPublicShareViewer(input: {
 
   let viewer: string;
   if (isMarkdown && input.markdownObject) {
-    viewer = `<section class="share-viewer-markdown">${await renderPublicMarkdownBody({
-      item: input.item,
-      object: input.markdownObject,
-    })}</section>`;
+    viewer = `<section class="share-viewer-markdown">${await renderPublicMarkdownBody(
+      {
+        item: input.item,
+        object: input.markdownObject,
+      },
+    )}</section>`;
   } else if (capability?.kind === "html") {
     viewer = iframeViewer(input.rawUrl, title, true, "html");
   } else if (capability?.kind === "pdf") {
@@ -139,12 +143,14 @@ export async function renderPublicShareViewer(input: {
     viewer = `<section class="share-viewer-stage share-viewer-fallback"><div><p>当前文件可直接打开原文件查看。</p><a class="share-viewer-action share-viewer-action-primary" href="${escapeAttribute(input.rawUrl)}" target="_blank" rel="noreferrer">打开原文件</a></div></section>`;
   }
 
-  const body = `${publicHeader(true)}<main class="share-viewer-shell"><section class="share-viewer-meta"><div class="share-viewer-copy"><p class="share-viewer-eyebrow">${escapePublicHtml(label)}</p><h1 class="share-viewer-title">${escapePublicHtml(title)}</h1><p class="share-viewer-subtitle">${escapePublicHtml(input.item.originalFilename)} · ${escapePublicHtml(formatFileSize(input.item.sizeBytes))}</p></div>${viewerActions({
-    publicUrl: input.publicUrl,
-    rawUrl: input.rawUrl,
-    supportsFullscreen,
-    imageControls: isImage,
-  })}</section><p class="share-viewer-feedback" data-share-feedback aria-live="polite"></p>${viewer}<footer class="share-viewer-footer">由 PageVault 发布与分享</footer></main>`;
+  const body = `${publicHeader(true)}<main class="share-viewer-shell${isMarkdown ? " share-reader" : ""}"><section class="share-viewer-meta"><div class="share-viewer-copy"><p class="share-viewer-eyebrow">${escapePublicHtml(label)}</p><h1 class="share-viewer-title">${escapePublicHtml(title)}</h1><p class="share-viewer-subtitle">${escapePublicHtml(input.item.originalFilename)} · ${escapePublicHtml(formatFileSize(input.item.sizeBytes))}</p></div>${viewerActions(
+    {
+      publicUrl: input.publicUrl,
+      rawUrl: input.rawUrl,
+      supportsFullscreen,
+      imageControls: isImage,
+    },
+  )}</section><p class="share-viewer-feedback" data-share-feedback aria-live="polite"></p>${viewer}<footer class="share-viewer-footer">由 PageVault 发布与分享</footer></main>`;
 
   return publicDocument({
     title,

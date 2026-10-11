@@ -78,7 +78,7 @@ describe("ItemDetailPage request ordering", () => {
       );
       const view = render(detail("first"));
       view.rerender(detail("second"));
-      await screen.findByRole("heading", { name: "second.html" });
+      await screen.findByRole("heading", { name: "Second file" });
       await act(async () => {
         if (outcome === "success")
           resolveFirst({
@@ -89,11 +89,22 @@ describe("ItemDetailPage request ordering", () => {
           });
         else rejectFirst(new Error("Old request failed"));
       });
-      expect(screen.getByRole("heading", { name: "second.html" })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Second file" })).toBeTruthy();
       expect(
         screen.getByRole<HTMLInputElement>("textbox", { name: "Title" }).value,
       ).toBe("Second file");
       expect(screen.queryByText("Old request failed")).toBeNull();
     },
   );
+
+  it("leads with the content title and keeps technical metadata collapsed", async () => {
+    vi.mocked(getItem).mockResolvedValue(item);
+    render(detail("second"));
+    await screen.findByRole("heading", { name: "Second file", level: 1 });
+    expect(screen.getByText("second.html")).toBeTruthy();
+    const metadata = screen.getByText("Storage metadata").closest("details");
+    expect(metadata?.open).toBe(false);
+    expect(metadata?.textContent).toContain(item.slug);
+    expect(metadata?.textContent).toContain(item.sha256);
+  });
 });

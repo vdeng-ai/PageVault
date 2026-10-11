@@ -4,7 +4,6 @@ import {
   Database,
   ExternalLink,
   FileCog,
-  Copy,
   Link2,
   ChevronDown,
   RotateCcw,
@@ -27,7 +26,7 @@ import { GlassToolbar } from "../components/Glass.js";
 import { formatFileSize } from "../format.js";
 import { fileKind } from "../components/FileIcon.js";
 import { useSettings } from "../settings.js";
-import { copyText } from "../clipboard.js";
+import { CopyButton } from "../components/CopyButton.js";
 
 type EditableFields = {
   title: string;
@@ -52,9 +51,11 @@ function validDate(value: string): boolean {
 export function ItemDetailPage({
   id,
   onBack,
+  onDirtyChange,
 }: {
   id: string;
   onBack: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const { t, locale } = useSettings();
   const { notify } = useFeedback();
@@ -107,6 +108,11 @@ export function ItemDetailPage({
     validDate(fields.urlExpiresAt) &&
     validDate(fields.fileExpiresAt);
 
+  useEffect(() => {
+    onDirtyChange?.(dirty || busy);
+    return () => onDirtyChange?.(false);
+  }, [dirty, busy, onDirtyChange]);
+
   function save(): void {
     if (!item || !dirty || !valid) {
       return;
@@ -146,6 +152,7 @@ export function ItemDetailPage({
     void deleteItem(item.id)
       .then(() => {
         notify(t("common.deleted"), "success");
+        onDirtyChange?.(false);
         onBack();
       })
       .catch((nextError: unknown) =>
@@ -158,14 +165,8 @@ export function ItemDetailPage({
       .finally(() => setBusy(false));
   }
 
-  function copy(value: string): void {
-    void copyText(value)
-      .then(() => notify(t("detail.copied"), "success"))
-      .catch(() => notify(t("common.copyFailed"), "error"));
-  }
-
   function requestBack(): void {
-    if (dirty) {
+    if (dirty && !onDirtyChange) {
       setConfirmation("discard");
     } else {
       onBack();
@@ -204,12 +205,12 @@ export function ItemDetailPage({
       <WorkspaceHero
         icon={FileCog}
         eyebrow={t("detail.eyebrow")}
-        title={item.originalFilename}
+        title={item.title || item.originalFilename}
         subtitle={t("detail.subtitle")}
         meta={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={item.derivedStatus} />
-            <span className="detail-slug">/{item.slug}</span>
+            <span className="detail-filename">{item.originalFilename}</span>
             <span>{formatFileSize(item.sizeBytes, locale)}</span>
             {dirty && (
               <span className="unsaved-chip">{t("detail.unsaved")}</span>
@@ -344,14 +345,12 @@ export function ItemDetailPage({
               readOnly
               onFocus={(event) => event.target.select()}
             />
-            <button
+            <CopyButton
               className="icon-button"
-              type="button"
-              aria-label={t("upload.copyUrl")}
-              onClick={() => copy(item.publicUrl)}
-            >
-              <Copy size={20} aria-hidden />
-            </button>
+              iconOnly
+              value={item.publicUrl}
+              label={t("upload.copyUrl")}
+            />
           </div>
           <p className="detail-share-meta">
             {t(
@@ -371,17 +370,15 @@ export function ItemDetailPage({
                 readOnly
                 onFocus={(event) => event.target.select()}
               />
-              <button
+              <CopyButton
                 className="icon-button"
-                type="button"
-                aria-label={t("table.copyRawUrl")}
-                onClick={() => copy(item.rawUrl)}
-              >
-                <Copy size={20} aria-hidden />
-              </button>
+                iconOnly
+                value={item.rawUrl}
+                label={t("table.copyRawUrl")}
+              />
             </div>
           </label>
-          <details className="metadata-section" open>
+          <details className="metadata-section">
             <summary>
               <div className="section-heading">
                 <Database aria-hidden />
@@ -392,6 +389,7 @@ export function ItemDetailPage({
             <dl className="metadata-grid mt-6">
               {(
                 [
+                  ["detail.slug", item.slug],
                   ["detail.objectKey", item.objectKey],
                   ["detail.sha256", item.sha256],
                 ] as const
@@ -401,14 +399,12 @@ export function ItemDetailPage({
                   <dd>
                     <div className="copy-field">
                       <code>{value}</code>
-                      <button
+                      <CopyButton
                         className="icon-button"
-                        type="button"
-                        aria-label={`${t("detail.copyValue")} ${t(key)}`}
-                        onClick={() => copy(value)}
-                      >
-                        <Copy size={19} aria-hidden />
-                      </button>
+                        iconOnly
+                        value={value}
+                        label={`${t("detail.copyValue")} ${t(key)}`}
+                      />
                     </div>
                   </dd>
                 </div>

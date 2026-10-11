@@ -19,9 +19,9 @@ PageVault 是一个为个人使用设计的自托管发布工具，用于在微�
 
 **v1.0 稳定基线：** A–L 路线图已经完成。此后 PageVault 按 SemVer 维护，默认优先正确性、安全、可靠性、性能和小型兼容改进，不再持续扩张产品边界。
 
-![PageVault 英文上传界面，展示 Markdown 预览、可见性和保留期限设置](./docs/assets/pagevault-upload-en.jpg)
+![PageVault 中文发布工作台，展示本地 Markdown 预览和发布设置](./docs/assets/pagevault-upload-zh-CN.jpg)
 
-英文界面 · 深色主题 · Markdown 发布前本地预览。
+中文界面 · 浅色主题 · Markdown 发布前本地预览。
 
 ## 核心功能
 

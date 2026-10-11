@@ -32,9 +32,13 @@ describe("BatchToolbar", () => {
       </SettingsProvider>,
     );
 
+    await user.click(screen.getByText("Extend expiry"));
     await user.click(screen.getByRole("button", { name: "URL +15d" }));
+    await user.click(screen.getByText("Extend expiry"));
     await user.click(screen.getByRole("button", { name: "URL +30d" }));
+    await user.click(screen.getByText("Extend expiry"));
     await user.click(screen.getByRole("button", { name: "File +30d" }));
+    await user.click(screen.getByText("More", { exact: true }));
     await user.click(screen.getByRole("button", { name: "Restore" }));
 
     expect(onAction).toHaveBeenNthCalledWith(1, "extend_url", 15);

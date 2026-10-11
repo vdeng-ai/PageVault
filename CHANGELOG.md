@@ -10,6 +10,32 @@ All notable PageVault changes are documented here. PageVault follows Semantic Ve
 - wait for upload policy resolution before publishing, revalidate selected files when the limit arrives, and check the current limit again at submission;
 - document D1 migration token permissions and surface authorization troubleshooting in failed deployment summaries.
 
+## [1.1.0] - 2026-10-11
+
+PageVault v1.1.0 refines the publishing, content management, and reading experience while preserving the v1 API and share URL contract.
+
+### Changed
+
+- unify the admin workspace, local Markdown preview, and public reader around warm neutral surfaces, graphite text, and a muted violet accent, with consistent typography and controls;
+- compact the publishing workbench, keep the publish action reachable, and focus the success state on one primary copy-link action;
+- simplify the content library into a five-column table with expandable metadata, advanced filters, and three grouped batch-action menus;
+- make mobile previews collapsible, keep publishing above bottom navigation, and reduce public-reader chrome so content starts earlier;
+- prioritize content titles in detail views, collapse technical metadata by default, remove duplicate dashboard metrics, and link lifecycle metrics to matching paginated file filters.
+
+### Added
+
+- local success feedback after clipboard writes, focused publishing confirmation, and reduced-motion-aware interaction feedback;
+- unsaved-edit protection for workspace navigation, browser Back/Forward, refresh, and sign-out.
+
+### Documentation
+
+- refresh the English and Chinese README screenshots to show the current light-theme publishing workbench.
+
+### Compatibility
+
+- preserve original file bytes, existing `/p/:slug` and `/raw/:slug` URLs, and the lightweight Cloudflare and Docker runtime boundaries;
+- no database migration is required for this release.
+
 ## [1.0.1] - 2026-10-07
 
 PageVault v1.0.1 is a focused reliability release for public revocation, operation outcomes, uploads, and production deployment.
@@ -67,3 +93,5 @@ PageVault v1.0 is the first stable release of the personal-first, Cloudflare-Fre
 [1.0.0]: https://github.com/vdeng-ai/PageVault/releases/tag/v1.0.0
 
 [1.0.1]: https://github.com/vdeng-ai/PageVault/releases/tag/v1.0.1
+
+[1.1.0]: https://github.com/vdeng-ai/PageVault/releases/tag/v1.1.0

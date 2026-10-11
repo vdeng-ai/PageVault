@@ -30,7 +30,8 @@ const SEARCH_DEBOUNCE_MS = 400;
 const MIB = 1024 * 1024;
 
 type CreatedWindow = "" | "7" | "30" | "90";
-type ExpiryWindow = "" | "url-7" | "url-30" | "file-7" | "file-30";
+type ExpiryWindow =
+  "" | "url-expired" | "url-7" | "url-30" | "file-7" | "file-30";
 type SizeRange = "" | "small" | "medium" | "large";
 type AdvancedListFilters = Pick<
   ListItemsParams,
@@ -62,7 +63,9 @@ function listFilterParams(input: {
     ).toISOString();
   }
 
-  if (input.expiryWindow) {
+  if (input.expiryWindow === "url-expired") {
+    params.urlExpiresBefore = now.toISOString();
+  } else if (input.expiryWindow) {
     const [target, daysText] = input.expiryWindow.split("-") as [
       "url" | "file",
       string,
@@ -104,9 +107,11 @@ type PendingConfirmation =
 export function ItemListPage({
   onEdit,
   onUpload,
+  initialFilters = "",
 }: {
   onEdit: (id: string) => void;
   onUpload: () => void;
+  initialFilters?: string;
 }) {
   const { t } = useSettings();
   const { notify } = useFeedback();
@@ -117,11 +122,31 @@ export function ItemListPage({
   const [total, setTotal] = useState<number | null>(null);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(() => {
+    const value = new URLSearchParams(initialFilters).get("status") ?? "";
+    return [
+      "active",
+      "private",
+      "disabled",
+      "deleted",
+      "url_expired",
+      "file_expired",
+    ].includes(value)
+      ? value
+      : "";
+  });
   const [visibility, setVisibility] = useState("");
   const [fileKind, setFileKind] = useState<FileKind | "">("");
   const [createdWindow, setCreatedWindow] = useState<CreatedWindow>("");
-  const [expiryWindow, setExpiryWindow] = useState<ExpiryWindow>("");
+  const [expiryWindow, setExpiryWindow] = useState<ExpiryWindow>(() => {
+    const value = new URLSearchParams(initialFilters).get("expiry") ?? "";
+    return ["url-expired", "url-7", "url-30", "file-7", "file-30"].includes(
+      value,
+    )
+      ? (value as ExpiryWindow)
+      : "";
+  });
+  const [advancedOpen, setAdvancedOpen] = useState(Boolean(expiryWindow));
   const [sizeRange, setSizeRange] = useState<SizeRange>("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -223,6 +248,24 @@ export function ItemListPage({
     createdWindow.length > 0 ||
     expiryWindow.length > 0 ||
     sizeRange.length > 0;
+
+  const advancedCount = [
+    visibility,
+    createdWindow,
+    expiryWindow,
+    sizeRange,
+  ].filter(Boolean).length;
+
+  function resetFilters(): void {
+    setQ("");
+    setStatus("");
+    setVisibility("");
+    setFileKind("");
+    setCreatedWindow("");
+    setExpiryWindow("");
+    setSizeRange("");
+    setPage(1);
+  }
 
   function selectedArray(): string[] {
     return Array.from(selectedIds);
@@ -377,28 +420,27 @@ export function ItemListPage({
         }
       />
 
-      <GlassToolbar
-        material="standard"
-        className="surface filter-bar library-filter-bar"
+      <section
+        className="surface library-filters"
+        aria-label={t("files.filters")}
       >
-        <label className="filter-search relative min-w-0 flex-1 sm:min-w-64">
-          <span className="sr-only">{t("common.search")}</span>
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle"
-            aria-hidden
-          />
-          <input
-            className="control w-full pl-9 pr-3"
-            value={q}
-            placeholder={t("files.searchPlaceholder")}
-            onChange={(event) => {
-              setPage(1);
-              setQ(event.target.value);
-            }}
-          />
-        </label>
-        <div className="filter-select-wrap">
-          <SlidersHorizontal className="h-4 w-4 text-subtle" aria-hidden />
+        <GlassToolbar className="filter-bar library-filter-bar">
+          <label className="filter-search relative min-w-0 flex-1 sm:min-w-64">
+            <span className="sr-only">{t("common.search")}</span>
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle"
+              aria-hidden
+            />
+            <input
+              className="control w-full pl-9 pr-3"
+              value={q}
+              placeholder={t("files.searchPlaceholder")}
+              onChange={(event) => {
+                setPage(1);
+                setQ(event.target.value);
+              }}
+            />
+          </label>
           <select
             className="control"
             value={status}
@@ -416,100 +458,132 @@ export function ItemListPage({
             <option value="file_expired">{t("status.fileExpired")}</option>
             <option value="deleted">{t("status.deleted")}</option>
           </select>
-        </div>
-        <select
-          className="control min-w-40 px-3"
-          value={visibility}
-          aria-label={t("files.allVisibility")}
-          onChange={(event) => {
-            setPage(1);
-            setVisibility(event.target.value);
-          }}
-        >
-          <option value="">{t("files.allVisibility")}</option>
-          <option value="public">{t("common.public")}</option>
-          <option value="private">{t("common.private")}</option>
-        </select>
-        <select
-          className="control min-w-36 px-3"
-          value={fileKind}
-          aria-label={t("files.allTypes")}
-          onChange={(event) => {
-            setPage(1);
-            setFileKind(event.target.value as FileKind | "");
-          }}
-        >
-          <option value="">{t("files.allTypes")}</option>
-          <option value="html">HTML</option>
-          <option value="markdown">Markdown</option>
-          <option value="pdf">PDF</option>
-          <option value="svg">SVG</option>
-          <option value="png">PNG</option>
-          <option value="jpeg">JPEG</option>
-          <option value="webp">WebP</option>
-        </select>
-        <select
-          className="control min-w-36 px-3"
-          value={createdWindow}
-          aria-label={t("files.created")}
-          onChange={(event) => {
-            setPage(1);
-            setCreatedWindow(event.target.value as CreatedWindow);
-          }}
-        >
-          <option value="">{t("files.createdAny")}</option>
-          <option value="7">{t("files.createdDays", { days: 7 })}</option>
-          <option value="30">{t("files.createdDays", { days: 30 })}</option>
-          <option value="90">{t("files.createdDays", { days: 90 })}</option>
-        </select>
-        <select
-          className="control min-w-44 px-3"
-          value={expiryWindow}
-          aria-label={t("files.expiry")}
-          onChange={(event) => {
-            setPage(1);
-            setExpiryWindow(event.target.value as ExpiryWindow);
-          }}
-        >
-          <option value="">{t("files.expiryAny")}</option>
-          <option value="url-7">{t("files.urlExpiresDays", { days: 7 })}</option>
-          <option value="url-30">{t("files.urlExpiresDays", { days: 30 })}</option>
-          <option value="file-7">{t("files.fileExpiresDays", { days: 7 })}</option>
-          <option value="file-30">{t("files.fileExpiresDays", { days: 30 })}</option>
-        </select>
-        <select
-          className="control min-w-36 px-3"
-          value={sizeRange}
-          aria-label={t("files.size")}
-          onChange={(event) => {
-            setPage(1);
-            setSizeRange(event.target.value as SizeRange);
-          }}
-        >
-          <option value="">{t("files.sizeAny")}</option>
-          <option value="small">{t("files.sizeSmall")}</option>
-          <option value="medium">{t("files.sizeMedium")}</option>
-          <option value="large">{t("files.sizeLarge")}</option>
-        </select>
-        {
+          <select
+            className="control min-w-36 px-3"
+            value={fileKind}
+            aria-label={t("files.allTypes")}
+            onChange={(event) => {
+              setPage(1);
+              setFileKind(event.target.value as FileKind | "");
+            }}
+          >
+            <option value="">{t("files.allTypes")}</option>
+            <option value="html">HTML</option>
+            <option value="markdown">Markdown</option>
+            <option value="pdf">PDF</option>
+            <option value="svg">SVG</option>
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WebP</option>
+          </select>
+          <button
+            className="btn btn-secondary"
+            type="button"
+            aria-expanded={advancedOpen}
+            aria-controls="advanced-list-filters"
+            onClick={() => setAdvancedOpen((open) => !open)}
+          >
+            <SlidersHorizontal size={18} aria-hidden />
+            {t("files.moreFilters")}
+            {advancedCount > 0 && (
+              <span className="filter-count">{advancedCount}</span>
+            )}
+          </button>
           <button
             className="btn btn-ghost"
             type="button"
-            onClick={() => {
-              setQ("");
-              setStatus("");
-              setVisibility("");
-              setFileKind("");
-              setCreatedWindow("");
-              setExpiryWindow("");
-              setSizeRange("");
-              setPage(1);
-            }}
+            disabled={!hasFilters}
+            onClick={resetFilters}
           >
             {t("files.clearFilters")}
           </button>
-        }
-      </GlassToolbar>
+        </GlassToolbar>
+        {advancedOpen && (
+          <div className="advanced-list-filters" id="advanced-list-filters">
+            <label className="field-label">
+              {t("files.allVisibility")}
+              <select
+                className="control min-w-40 px-3"
+                value={visibility}
+                aria-label={t("files.allVisibility")}
+                onChange={(event) => {
+                  setPage(1);
+                  setVisibility(event.target.value);
+                }}
+              >
+                <option value="">{t("files.allVisibility")}</option>
+                <option value="public">{t("common.public")}</option>
+                <option value="private">{t("common.private")}</option>
+              </select>
+            </label>
+            <label className="field-label">
+              {t("files.created")}
+              <select
+                className="control min-w-36 px-3"
+                value={createdWindow}
+                aria-label={t("files.created")}
+                onChange={(event) => {
+                  setPage(1);
+                  setCreatedWindow(event.target.value as CreatedWindow);
+                }}
+              >
+                <option value="">{t("files.createdAny")}</option>
+                <option value="7">{t("files.createdDays", { days: 7 })}</option>
+                <option value="30">
+                  {t("files.createdDays", { days: 30 })}
+                </option>
+                <option value="90">
+                  {t("files.createdDays", { days: 90 })}
+                </option>
+              </select>
+            </label>
+            <label className="field-label">
+              {t("files.expiry")}
+              <select
+                className="control min-w-44 px-3"
+                value={expiryWindow}
+                aria-label={t("files.expiry")}
+                onChange={(event) => {
+                  setPage(1);
+                  setExpiryWindow(event.target.value as ExpiryWindow);
+                }}
+              >
+                <option value="">{t("files.expiryAny")}</option>
+                <option value="url-expired">{t("status.urlExpired")}</option>
+                <option value="url-7">
+                  {t("files.urlExpiresDays", { days: 7 })}
+                </option>
+                <option value="url-30">
+                  {t("files.urlExpiresDays", { days: 30 })}
+                </option>
+                <option value="file-7">
+                  {t("files.fileExpiresDays", { days: 7 })}
+                </option>
+                <option value="file-30">
+                  {t("files.fileExpiresDays", { days: 30 })}
+                </option>
+              </select>
+            </label>
+            <label className="field-label">
+              {t("files.size")}
+              <select
+                className="control min-w-36 px-3"
+                value={sizeRange}
+                aria-label={t("files.size")}
+                onChange={(event) => {
+                  setPage(1);
+                  setSizeRange(event.target.value as SizeRange);
+                }}
+              >
+                <option value="">{t("files.sizeAny")}</option>
+                <option value="small">{t("files.sizeSmall")}</option>
+                <option value="medium">{t("files.sizeMedium")}</option>
+                <option value="large">{t("files.sizeLarge")}</option>
+              </select>
+            </label>
+          </div>
+        )}
+      </section>
 
       <BatchToolbar
         selectedCount={selectedIds.size}
@@ -584,16 +658,7 @@ export function ItemListPage({
           <button
             className="btn btn-primary mt-5"
             type="button"
-            onClick={
-              hasFilters
-                ? () => {
-                    setQ("");
-                    setStatus("");
-                    setVisibility("");
-                    setPage(1);
-                  }
-                : onUpload
-            }
+            onClick={hasFilters ? resetFilters : onUpload}
           >
             {hasFilters ? (
               <RefreshCcw className="h-4 w-4" aria-hidden />

@@ -27,6 +27,7 @@ import {
 import { useSettings } from "../settings.js";
 import { useExitPresence } from "../hooks/useExitPresence.js";
 import { FileIcon } from "./FileIcon.js";
+import { CopyButton } from "./CopyButton.js";
 import { StatusBadge } from "./StatusBadge.js";
 import { GlassPopover } from "./Glass.js";
 
@@ -367,15 +368,9 @@ export function ItemTable({
                   onChange={(event) => onSelectAll(event.target.checked)}
                 />
               </th>
-              <th className="min-w-52 px-3 py-3.5">
-                {t("table.originalFile")}
-              </th>
+              <th className="min-w-52 px-3 py-3.5">{t("table.content")}</th>
               <th className="px-3 py-3.5">{t("table.status")}</th>
-              <th className="w-56 px-3 py-3.5">{t("table.publicUrl")}</th>
-              <th className="min-w-40 px-3 py-3.5">{t("common.urlExpiry")}</th>
-              <th className="min-w-40 px-3 py-3.5">{t("common.fileExpiry")}</th>
-              <th className="px-3 py-3.5">{t("table.size")}</th>
-              <th className="px-3 py-3.5">{t("table.access")}</th>
+              <th className="px-3 py-3.5">{t("common.urlExpiry")}</th>
               <th className="px-3 py-3.5 text-right">{t("table.actions")}</th>
             </tr>
           </thead>
@@ -397,59 +392,69 @@ export function ItemTable({
                     }
                   />
                 </td>
-                <td className="max-w-64 px-3 py-4">
+                <td className="library-content-cell px-3 py-4">
                   <div className="table-file">
                     <FileIcon filename={item.originalFilename} />
+                    <div className="min-w-0 flex-1">
+                      <button
+                        className="link-button item-title"
+                        type="button"
+                        title={item.title}
+                        onClick={() => onEdit(item.id)}
+                      >
+                        {item.title}
+                      </button>
+                      <div className="item-secondary">
+                        {fileTypeLabel(item.contentType)} ·{" "}
+                        {item.originalFilename} ·{" "}
+                        {formatFileSize(item.sizeBytes, locale)}
+                      </div>
+                    </div>
+                  </div>
+                  <details className="item-row-details">
+                    <summary>{t("table.details")}</summary>
                     <button
-                      className="link-button block max-w-full truncate text-left font-bold"
+                      className="inline-code item-detail-url"
                       type="button"
-                      title={item.title}
-                      onClick={() => onEdit(item.id)}
+                      title={item.publicUrl}
+                      onClick={() => onCopy(item.publicUrl)}
                     >
-                      {item.title}
+                      {item.publicUrl}
                     </button>
-                  </div>
-                  <div className="row-created mt-1 truncate text-xs text-muted">
-                    {fileTypeLabel(item.contentType)} · {item.originalFilename} ·{" "}
-                    {formatDate(item.createdAt, locale)}
-                  </div>
+                    <dl className="item-expanded-meta">
+                      <div>
+                        <dt>{t("common.urlExpiry")}</dt>
+                        <dd>{formatDate(item.urlExpiresAt, locale)}</dd>
+                      </div>
+                      <div>
+                        <dt>{t("common.fileExpiry")}</dt>
+                        <dd>{formatDate(item.fileExpiresAt, locale)}</dd>
+                      </div>
+                      <div>
+                        <dt>{t("table.access")}</dt>
+                        <dd>{numberFormatter.format(item.accessCount)}</dd>
+                      </div>
+                      <div>
+                        <dt>{t("files.created")}</dt>
+                        <dd>{formatDate(item.createdAt, locale)}</dd>
+                      </div>
+                    </dl>
+                  </details>
                 </td>
                 <td className="px-3 py-4">
                   <StatusBadge status={item.derivedStatus} />
                 </td>
-                <td className="w-56 max-w-56 px-3 py-4">
-                  <button
-                    className="inline-code block w-full truncate rounded-lg px-2 py-1.5 text-left font-mono text-xs"
-                    type="button"
-                    title={item.publicUrl}
-                    onClick={() => onCopy(item.publicUrl)}
-                  >
-                    {item.publicUrl}
-                  </button>
-                </td>
-                <td className="px-3 py-4 text-xs text-secondary">
-                  {formatDate(item.urlExpiresAt, locale, true)}
-                </td>
-                <td className="px-3 py-4 text-xs text-secondary">
-                  {formatDate(item.fileExpiresAt, locale, true)}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-secondary">
-                  {formatFileSize(item.sizeBytes, locale)}
-                </td>
                 <td className="px-3 py-4 text-secondary">
-                  {numberFormatter.format(item.accessCount)}
+                  {formatDate(item.urlExpiresAt, locale, true)}
                 </td>
                 <td className="px-3 py-4 text-right">
                   <div className="row-actions">
-                    <button
+                    <CopyButton
                       className="icon-button"
-                      type="button"
-                      aria-label={`${t("table.copyUrl")} ${item.originalFilename}`}
-                      title={t("table.copyUrl")}
-                      onClick={() => onCopy(item.publicUrl)}
-                    >
-                      <Copy size={18} aria-hidden />
-                    </button>
+                      iconOnly
+                      value={item.publicUrl}
+                      label={`${t("table.copyUrl")} ${item.originalFilename}`}
+                    />
                     <a
                       className="icon-button"
                       href={itemPreviewUrl(item)}
@@ -490,7 +495,7 @@ export function ItemTable({
               />
               <div className="min-w-0 flex-1">
                 <button
-                  className="link-button item-card-file-name block w-full text-left text-base font-bold"
+                  className="link-button item-card-file-name block w-full text-left text-base font-semibold"
                   type="button"
                   onClick={() => onEdit(item.id)}
                 >
@@ -498,49 +503,22 @@ export function ItemTable({
                 </button>
                 <div className="mt-1 text-xs font-medium text-muted">
                   {fileTypeLabel(item.contentType)} · {item.originalFilename} ·{" "}
-                  {formatDate(item.createdAt, locale)}
+                  {formatFileSize(item.sizeBytes, locale)}
                 </div>
               </div>
               <StatusBadge status={item.derivedStatus} />
             </div>
 
-            <button
-              className="inline-code item-card-url mt-4 block w-full truncate rounded-lg px-3 py-2 text-left font-mono text-xs"
-              type="button"
-              title={item.publicUrl}
-              onClick={() => onCopy(item.publicUrl)}
-            >
-              {item.publicUrl}
-            </button>
-
-            <dl className="item-card-meta">
-              <div>
-                <dt>{t("common.urlExpiry")}</dt>
-                <dd>{formatDate(item.urlExpiresAt, locale)}</dd>
-              </div>
-              <div>
-                <dt>{t("common.fileExpiry")}</dt>
-                <dd>{formatDate(item.fileExpiresAt, locale)}</dd>
-              </div>
-              <div>
-                <dt>{t("table.size")}</dt>
-                <dd>{formatFileSize(item.sizeBytes, locale)}</dd>
-              </div>
-              <div>
-                <dt>{t("table.access")}</dt>
-                <dd>{numberFormatter.format(item.accessCount)}</dd>
-              </div>
-            </dl>
-
+            <p className="item-card-expiry">
+              {t("common.urlExpiry")} ·{" "}
+              {formatDate(item.urlExpiresAt, locale, true)}
+            </p>
             <div className="item-card-actions">
-              <button
+              <CopyButton
                 className="btn btn-secondary btn-sm"
-                type="button"
-                onClick={() => onCopy(item.publicUrl)}
-              >
-                <Copy className="h-4 w-4" aria-hidden />
-                {t("upload.copyUrl")}
-              </button>
+                value={item.publicUrl}
+                label={t("upload.copyUrl")}
+              />
               <a
                 className="btn btn-secondary btn-sm"
                 href={itemPreviewUrl(item)}
@@ -550,20 +528,46 @@ export function ItemTable({
                 <ExternalLink className="h-4 w-4" aria-hidden />
                 {t("common.preview")}
               </a>
-              <button
-                className="btn btn-secondary btn-sm"
-                type="button"
-                onClick={() => onEdit(item.id)}
-              >
-                <Pencil className="h-4 w-4" aria-hidden />
-                {t("table.edit")}
-              </button>
               <ItemActionMenu
                 item={item}
                 disabled={busyId === item.id}
                 {...actionProps}
               />
             </div>
+            <details className="item-card-details">
+              <summary>{t("table.details")}</summary>
+              <button
+                className="inline-code item-card-url mt-4 block w-full truncate rounded-lg px-3 py-2 text-left font-mono text-xs"
+                type="button"
+                title={item.publicUrl}
+                onClick={() => onCopy(item.publicUrl)}
+              >
+                {item.publicUrl}
+              </button>
+
+              <dl className="item-card-meta">
+                <div>
+                  <dt>{t("common.urlExpiry")}</dt>
+                  <dd>{formatDate(item.urlExpiresAt, locale)}</dd>
+                </div>
+                <div>
+                  <dt>{t("common.fileExpiry")}</dt>
+                  <dd>{formatDate(item.fileExpiresAt, locale)}</dd>
+                </div>
+                <div>
+                  <dt>{t("table.size")}</dt>
+                  <dd>{formatFileSize(item.sizeBytes, locale)}</dd>
+                </div>
+                <div>
+                  <dt>{t("table.access")}</dt>
+                  <dd>{numberFormatter.format(item.accessCount)}</dd>
+                </div>
+              </dl>
+
+              <p className="item-secondary">
+                {t("files.created")} · {formatDate(item.createdAt, locale)}
+              </p>
+            </details>
           </article>
         ))}
       </div>

@@ -4,7 +4,8 @@ import {
   FileText,
   Globe,
   HardDrive,
-  Info,
+  ArrowUpRight,
+  type LucideIcon,
   Link2,
   Plus,
   Trash2,
@@ -19,6 +20,15 @@ import {
 import { WorkspaceHero } from "../components/WorkspaceHero.js";
 import { formatFileSize } from "../format.js";
 import { useSettings } from "../settings.js";
+
+type Metric = {
+  label: string;
+  value: string | null;
+  detail?: string;
+  icon: LucideIcon;
+  warning?: boolean;
+  href?: string;
+};
 
 export function DashboardPage({ onUpload }: { onUpload: () => void }) {
   const { locale, t } = useSettings();
@@ -46,13 +56,11 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
   }, []);
   const number = (value: number) => new Intl.NumberFormat(locale).format(value);
   const data = stats;
-  const privateCount = data ? Math.max(data.total - data.publicCount, 0) : 0;
-  const allRecords = data ? data.total + data.deleted : 0;
   const percent =
     data && data.total > 0
       ? Math.round((data.publicCount / data.total) * 100)
       : 0;
-  const metrics = [
+  const metrics: Metric[] = [
     {
       label: t("dashboard.totalFiles"),
       value: data ? number(data.total) : null,
@@ -75,85 +83,52 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
       label: t("dashboard.urlExpired"),
       value: data ? number(data.urlExpired) : null,
       icon: Link2,
-      warning: true,
+      warning: Boolean(data && data.urlExpired > 0),
+      href: "#/items?expiry=url-expired",
     },
     {
       label: t("dashboard.deletingSoon"),
       value: data ? number(data.fileDeletingSoon) : null,
       detail: t("dashboard.deletingSoonDetail"),
       icon: Clock3,
-      warning: true,
+      warning: Boolean(data && data.fileDeletingSoon > 0),
+      href: "#/items?expiry=file-7",
     },
     {
       label: t("dashboard.deleted"),
       value: data ? number(data.deleted) : null,
       icon: Trash2,
+      href: "#/items?status=deleted",
     },
   ];
-  const distribution = [
-    {
-      label: t("dashboard.public"),
-      value: data?.publicCount ?? 0,
-      description: t("dashboard.distributionPublic"),
-    },
-    {
-      label: t("dashboard.notPublic"),
-      value: privateCount,
-      description: t("dashboard.distributionPrivate"),
-    },
-    {
-      label: t("dashboard.deleted"),
-      value: data?.deleted ?? 0,
-      description: t("dashboard.distributionDeleted"),
-    },
-  ];
-  const signals = [
-    {
-      label: t("dashboard.publicAccess"),
-      value: data?.publicCount ?? 0,
-      description: t("dashboard.publicAccessDetail"),
-    },
-    {
-      label: t("dashboard.notPublic"),
-      value: privateCount,
-      description: t("dashboard.notPublicSignalDetail"),
-    },
-    {
-      label: t("dashboard.urlExpired"),
-      value: data?.urlExpired ?? 0,
-      description: t("dashboard.urlExpiredSignalDetail"),
-    },
-    {
-      label: t("dashboard.deletingSoon"),
-      value: data?.fileDeletingSoon ?? 0,
-      description: t("dashboard.deletingSoonSignalDetail"),
-    },
-    {
-      label: t("dashboard.deleted"),
-      value: data?.deleted ?? 0,
-      description: t("dashboard.deletedSignalDetail"),
-    },
-  ];
-  const renderMetric = (metric: (typeof metrics)[number]) => {
+  const renderMetric = (metric: Metric) => {
     const Icon = metric.icon;
-    return (
-      <div
-        key={metric.label}
-        className={`dashboard-metric-card ${metric.warning ? "metric-warning" : ""}`}
-      >
+    const className = `dashboard-metric-card ${metric.warning ? "metric-warning" : ""} ${metric.href ? "metric-action" : ""}`;
+    const content = (
+      <>
         <Icon aria-hidden />
-        <div>
+        <div className="metric-content">
           <div className="metric-label">{metric.label}</div>
           <div className="metric-value">
             {metric.value ?? (
               <span className="skeleton block h-12 w-24 rounded" aria-hidden />
             )}
           </div>
-          {metric.detail && (
-            <div className="metric-detail">{metric.detail}</div>
+          {metric.detail && <div className="metric-detail">{metric.detail}</div>}
+          {metric.href && (
+            <span className="metric-action-label">
+              {t("dashboard.viewFiles")} <ArrowUpRight size={14} aria-hidden />
+            </span>
           )}
         </div>
-      </div>
+      </>
+    );
+    return metric.href ? (
+      <a key={metric.label} href={metric.href} className={className}>
+        {content}
+      </a>
+    ) : (
+      <div key={metric.label} className={className}>{content}</div>
     );
   };
   return (
@@ -214,62 +189,6 @@ export function DashboardPage({ onUpload }: { onUpload: () => void }) {
             <strong>{number(ops.recentAuditEvents.length)}</strong>
           </div>
         </section>
-      )}
-      {data && (
-        <div className="dashboard-panels">
-          <section className="dashboard-panel">
-            <h2>{t("dashboard.distributionTitle")}</h2>
-            <p>
-              {number(allRecords)} · {t("dashboard.recordCount")}
-            </p>
-            <table className="distribution-table">
-              <thead>
-                <tr>
-                  <th scope="col">{t("dashboard.type")}</th>
-                  <th scope="col">{t("dashboard.count")}</th>
-                  <th scope="col">{t("dashboard.description")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {distribution.map((segment, index) => (
-                  <tr key={segment.label}>
-                    <td>
-                      <span className="distribution-label">
-                        <span
-                          className={`distribution-dot ${index > 0 ? "distribution-dot-muted" : ""}`}
-                          aria-hidden
-                        />
-                        {segment.label}
-                      </span>
-                    </td>
-                    <td>{number(segment.value)}</td>
-                    <td>{segment.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {allRecords === 0 && (
-              <p className="mt-4">{t("dashboard.noRecords")}</p>
-            )}
-            <div className="dashboard-note">
-              <Info size={18} aria-hidden />
-              {t("dashboard.sourceNote")}
-            </div>
-          </section>
-          <section className="dashboard-panel dashboard-signals-panel">
-            <h2>{t("dashboard.signalsTitle")}</h2>
-            <p>{t("dashboard.signalsSubtitle")}</p>
-            {signals.map((signal) => (
-              <div className="dashboard-signal-row" key={signal.label}>
-                <div>
-                  <strong>{signal.label}</strong>
-                  <small>{signal.description}</small>
-                </div>
-                <strong>{number(signal.value)}</strong>
-              </div>
-            ))}
-          </section>
-        </div>
       )}
     </section>
   );

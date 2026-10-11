@@ -122,11 +122,59 @@ describe("ItemListPage request behavior", () => {
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     expect(vi.mocked(deleteItem)).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
 
     await waitFor(() => expect(vi.mocked(deleteItem)).toHaveBeenCalledTimes(1));
     expect(vi.mocked(listItems)).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    "expiry=url-expired",
+    "expiry=file-7",
+    "status=deleted",
+    "status=unknown&expiry=unknown",
+  ])(
+    "loads dashboard filter %s through the existing paginated API",
+    async (filters) => {
+      render(
+        <SettingsProvider>
+          <FeedbackProvider>
+            <ItemListPage
+              initialFilters={filters}
+              onEdit={vi.fn()}
+              onUpload={vi.fn()}
+            />
+          </FeedbackProvider>
+        </SettingsProvider>,
+      );
+      await waitFor(() => expect(listItems).toHaveBeenCalledTimes(1));
+      const params = vi.mocked(listItems).mock.calls[0]![0];
+      expect(params).toMatchObject({ page: 1, pageSize: 20 });
+      if (filters === "expiry=url-expired") {
+        expect(params.urlExpiresAfter).toBeUndefined();
+        expect(params.status).toBe("");
+        expect(Date.parse(params.urlExpiresBefore!)).not.toBeNaN();
+      }
+      if (filters === "expiry=file-7") {
+        expect(
+          Date.parse(params.fileExpiresBefore!) -
+            Date.parse(params.fileExpiresAfter!),
+        ).toBe(7 * 24 * 60 * 60 * 1000);
+      }
+      if (filters === "status=deleted") {
+        expect(params.status).toBe("deleted");
+      }
+      if (filters.includes("unknown")) {
+        expect(params.status).toBe("");
+        expect(params.urlExpiresBefore).toBeUndefined();
+        expect(params.fileExpiresBefore).toBeUndefined();
+      }
+    },
+  );
 
   async function openMenu() {
     const user = userEvent.setup();
@@ -158,6 +206,73 @@ describe("ItemListPage request behavior", () => {
         .getByRole("menuitem", { name: "Open raw file" })
         .getAttribute("href"),
     ).toBe(item.rawUrl);
+  });
+
+  it.each([0, 1])("clears every filter from reset entry %s", async (entry) => {
+    vi.mocked(listItems).mockImplementation(async (params) => ({
+      items: params.fileKind ? [] : [item],
+      page: 1,
+      pageSize: 20,
+      total: null,
+      hasNextPage: false,
+    }));
+    const user = userEvent.setup();
+    render(
+      <SettingsProvider>
+        <FeedbackProvider>
+          <ItemListPage onEdit={vi.fn()} onUpload={vi.fn()} />
+        </FeedbackProvider>
+      </SettingsProvider>,
+    );
+    await screen.findAllByRole("button", { name: "Test file" });
+    await user.click(screen.getByRole("button", { name: "More filters" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Search" }), {
+      target: { value: "query" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "All status" }), {
+      target: { value: "active" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "All types" }), {
+      target: { value: "pdf" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "All visibility" }), {
+      target: { value: "public" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Created" }), {
+      target: { value: "7" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Expiry" }), {
+      target: { value: "url-7" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "File size" }), {
+      target: { value: "large" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: "Clear filters" }),
+      ).toHaveLength(2),
+    );
+    await user.click(
+      screen.getAllByRole("button", { name: "Clear filters" })[entry]!,
+    );
+    await waitFor(() =>
+      expect(listItems).toHaveBeenLastCalledWith(
+        {
+          page: 1,
+          pageSize: 20,
+          q: "",
+          status: "",
+          visibility: "",
+          fileKind: "",
+        },
+        expect.anything(),
+      ),
+    );
+    expect(
+      screen
+        .getAllByRole<HTMLSelectElement>("combobox")
+        .every((select) => select.value === ""),
+    ).toBe(true);
   });
 
   it.each([false, true])(

@@ -299,6 +299,7 @@ test("admin library filters server-side and restores selected files in batch", a
   await page.goto(`${ADMIN_URL}/#/items`);
   await expect(page.getByRole("heading", { name: "Files" })).toBeVisible();
 
+  await page.getByRole("button", { name: "More filters", exact: true }).click();
   await page.getByLabel("All types").selectOption("pdf");
   await page.getByLabel("Created").selectOption("7");
   await page.getByLabel("Expiry").selectOption("url-30");
@@ -319,6 +320,7 @@ test("admin library filters server-side and restores selected files in batch", a
     .locator('input[aria-label^="Select admin-filter-pdf"]:visible')
     .first()
     .check();
+  await page.locator(".batch-group summary").filter({ hasText: "More" }).click();
   await page.getByRole("button", { name: "Restore" }).click();
 
   await page.getByLabel("All status").selectOption("active");
