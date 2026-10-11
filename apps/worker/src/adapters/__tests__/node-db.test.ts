@@ -4,6 +4,43 @@ import { HTML_CONTENT_TYPE, PDF_CONTENT_TYPE } from "@pagevault/core";
 import { describe, expect, it } from "vitest";
 import { NodeSqliteRepository } from "../node-db.js";
 
+describe("NodeSqliteRepository operations migration", () => {
+  it("requires the maintenance migration and accepts empty maintenance history", async () => {
+    const db = new DatabaseSync(":memory:");
+    const repository = new NodeSqliteRepository(db);
+    const migration = (name: string) =>
+      fileURLToPath(
+        new URL(`../../../../../migrations/${name}`, import.meta.url),
+      );
+
+    try {
+      await repository.migrate(migration("0001_initial.sql"));
+      await expect(repository.getOperationsSummary()).rejects.toThrow(
+        "no such table: maintenance_state",
+      );
+      await repository.migrate(migration("0005_maintenance_state.sql"));
+      await expect(repository.getOperationsSummary()).resolves.toEqual({
+        lastMaintenanceAt: null,
+        lastMaintenanceStatus: null,
+        lastMaintenanceSummary: null,
+        recentAuditEvents: [],
+      });
+      await repository.setMaintenanceState(
+        "last_maintenance",
+        JSON.stringify({ status: "ok", summary: "GC 0 deleted" }),
+        "2026-10-11T00:00:00.000Z",
+      );
+      await expect(repository.getOperationsSummary()).resolves.toMatchObject({
+        lastMaintenanceAt: "2026-10-11T00:00:00.000Z",
+        lastMaintenanceStatus: "ok",
+        lastMaintenanceSummary: "GC 0 deleted",
+      });
+    } finally {
+      db.close();
+    }
+  });
+});
+
 describe("NodeSqliteRepository API upload idempotency", () => {
   it("applies the migration idempotently and scopes/replays claims safely", async () => {
     const db = new DatabaseSync(":memory:");

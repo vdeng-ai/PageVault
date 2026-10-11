@@ -67,6 +67,10 @@ Returns a deliberately small operational summary for the authenticated administr
 
 It reuses existing metadata and does not create a separate telemetry store.
 
+If `maintenance_state` or `audit_logs` is missing, this endpoint returns `503`
+with code `operations_schema_missing`. Apply the pending database migrations;
+the dashboard continues to display available file statistics independently.
+
 ## Items
 
 `GET /api/admin/items?page=1&pageSize=20&q=&status=&visibility=&fileKind=&createdAfter=&createdBefore=&urlExpiresAfter=&urlExpiresBefore=&fileExpiresAfter=&fileExpiresBefore=&minSizeBytes=&maxSizeBytes=&includeTotal=`

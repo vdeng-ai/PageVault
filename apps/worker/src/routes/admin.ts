@@ -266,7 +266,21 @@ export function registerAdminRoutes(
   });
 
   app.get("/api/admin/operations", requireAdmin, async (c) => {
-    return c.json(await service(c, createService).getOperationsSummary());
+    try {
+      return c.json(await service(c, createService).getOperationsSummary());
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        /no such table:\s*(maintenance_state|audit_logs)\b/i.test(error.message)
+      ) {
+        throw new AppError(
+          "Operations database schema is incomplete. Apply pending database migrations.",
+          503,
+          "operations_schema_missing",
+        );
+      }
+      throw error;
+    }
   });
 
   app.get("/api/admin/upload-policy", requireAdmin, (c) => {

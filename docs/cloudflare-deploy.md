@@ -152,6 +152,31 @@ If a migration step fails with authorization error `7403`:
 
 The workflow summary links these requirements when a D1 step fails; inspect the original Wrangler log to distinguish authorization failures from migration SQL errors. Tokens and secret values must never be committed or pasted into logs.
 
+### Operations summary fails after an upgrade
+
+If `/api/admin/operations` fails, use the response's `requestId` to find the
+corresponding `unhandled request error` in Worker logs. A `no such table:
+maintenance_state` error means migration `0005_maintenance_state.sql` has not
+been applied to the bound D1 database. Current versions report missing operations
+tables as `503 operations_schema_missing` instead of a generic `500`.
+
+For automatic GitHub deployment, correct any D1 authorization error `7403`
+using the steps above, then re-run the failed **Deploy** workflow. The workflow
+checks and applies all pending migrations before publishing the Worker; a push
+to `main` also triggers it. No local Wrangler login or manual migration command
+is required for this deployment path.
+
+For a manual deployment, check and apply migrations with:
+
+```bash
+pnpm wrangler d1 migrations list pagevault-db --remote
+pnpm wrangler d1 migrations apply pagevault-db --remote
+```
+
+Apply all pending migrations before deploying. Do not bypass the migration gate
+or create tables from a dashboard GET request. Once the tables exist, an empty
+maintenance history is valid and the endpoint returns null maintenance fields.
+
 For v1 upgrades, rollback rules, and the migration compatibility contract, see [Upgrading PageVault](./upgrading.md). Prefer deploying published release tags rather than arbitrary historical commits for long-lived installations.
 
 See [Security](./security.md) for the runtime trust model and required hostname isolation.

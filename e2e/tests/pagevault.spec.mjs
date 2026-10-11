@@ -78,6 +78,53 @@ async function adminJson(page, path, method, body) {
   );
 }
 
+test("dashboard keeps statistics available when operations returns 500", async ({
+  page,
+}) => {
+  await login(page);
+  await page.route("**/api/admin/operations", (route) =>
+    route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: "Internal server error",
+        requestId: "operations-e2e",
+      }),
+    }),
+  );
+  const statsResponse = page.waitForResponse(
+    `${ADMIN_URL}/api/admin/dashboard`,
+  );
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  expect((await statsResponse).status()).toBe(200);
+  await expect(
+    page.getByRole("heading", { name: "Dashboard", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Operations", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("Internal server error");
+  await expect(page.locator(".dashboard-metric-card .skeleton")).toHaveCount(0);
+  await expect(page.locator(".dashboard-metric-card")).toHaveCount(6);
+});
+
+test("operations returns an empty maintenance history on a migrated database", async ({
+  page,
+  context,
+}) => {
+  await login(page);
+  const response = await context.request.get(
+    `${ADMIN_URL}/api/admin/operations`,
+  );
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toMatchObject({
+    lastMaintenanceAt: null,
+    lastMaintenanceStatus: null,
+    lastMaintenanceSummary: null,
+    recentAuditEvents: expect.any(Array),
+  });
+});
+
 test("HTML UI upload keeps share/raw behavior and works on a mobile viewport", async ({
   page,
   context,

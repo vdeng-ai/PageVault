@@ -289,6 +289,7 @@ class MemoryRepository implements MetadataRepository {
     };
   }
   async getOperationsSummary(): Promise<OperationsSummary> {
+    if (this.operationsError) throw this.operationsError;
     return {
       lastMaintenanceAt: null,
       lastMaintenanceStatus: null,
@@ -296,6 +297,7 @@ class MemoryRepository implements MetadataRepository {
       recentAuditEvents: [],
     };
   }
+  operationsError: Error | null = null;
   async updateItem(id: string, patch: UpdateItemInput): Promise<HtmlItem> {
     const current = this.items.get(id);
     if (!current) throw new Error("Item not found");
@@ -727,6 +729,55 @@ describe("admin auth routes", () => {
     const { env, handle } = await createFixture();
     const response = await handle(
       new Request("https://admin.test/api/admin/items"),
+      env,
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it.each([
+    "no such table: maintenance_state",
+    "D1_ERROR: no such table: maintenance_state: SQLITE_ERROR",
+    "D1_ERROR: no such table: audit_logs: SQLITE_ERROR",
+  ])("reports an actionable operations migration error for %s", async (message) => {
+    const { env, handle, repo } = await createFixture();
+    const { cookie } = await adminSession(env, handle);
+    repo.operationsError = new Error(message);
+    const response = await handle(
+      new Request("https://admin.test/api/admin/operations", {
+        headers: { Cookie: cookie, "X-Request-Id": "operations-test" },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("X-Request-Id")).toBe("operations-test");
+    expect(await response.json()).toEqual({
+      error: "Operations database schema is incomplete. Apply pending database migrations.",
+      code: "operations_schema_missing",
+      requestId: "operations-test",
+    });
+  });
+
+  it("does not treat unrelated database failures as missing operations schema", async () => {
+    const { env, handle, repo } = await createFixture();
+    const { cookie } = await adminSession(env, handle);
+    repo.operationsError = new Error("D1_ERROR: database unavailable");
+    const response = await handle(
+      new Request("https://admin.test/api/admin/operations", {
+        headers: { Cookie: cookie },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ error: "Internal server error" });
+  });
+
+  it("requires an admin session before reading operations", async () => {
+    const { env, handle, repo } = await createFixture();
+    repo.operationsError = new Error("no such table: maintenance_state");
+    const response = await handle(
+      new Request("https://admin.test/api/admin/operations"),
       env,
     );
     expect(response.status).toBe(401);
