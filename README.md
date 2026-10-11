@@ -19,9 +19,9 @@ PageVault is a personal-first, self-hosted publisher for sharing AI-generated HT
 
 **v1.0 stable baseline:** The A–L roadmap is complete. PageVault now follows SemVer and defaults to maintenance, reliability, security, performance, and small compatible UX improvements rather than continued feature expansion.
 
-![PageVault English upload interface with Markdown preview, visibility, and retention settings](./docs/assets/pagevault-upload-en.jpg)
+![PageVault English publishing workbench with a local Markdown preview and publishing controls](./docs/assets/pagevault-upload-en.jpg)
 
-English interface · Dark theme · Local Markdown preview before publishing.
+English interface · Light theme · Local Markdown preview before publishing.
 
 ## Highlights
 
