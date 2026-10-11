@@ -292,7 +292,7 @@ export function UploadPage({
               </div>
               <CopyButton
                 className="btn btn-primary"
-                value={result.publicUrl}
+                value={encodeShareUrl(result.publicUrl)}
                 label={t("upload.copyUrl")}
               />
               <details className="share-advanced">

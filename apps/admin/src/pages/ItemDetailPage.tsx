@@ -1,4 +1,4 @@
-import { itemPreviewUrl } from "../format.js";
+import { encodeShareUrl, itemPreviewUrl } from "../format.js";
 import {
   ArrowLeft,
   Database,
@@ -348,7 +348,7 @@ export function ItemDetailPage({
             <CopyButton
               className="icon-button"
               iconOnly
-              value={item.publicUrl}
+              value={encodeShareUrl(item.publicUrl)}
               label={t("upload.copyUrl")}
             />
           </div>
@@ -361,6 +361,12 @@ export function ItemDetailPage({
             · {fileKind(item.originalFilename)} ·{" "}
             {formatFileSize(item.sizeBytes, locale)}
           </p>
+          <CopyButton
+            className="btn btn-secondary btn-sm"
+            value={encodeShareUrl(item.publicUrl)}
+            label={t("upload.copyEncodedUrl")}
+            copiedLabel={t("common.encodedCopied")}
+          />
           <label className="field-label mt-5">
             {t("detail.rawLink")}
             <div className="copy-field">
@@ -373,7 +379,7 @@ export function ItemDetailPage({
               <CopyButton
                 className="icon-button"
                 iconOnly
-                value={item.rawUrl}
+                value={encodeShareUrl(item.rawUrl)}
                 label={t("table.copyRawUrl")}
               />
             </div>

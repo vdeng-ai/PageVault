@@ -181,6 +181,84 @@ test("desktop publishing, local copy feedback and grouped batch controls", async
   );
 });
 
+for (const width of [1280, 390]) {
+  test(`Chinese share and raw links copy as encoded URLs at ${width}px`, async ({
+    page,
+    context,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+      origin: ADMIN_URL,
+    });
+    await login(page);
+    const result = await upload(page, `中文链接-${width}.md`);
+    const encoded = new URL(result.publicUrl).href;
+    const raw = encoded.replace("/p/", "/raw/");
+    expect(encoded).toContain("%E4%B8%AD%E6%96%87");
+    expect(encoded).not.toMatch(/[^\x00-\x7F]/);
+
+    async function copyAndCheck(button, expected) {
+      await button.click();
+      await expect
+        .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+        .toBe(expected);
+    }
+
+    await copyAndCheck(
+      page.getByRole("button", { name: "Copy URL", exact: true }),
+      encoded,
+    );
+    await page.getByText("Link options", { exact: true }).click();
+    await copyAndCheck(
+      page.getByRole("button", { name: "Copy encoded URL", exact: true }),
+      encoded,
+    );
+    await page.getByRole("button", { name: "View details" }).click();
+    await expect(page.getByRole("textbox", { name: "Share link" })).toHaveValue(
+      result.publicUrl,
+    );
+    await copyAndCheck(
+      page.getByRole("button", { name: "Copy URL", exact: true }),
+      encoded,
+    );
+    await copyAndCheck(
+      page.getByRole("button", { name: "Copy encoded URL", exact: true }),
+      encoded,
+    );
+    await copyAndCheck(
+      page.getByRole("button", { name: "Copy raw URL", exact: true }),
+      raw,
+    );
+
+    await page
+      .locator(
+        `${width < 700 ? ".mobile-bottom-nav" : ".desktop-top-nav"} [data-route="items"]`,
+      )
+      .click();
+    const entry = page
+      .locator(width < 700 ? ".item-card" : ".item-table-desktop tbody tr")
+      .filter({ hasText: `中文链接-${width}.md` });
+    await copyAndCheck(
+      entry.getByRole("button", {
+        name: width < 700 ? "Copy URL" : `Copy share URL 中文链接-${width}.md`,
+        exact: true,
+      }),
+      encoded,
+    );
+    await entry.getByRole("button", { name: "More actions" }).click();
+    await copyAndCheck(
+      page.getByRole("menuitem", { name: "Copy raw URL" }),
+      raw,
+    );
+
+    for (const url of [result.publicUrl, encoded, raw]) {
+      const response = await context.request.get(url);
+      expect(response.status()).toBe(200);
+      expect(await response.text()).toContain("Read in peace");
+    }
+  });
+}
+
 test("unsaved edits survive navigation, browser Back and a cancelled refresh", async ({
   page,
 }) => {

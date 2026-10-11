@@ -317,7 +317,7 @@ const en = {
   "upload.shareLink": "Share link",
   "upload.linkOptions": "Link options",
   "upload.encodedHint":
-    "Try the encoded link if the original link does not open.",
+    "Copied links are URL-encoded for compatibility with messaging apps.",
   "upload.manageHint":
     "Adjust access or disable the link in content management.",
   "upload.privateSuccess":
@@ -669,7 +669,7 @@ const zh = {
   "upload.backToFiles": "返回内容管理",
   "upload.shareLink": "分享链接",
   "upload.linkOptions": "链接选项",
-  "upload.encodedHint": "链接无法打开时，可尝试编码链接。",
+  "upload.encodedHint": "复制的链接已进行 URL 编码，方便在即时通讯软件中分享。",
   "upload.manageHint": "可在内容管理中调整访问方式或停用链接。",
   "upload.privateSuccess": "私有文件已保存，可在后台预览。设为公开后即可分享。",
   "detail.visibilityHint": "持有公开链接即可访问；私有内容仅管理员可打开。",

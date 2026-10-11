@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getItem, type HtmlItem } from "../api/client.js";
 import { FeedbackProvider } from "../components/Feedback.js";
@@ -106,5 +107,31 @@ describe("ItemDetailPage request ordering", () => {
     expect(metadata?.open).toBe(false);
     expect(metadata?.textContent).toContain(item.slug);
     expect(metadata?.textContent).toContain(item.sha256);
+  });
+
+  it.each([
+    ["Copy URL", "p"],
+    ["Copy encoded URL", "p"],
+    ["Copy raw URL", "raw"],
+  ])("percent-encodes Chinese URLs through %s", async (label, path) => {
+    const user = userEvent.setup();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+    vi.mocked(getItem).mockResolvedValue({
+      ...item,
+      publicUrl: "https://html.example/p/产品介绍-ab12",
+      rawUrl: "https://html.example/raw/产品介绍-ab12",
+    });
+    render(detail("second"));
+    await screen.findByRole("heading", { name: "Second file" });
+    expect(
+      screen.getByRole<HTMLInputElement>("textbox", { name: "Share link" })
+        .value,
+    ).toBe("https://html.example/p/产品介绍-ab12");
+    await user.click(screen.getByRole("button", { name: label }));
+    expect(writeText).toHaveBeenCalledWith(
+      `https://html.example/${path}/%E4%BA%A7%E5%93%81%E4%BB%8B%E7%BB%8D-ab12`,
+    );
   });
 });

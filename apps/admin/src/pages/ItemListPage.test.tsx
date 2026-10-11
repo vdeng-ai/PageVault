@@ -208,6 +208,37 @@ describe("ItemListPage request behavior", () => {
     ).toBe(item.rawUrl);
   });
 
+  it.each([
+    ["Copy share URL", "p"],
+    ["Copy raw URL", "raw"],
+    ["Copy encoded URL", "p"],
+  ])(
+    "percent-encodes Chinese URLs through the %s menu",
+    async (label, path) => {
+      vi.mocked(listItems).mockResolvedValue({
+        items: [
+          {
+            ...item,
+            publicUrl: "https://html.example/p/产品介绍-ab12",
+            rawUrl: "https://html.example/raw/产品介绍-ab12",
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        total: null,
+        hasNextPage: false,
+      });
+      const { user, menu } = await openMenu();
+      const writeText = vi
+        .spyOn(navigator.clipboard, "writeText")
+        .mockResolvedValue(undefined);
+      await user.click(within(menu).getByRole("menuitem", { name: label }));
+      expect(writeText).toHaveBeenCalledWith(
+        `https://html.example/${path}/%E4%BA%A7%E5%93%81%E4%BB%8B%E7%BB%8D-ab12`,
+      );
+    },
+  );
+
   it.each([0, 1])("clears every filter from reset entry %s", async (entry) => {
     vi.mocked(listItems).mockImplementation(async (params) => ({
       items: params.fileKind ? [] : [item],

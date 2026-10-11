@@ -215,7 +215,7 @@ function ItemActionMenu({
               type="button"
               role="menuitem"
               tabIndex={-1}
-              onClick={() => run(() => onCopy(item.publicUrl))}
+              onClick={() => run(() => onCopy(encodeShareUrl(item.publicUrl)))}
             >
               <Copy className="h-4 w-4" aria-hidden />
               {t("table.copyUrl")}
@@ -224,7 +224,7 @@ function ItemActionMenu({
               type="button"
               role="menuitem"
               tabIndex={-1}
-              onClick={() => run(() => onCopy(item.rawUrl))}
+              onClick={() => run(() => onCopy(encodeShareUrl(item.rawUrl)))}
             >
               <Copy className="h-4 w-4" aria-hidden />
               {t("table.copyRawUrl")}
@@ -417,7 +417,7 @@ export function ItemTable({
                       className="inline-code item-detail-url"
                       type="button"
                       title={item.publicUrl}
-                      onClick={() => onCopy(item.publicUrl)}
+                      onClick={() => onCopy(encodeShareUrl(item.publicUrl))}
                     >
                       {item.publicUrl}
                     </button>
@@ -452,7 +452,7 @@ export function ItemTable({
                     <CopyButton
                       className="icon-button"
                       iconOnly
-                      value={item.publicUrl}
+                      value={encodeShareUrl(item.publicUrl)}
                       label={`${t("table.copyUrl")} ${item.originalFilename}`}
                     />
                     <a
@@ -516,7 +516,7 @@ export function ItemTable({
             <div className="item-card-actions">
               <CopyButton
                 className="btn btn-secondary btn-sm"
-                value={item.publicUrl}
+                value={encodeShareUrl(item.publicUrl)}
                 label={t("upload.copyUrl")}
               />
               <a
@@ -540,7 +540,7 @@ export function ItemTable({
                 className="inline-code item-card-url mt-4 block w-full truncate rounded-lg px-3 py-2 text-left font-mono text-xs"
                 type="button"
                 title={item.publicUrl}
-                onClick={() => onCopy(item.publicUrl)}
+                onClick={() => onCopy(encodeShareUrl(item.publicUrl))}
               >
                 {item.publicUrl}
               </button>
