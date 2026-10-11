@@ -171,7 +171,8 @@ const en = {
   "upload.subtitle":
     "Drop a file, choose access, and share it in one focused flow.",
   "upload.file": "File",
-  "upload.acceptedTypes": ".html / .htm / .md / .jpg / .pdf / .png / .svg / .webp",
+  "upload.acceptedTypes":
+    ".html / .htm / .md / .jpg / .pdf / .png / .svg / .webp",
   "upload.dropTitle": "Drop your file here",
   "upload.dropHint": "or choose a file from your device",
   "upload.browse": "Choose file",
@@ -275,6 +276,7 @@ const en = {
   "upload.days": "days",
   "upload.backToFiles": "Back to content management",
   "upload.shareLink": "Share link",
+  "upload.linkOptions": "Link options",
   "upload.encodedHint":
     "Try the encoded link if the original link does not open.",
   "upload.manageHint":
@@ -293,11 +295,13 @@ const en = {
   "dashboard.distributionPrivate": "Private or restricted content",
   "dashboard.distributionDeleted": "Files removed",
   "dashboard.operationsTitle": "Operations",
-  "dashboard.operationsSubtitle": "Small operational signals from existing PageVault metadata.",
+  "dashboard.operationsSubtitle":
+    "Small operational signals from existing PageVault metadata.",
   "dashboard.lastMaintenance": "Last maintenance",
   "dashboard.noMaintenance": "No scheduled maintenance result recorded yet.",
   "dashboard.recentAudit": "Recent audit events",
-  "dashboard.recentAuditDetail": "Latest administrative changes, capped to a small list.",
+  "dashboard.recentAuditDetail":
+    "Latest administrative changes, capped to a small list.",
   "dashboard.sourceNote": "Data comes from current file records.",
   "apiKeys.securityHint":
     "Keys only allow uploads. The full key is shown once, when created.",
@@ -488,7 +492,8 @@ const zh = {
   "upload.eyebrow": "发布新内容",
   "upload.subtitle": "先看看打开效果，再生成分享链接。",
   "upload.file": "文件",
-  "upload.acceptedTypes": ".html / .htm / .md / .jpg / .pdf / .png / .svg / .webp",
+  "upload.acceptedTypes":
+    ".html / .htm / .md / .jpg / .pdf / .png / .svg / .webp",
   "upload.dropTitle": "将文件拖到这里",
   "upload.dropHint": "或从设备中选择文件",
   "upload.browse": "选择文件",
@@ -585,6 +590,7 @@ const zh = {
   "upload.days": "天",
   "upload.backToFiles": "返回内容管理",
   "upload.shareLink": "分享链接",
+  "upload.linkOptions": "链接选项",
   "upload.encodedHint": "链接无法打开时，可尝试编码链接。",
   "upload.manageHint": "可在内容管理中调整访问方式或停用链接。",
   "upload.privateSuccess": "私有文件已保存，可在后台预览。设为公开后即可分享。",
@@ -599,7 +605,8 @@ const zh = {
   "dashboard.distributionPrivate": "私有或受限内容",
   "dashboard.distributionDeleted": "文件已移除",
   "dashboard.operationsTitle": "运行状态",
-  "dashboard.operationsSubtitle": "直接复用 PageVault 现有元数据的轻量运行信号。",
+  "dashboard.operationsSubtitle":
+    "直接复用 PageVault 现有元数据的轻量运行信号。",
   "dashboard.lastMaintenance": "最近维护",
   "dashboard.noMaintenance": "尚未记录定时维护结果。",
   "dashboard.recentAudit": "最近审计事件",

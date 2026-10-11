@@ -55,7 +55,7 @@ function DurationField({
   );
   return (
     <div className="field-label">
-      <label>
+      <label className="duration-label">
         {label}
         <select
           className="control mt-2"
@@ -268,14 +268,6 @@ export function UploadPage({
                   value={result.publicUrl}
                   onFocus={(event) => event.target.select()}
                 />
-                <button
-                  className="icon-button"
-                  type="button"
-                  aria-label={t("upload.copyUrl")}
-                  onClick={() => copyUrl()}
-                >
-                  <Copy size={21} aria-hidden />
-                </button>
               </div>
               <button
                 className="btn btn-primary"
@@ -285,15 +277,18 @@ export function UploadPage({
                 <Copy aria-hidden />
                 {t("upload.copyUrl")}
               </button>
-              <button
-                className="btn btn-secondary"
-                type="button"
-                onClick={() => copyUrl(true)}
-              >
-                <Copy aria-hidden />
-                {t("upload.copyEncodedUrl")}
-              </button>
-              <p className="field-hint m-0">{t("upload.encodedHint")}</p>
+              <details className="share-advanced">
+                <summary>{t("upload.linkOptions")}</summary>
+                <p className="field-hint">{t("upload.encodedHint")}</p>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  onClick={() => copyUrl(true)}
+                >
+                  <Copy aria-hidden />
+                  {t("upload.copyEncodedUrl")}
+                </button>
+              </details>
               <div className="share-secondary-actions">
                 <a
                   className="btn btn-secondary"
@@ -335,66 +330,68 @@ export function UploadPage({
             </div>
           ) : (
             <>
-              <fieldset
-                className="visibility-selector"
-                disabled={busy}
-                aria-label={t("common.visibility")}
-              >
-                {(["public", "private"] as const).map((value) => (
-                  <label
-                    key={value}
-                    className={`visibility-option ${visibility === value ? "visibility-option-active" : ""}`}
-                  >
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value={value}
-                      checked={visibility === value}
-                      onChange={() => setVisibility(value)}
-                    />
-                    {value === "public" ? (
-                      <Globe aria-hidden />
-                    ) : (
-                      <LockKeyhole aria-hidden />
-                    )}
-                    <span>
-                      <strong>
-                        {t(
-                          value === "public"
-                            ? "upload.publicLabel"
-                            : "upload.privateLabel",
-                        )}
-                      </strong>
-                      <small>
-                        {t(
-                          value === "public"
-                            ? "upload.publicHint"
-                            : "upload.privateHint",
-                        )}
-                      </small>
-                    </span>
-                  </label>
-                ))}
-              </fieldset>
-              <div
-                className="expiry-fields"
-                role="group"
-                aria-label={t("upload.expirySettings")}
-              >
-                <DurationField
-                  label={t("upload.urlDays")}
-                  value={urlExpireDays}
-                  onChange={setUrlExpireDays}
-                  hint={t("upload.urlDaysHint")}
+              <div className="upload-settings-body">
+                <fieldset
+                  className="visibility-selector"
                   disabled={busy}
-                />
-                <DurationField
-                  label={t("upload.fileDays")}
-                  value={fileExpireDays}
-                  onChange={setFileExpireDays}
-                  hint={t("upload.fileDaysHint")}
-                  disabled={busy}
-                />
+                  aria-label={t("common.visibility")}
+                >
+                  {(["public", "private"] as const).map((value) => (
+                    <label
+                      key={value}
+                      className={`visibility-option ${visibility === value ? "visibility-option-active" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name="visibility"
+                        value={value}
+                        checked={visibility === value}
+                        onChange={() => setVisibility(value)}
+                      />
+                      {value === "public" ? (
+                        <Globe aria-hidden />
+                      ) : (
+                        <LockKeyhole aria-hidden />
+                      )}
+                      <span>
+                        <strong>
+                          {t(
+                            value === "public"
+                              ? "upload.publicLabel"
+                              : "upload.privateLabel",
+                          )}
+                        </strong>
+                        <small>
+                          {t(
+                            value === "public"
+                              ? "upload.publicHint"
+                              : "upload.privateHint",
+                          )}
+                        </small>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+                <div
+                  className="expiry-fields"
+                  role="group"
+                  aria-label={t("upload.expirySettings")}
+                >
+                  <DurationField
+                    label={t("upload.urlDays")}
+                    value={urlExpireDays}
+                    onChange={setUrlExpireDays}
+                    hint={t("upload.urlDaysHint")}
+                    disabled={busy}
+                  />
+                  <DurationField
+                    label={t("upload.fileDays")}
+                    value={fileExpireDays}
+                    onChange={setFileExpireDays}
+                    hint={t("upload.fileDaysHint")}
+                    disabled={busy}
+                  />
+                </div>
               </div>
               <div className="upload-submit-bar">
                 {!expiryValid && (

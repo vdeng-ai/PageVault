@@ -140,6 +140,8 @@ describe("UploadPage", () => {
     const writeText = vi
       .spyOn(navigator.clipboard, "writeText")
       .mockResolvedValue(undefined);
+    expect(screen.getAllByRole("button", { name: "Copy URL" })).toHaveLength(1);
+    await user.click(screen.getByText("Link options"));
     await user.click(screen.getByRole("button", { name: "Copy encoded URL" }));
     expect(writeText).toHaveBeenCalledWith(
       "https://html.example/%E4%B8%AD%E6%96%87-page-ab12",
