@@ -2684,3 +2684,45 @@ select option {
     grid-template-columns: 1fr;
   }
 }
+
+/* Quiet, deliberate interaction feedback */
+.btn,
+.icon-button,
+.top-nav-button,
+.control {
+  transition:
+    background-color 130ms,
+    color 130ms,
+    border-color 130ms,
+    transform 120ms;
+}
+.btn:active:not(:disabled),
+.icon-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.55;
+}
+[data-copied="true"] {
+  color: var(--success);
+}
+.btn-primary[data-copied="true"] {
+  color: var(--on-accent);
+}
+.action-menu[data-state="open"],
+.batch-group[open] .batch-action-panel,
+.account-menu[open] .account-popover {
+  animation: reveal 180ms ease-out;
+}
+.page-title[tabindex="-1"]:focus {
+  outline: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

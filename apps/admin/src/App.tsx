@@ -6,7 +6,7 @@ import {
   ShieldCheck,
   UploadCloud,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { logout, me, type CurrentUser } from "./api/client.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { ApiKeysPage } from "./pages/ApiKeysPage.js";
@@ -18,6 +18,8 @@ import { useSettings } from "./settings.js";
 import { SettingsControls } from "./components/SettingsControls.js";
 import { Brand } from "./components/Brand.js";
 import { GlassNav } from "./components/Glass.js";
+import { ConfirmDialog } from "./components/Feedback.js";
+import { useGuardedHashNavigation } from "./hooks/useGuardedHashNavigation.js";
 
 export type Route =
   | { name: "upload" }
@@ -51,22 +53,21 @@ function parseRoute(): Route {
   return parseRouteHash(window.location.hash);
 }
 
-function navigate(path: string): void {
-  window.location.hash = path;
-}
-
 export function App() {
   const { t } = useSettings();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [route, setRoute] = useState<Route>(parseRoute);
+  const changeRoute = useCallback(
+    (hash: string) => setRoute(parseRouteHash(hash)),
+    [],
+  );
+  const navigation = useGuardedHashNavigation(changeRoute);
+  const { navigate } = navigation;
 
   useEffect(() => {
     void me()
       .then(setUser)
       .catch(() => setUser({ authenticated: false }));
-    const listener = () => setRoute(parseRoute());
-    window.addEventListener("hashchange", listener);
-    return () => window.removeEventListener("hashchange", listener);
   }, []);
 
   const navItems = useMemo(
@@ -175,9 +176,11 @@ export function App() {
                   className="btn btn-ghost"
                   type="button"
                   onClick={() => {
-                    void logout().finally(() =>
-                      setUser({ authenticated: false }),
-                    );
+                    navigation.request(() => {
+                      void logout().finally(() =>
+                        setUser({ authenticated: false }),
+                      );
+                    });
                   }}
                 >
                   <LogOut className="h-4 w-4" aria-hidden />
@@ -211,6 +214,7 @@ export function App() {
             key={route.id}
             id={route.id}
             onBack={() => navigate("/items")}
+            onDirtyChange={navigation.setDirty}
           />
         )}
       </main>
@@ -242,6 +246,15 @@ export function App() {
           );
         })}
       </GlassNav>
+      <ConfirmDialog
+        open={navigation.pending}
+        title={t("confirm.discardTitle")}
+        description={t("confirm.discardBody")}
+        confirmLabel={t("common.confirm")}
+        cancelLabel={t("common.cancel")}
+        onClose={navigation.cancel}
+        onConfirm={navigation.confirm}
+      />
     </div>
   );
 }

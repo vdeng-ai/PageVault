@@ -33,8 +33,10 @@ const themeScript = `
       try{
         if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(value);}
         else{
-          var input=document.createElement('textarea');input.value=value;input.setAttribute('readonly','');input.style.position='fixed';input.style.opacity='0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove();
+          var input=document.createElement('textarea');input.value=value;input.setAttribute('readonly','');input.style.position='fixed';input.style.opacity='0';document.body.appendChild(input);input.select();var success=document.execCommand('copy');input.remove();copyButton.focus({preventScroll:true});if(!success)throw new Error('copy-failed');
         }
+        copyButton.textContent='已复制';copyButton.setAttribute('aria-label','链接已复制');
+        window.setTimeout(function(){copyButton.textContent='复制链接';copyButton.removeAttribute('aria-label');},2000);
         announce('链接已复制');
       }catch(_){announce('复制失败，请手动复制地址栏链接');}
     });
@@ -81,7 +83,8 @@ const styles = `
 
 .reader-layout-compact{display:block;max-width:900px}.reader-layout-compact .reader-toc{border-right:0;border-bottom:1px solid var(--border);padding:0 0 12px;margin-bottom:24px}.reader-toc summary{min-height:44px;cursor:pointer;color:var(--secondary);font-size:14px;font-weight:600}.reader-toc summary span{font-size:12px;color:var(--muted);font-weight:400;margin-left:8px}.reader-toc nav{margin-top:8px}.share-reader .share-viewer-title{font-size:20px;font-weight:600}.share-reader .share-viewer-eyebrow{display:none}.share-reader .share-viewer-meta{align-items:center}.share-reader .reader-layout{gap:32px}.share-reader .share-viewer-subtitle{font-size:13px}
 @media(max-width:700px){.public-header{height:60px}.share-reader .share-viewer-meta{align-items:stretch;gap:12px;margin-bottom:12px}.share-reader .share-viewer-title{font-size:18px}.share-reader .share-viewer-actions{display:grid;grid-template-columns:1fr 1fr}.share-reader .share-viewer-action{font-size:13px;padding:8px}.share-viewer-markdown .reader-layout{margin-top:16px}.reader-toc,.reader-layout-compact .reader-toc{border-right:0;border-bottom:1px solid var(--border);padding:0 0 8px;margin-bottom:16px}.reader-toc summary{min-height:36px}.markdown-body h1{font-size:28px}.reader-layout{margin-top:16px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}`;
+.share-viewer-action,.theme-button{transition:background-color 130ms,border-color 130ms,transform 120ms}.share-viewer-action:active,.theme-button:active{transform:translateY(1px)}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}`;
 
 export function publicHeader(document = false): string {
   return `<header class="public-header"><div class="public-brand"><span class="brand-mark">${publicIcons["shield-check"]}</span><span>PageVault</span>${document ? '<span class="public-label">分享文档</span>' : ""}</div><button class="theme-button" data-theme-toggle type="button" aria-label="切换浅色模式"><span class="theme-moon">${publicIcons.moon}</span><span class="theme-sun">${publicIcons.sun}</span></button></header>`;

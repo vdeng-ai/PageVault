@@ -27,6 +27,7 @@ import {
 import { useSettings } from "../settings.js";
 import { useExitPresence } from "../hooks/useExitPresence.js";
 import { FileIcon } from "./FileIcon.js";
+import { CopyButton } from "./CopyButton.js";
 import { StatusBadge } from "./StatusBadge.js";
 import { GlassPopover } from "./Glass.js";
 
@@ -448,15 +449,12 @@ export function ItemTable({
                 </td>
                 <td className="px-3 py-4 text-right">
                   <div className="row-actions">
-                    <button
+                    <CopyButton
                       className="icon-button"
-                      type="button"
-                      aria-label={`${t("table.copyUrl")} ${item.originalFilename}`}
-                      title={t("table.copyUrl")}
-                      onClick={() => onCopy(item.publicUrl)}
-                    >
-                      <Copy size={18} aria-hidden />
-                    </button>
+                      iconOnly
+                      value={item.publicUrl}
+                      label={`${t("table.copyUrl")} ${item.originalFilename}`}
+                    />
                     <a
                       className="icon-button"
                       href={itemPreviewUrl(item)}
@@ -516,14 +514,11 @@ export function ItemTable({
               {formatDate(item.urlExpiresAt, locale, true)}
             </p>
             <div className="item-card-actions">
-              <button
+              <CopyButton
                 className="btn btn-secondary btn-sm"
-                type="button"
-                onClick={() => onCopy(item.publicUrl)}
-              >
-                <Copy className="h-4 w-4" aria-hidden />
-                {t("upload.copyUrl")}
-              </button>
+                value={item.publicUrl}
+                label={t("upload.copyUrl")}
+              />
               <a
                 className="btn btn-secondary btn-sm"
                 href={itemPreviewUrl(item)}

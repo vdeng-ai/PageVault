@@ -129,6 +129,9 @@ describe("UploadPage", () => {
     );
 
     await screen.findByText("Your file is live");
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { name: "Your file is live" }),
+    );
     expect(vi.mocked(uploadFile)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(uploadFile)).toHaveBeenCalledWith({
       file,

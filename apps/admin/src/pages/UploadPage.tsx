@@ -6,7 +6,6 @@ import {
   ArrowRight,
   ChevronDown,
   CheckCircle2,
-  Copy,
   ExternalLink,
   FileText,
   Globe,
@@ -15,19 +14,18 @@ import {
   Plus,
   Settings,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   uploadFile,
   uploadPolicy,
   type UploadResult,
   type Visibility,
 } from "../api/client.js";
-import { useFeedback } from "../components/Feedback.js";
+import { CopyButton } from "../components/CopyButton.js";
 import { itemPreviewUrl, encodeShareUrl } from "../format.js";
 import { UploadDropzone } from "../components/UploadDropzone.js";
 import { ContentPreview } from "../components/ContentPreview.js";
 import { useSettings } from "../settings.js";
-import { copyText } from "../clipboard.js";
 
 const durationPresets = [7, 15, 30, 90, 365];
 const BYTES_PER_MB = 1024 * 1024;
@@ -103,7 +101,7 @@ export function UploadPage({
   onBack?: () => void;
 }) {
   const { t, locale } = useSettings();
-  const { notify } = useFeedback();
+  const successHeading = useRef<HTMLHeadingElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [urlExpireDays, setUrlExpireDays] = useState("15");
   const [fileExpireDays, setFileExpireDays] = useState("30");
@@ -173,17 +171,15 @@ export function UploadPage({
     setFile(nextFile);
     setFileError(null);
   }
-  function copyUrl(encoded = false) {
-    if (!result) return;
-    void copyText(encoded ? encodeShareUrl(result.publicUrl) : result.publicUrl)
-      .then(() =>
-        notify(
-          t(encoded ? "common.encodedCopied" : "common.copied"),
-          "success",
-        ),
-      )
-      .catch(() => notify(t("common.copyFailed"), "error"));
-  }
+  useEffect(() => {
+    if (result) {
+      successHeading.current?.focus({ preventScroll: true });
+      successHeading.current?.scrollIntoView?.({
+        block: "start",
+        behavior: "auto",
+      });
+    }
+  }, [result]);
   function submit() {
     if (!file || busy || maxUploadBytes === null) return;
     if (file.size > maxUploadBytes) {
@@ -227,7 +223,7 @@ export function UploadPage({
         <div>
           <div className={result ? "success-heading" : ""}>
             {result && <CheckCircle2 aria-hidden />}
-            <h1 className="page-title">
+            <h1 className="page-title" ref={successHeading} tabIndex={-1}>
               {t(result ? "upload.successTitle" : "upload.title")}
             </h1>
           </div>
@@ -294,25 +290,19 @@ export function UploadPage({
                   onFocus={(event) => event.target.select()}
                 />
               </div>
-              <button
+              <CopyButton
                 className="btn btn-primary"
-                type="button"
-                onClick={() => copyUrl()}
-              >
-                <Copy aria-hidden />
-                {t("upload.copyUrl")}
-              </button>
+                value={result.publicUrl}
+                label={t("upload.copyUrl")}
+              />
               <details className="share-advanced">
                 <summary>{t("upload.linkOptions")}</summary>
                 <p className="field-hint">{t("upload.encodedHint")}</p>
-                <button
+                <CopyButton
                   className="btn btn-secondary btn-sm"
-                  type="button"
-                  onClick={() => copyUrl(true)}
-                >
-                  <Copy aria-hidden />
-                  {t("upload.copyEncodedUrl")}
-                </button>
+                  value={encodeShareUrl(result.publicUrl)}
+                  label={t("upload.copyEncodedUrl")}
+                />
               </details>
               <div className="share-secondary-actions">
                 <a
