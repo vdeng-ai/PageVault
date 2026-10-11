@@ -367,15 +367,9 @@ export function ItemTable({
                   onChange={(event) => onSelectAll(event.target.checked)}
                 />
               </th>
-              <th className="min-w-52 px-3 py-3.5">
-                {t("table.originalFile")}
-              </th>
+              <th className="min-w-52 px-3 py-3.5">{t("table.content")}</th>
               <th className="px-3 py-3.5">{t("table.status")}</th>
-              <th className="w-56 px-3 py-3.5">{t("table.publicUrl")}</th>
-              <th className="min-w-40 px-3 py-3.5">{t("common.urlExpiry")}</th>
-              <th className="min-w-40 px-3 py-3.5">{t("common.fileExpiry")}</th>
-              <th className="px-3 py-3.5">{t("table.size")}</th>
-              <th className="px-3 py-3.5">{t("table.access")}</th>
+              <th className="px-3 py-3.5">{t("common.urlExpiry")}</th>
               <th className="px-3 py-3.5 text-right">{t("table.actions")}</th>
             </tr>
           </thead>
@@ -397,47 +391,60 @@ export function ItemTable({
                     }
                   />
                 </td>
-                <td className="max-w-64 px-3 py-4">
+                <td className="library-content-cell px-3 py-4">
                   <div className="table-file">
                     <FileIcon filename={item.originalFilename} />
+                    <div className="min-w-0 flex-1">
+                      <button
+                        className="link-button item-title"
+                        type="button"
+                        title={item.title}
+                        onClick={() => onEdit(item.id)}
+                      >
+                        {item.title}
+                      </button>
+                      <div className="item-secondary">
+                        {fileTypeLabel(item.contentType)} ·{" "}
+                        {item.originalFilename} ·{" "}
+                        {formatFileSize(item.sizeBytes, locale)}
+                      </div>
+                    </div>
+                  </div>
+                  <details className="item-row-details">
+                    <summary>{t("table.details")}</summary>
                     <button
-                      className="link-button block max-w-full truncate text-left font-bold"
+                      className="inline-code item-detail-url"
                       type="button"
-                      title={item.title}
-                      onClick={() => onEdit(item.id)}
+                      title={item.publicUrl}
+                      onClick={() => onCopy(item.publicUrl)}
                     >
-                      {item.title}
+                      {item.publicUrl}
                     </button>
-                  </div>
-                  <div className="row-created mt-1 truncate text-xs text-muted">
-                    {fileTypeLabel(item.contentType)} · {item.originalFilename} ·{" "}
-                    {formatDate(item.createdAt, locale)}
-                  </div>
+                    <dl className="item-expanded-meta">
+                      <div>
+                        <dt>{t("common.urlExpiry")}</dt>
+                        <dd>{formatDate(item.urlExpiresAt, locale)}</dd>
+                      </div>
+                      <div>
+                        <dt>{t("common.fileExpiry")}</dt>
+                        <dd>{formatDate(item.fileExpiresAt, locale)}</dd>
+                      </div>
+                      <div>
+                        <dt>{t("table.access")}</dt>
+                        <dd>{numberFormatter.format(item.accessCount)}</dd>
+                      </div>
+                      <div>
+                        <dt>{t("files.created")}</dt>
+                        <dd>{formatDate(item.createdAt, locale)}</dd>
+                      </div>
+                    </dl>
+                  </details>
                 </td>
                 <td className="px-3 py-4">
                   <StatusBadge status={item.derivedStatus} />
                 </td>
-                <td className="w-56 max-w-56 px-3 py-4">
-                  <button
-                    className="inline-code block w-full truncate rounded-lg px-2 py-1.5 text-left font-mono text-xs"
-                    type="button"
-                    title={item.publicUrl}
-                    onClick={() => onCopy(item.publicUrl)}
-                  >
-                    {item.publicUrl}
-                  </button>
-                </td>
-                <td className="px-3 py-4 text-xs text-secondary">
-                  {formatDate(item.urlExpiresAt, locale, true)}
-                </td>
-                <td className="px-3 py-4 text-xs text-secondary">
-                  {formatDate(item.fileExpiresAt, locale, true)}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-secondary">
-                  {formatFileSize(item.sizeBytes, locale)}
-                </td>
                 <td className="px-3 py-4 text-secondary">
-                  {numberFormatter.format(item.accessCount)}
+                  {formatDate(item.urlExpiresAt, locale, true)}
                 </td>
                 <td className="px-3 py-4 text-right">
                   <div className="row-actions">

@@ -122,7 +122,11 @@ describe("ItemListPage request behavior", () => {
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     expect(vi.mocked(deleteItem)).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Delete",
+      }),
+    );
 
     await waitFor(() => expect(vi.mocked(deleteItem)).toHaveBeenCalledTimes(1));
     expect(vi.mocked(listItems)).toHaveBeenCalledTimes(1);
@@ -158,6 +162,73 @@ describe("ItemListPage request behavior", () => {
         .getByRole("menuitem", { name: "Open raw file" })
         .getAttribute("href"),
     ).toBe(item.rawUrl);
+  });
+
+  it.each([0, 1])("clears every filter from reset entry %s", async (entry) => {
+    vi.mocked(listItems).mockImplementation(async (params) => ({
+      items: params.fileKind ? [] : [item],
+      page: 1,
+      pageSize: 20,
+      total: null,
+      hasNextPage: false,
+    }));
+    const user = userEvent.setup();
+    render(
+      <SettingsProvider>
+        <FeedbackProvider>
+          <ItemListPage onEdit={vi.fn()} onUpload={vi.fn()} />
+        </FeedbackProvider>
+      </SettingsProvider>,
+    );
+    await screen.findAllByRole("button", { name: "Test file" });
+    await user.click(screen.getByRole("button", { name: "More filters" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Search" }), {
+      target: { value: "query" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "All status" }), {
+      target: { value: "active" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "All types" }), {
+      target: { value: "pdf" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "All visibility" }), {
+      target: { value: "public" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Created" }), {
+      target: { value: "7" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Expiry" }), {
+      target: { value: "url-7" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "File size" }), {
+      target: { value: "large" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: "Clear filters" }),
+      ).toHaveLength(2),
+    );
+    await user.click(
+      screen.getAllByRole("button", { name: "Clear filters" })[entry]!,
+    );
+    await waitFor(() =>
+      expect(listItems).toHaveBeenLastCalledWith(
+        {
+          page: 1,
+          pageSize: 20,
+          q: "",
+          status: "",
+          visibility: "",
+          fileKind: "",
+        },
+        expect.anything(),
+      ),
+    );
+    expect(
+      screen
+        .getAllByRole<HTMLSelectElement>("combobox")
+        .every((select) => select.value === ""),
+    ).toBe(true);
   });
 
   it.each([false, true])(
