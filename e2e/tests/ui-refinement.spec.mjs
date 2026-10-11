@@ -237,3 +237,65 @@ test("mobile publishing keeps the action reachable and reading starts early", as
     ),
   ).toBe(true);
 });
+
+test("detail hierarchy and dashboard links lead to the corresponding file filters", async ({
+  page,
+}) => {
+  await login(page);
+  await upload(page, "content-hierarchy.md");
+  await page.getByRole("button", { name: "View details" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "content-hierarchy",
+      exact: true,
+      level: 1,
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".detail-filename")).toHaveText(
+    "content-hierarchy.md",
+  );
+  await expect(page.locator(".metadata-section")).not.toHaveAttribute(
+    "open",
+    "",
+  );
+  await page.locator(".metadata-section summary").click();
+  await expect(page.getByText("Object key", { exact: true })).toBeVisible();
+
+  for (const [name, value] of [
+    ["URL expired", "url-expired"],
+    ["Deleting soon", "file-7"],
+    ["Deleted", "deleted"],
+  ]) {
+    await page.locator('.desktop-top-nav [data-route="dashboard"]').click();
+    const link = page
+      .locator(".dashboard-secondary-metrics")
+      .getByRole("link", { name: new RegExp(name) });
+    const response = page.waitForResponse(
+      (r) =>
+        new URL(r.url()).pathname === "/api/admin/items" &&
+        r.request().method() === "GET",
+    );
+    await link.click();
+    const params = new URL((await response).url()).searchParams;
+    if (value === "deleted") {
+      await expect(
+        page.getByRole("combobox", { name: "All status" }),
+      ).toHaveValue(value);
+      expect(params.get("status")).toBe("deleted");
+    } else {
+      await expect(
+        page.getByRole("combobox", { name: "Expiry", exact: true }),
+      ).toHaveValue(value);
+      if (value === "url-expired") {
+        expect(params.get("urlExpiresBefore")).toBeTruthy();
+        expect(params.get("urlExpiresAfter")).toBeNull();
+      } else {
+        expect(
+          Date.parse(params.get("fileExpiresBefore")) -
+            Date.parse(params.get("fileExpiresAfter")),
+        ).toBe(7 * 24 * 60 * 60 * 1000);
+      }
+    }
+    expect(params.get("pageSize")).toBe("20");
+  }
+});

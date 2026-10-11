@@ -205,12 +205,12 @@ export function ItemDetailPage({
       <WorkspaceHero
         icon={FileCog}
         eyebrow={t("detail.eyebrow")}
-        title={item.originalFilename}
+        title={item.title || item.originalFilename}
         subtitle={t("detail.subtitle")}
         meta={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={item.derivedStatus} />
-            <span className="detail-slug">/{item.slug}</span>
+            <span className="detail-filename">{item.originalFilename}</span>
             <span>{formatFileSize(item.sizeBytes, locale)}</span>
             {dirty && (
               <span className="unsaved-chip">{t("detail.unsaved")}</span>
@@ -378,7 +378,7 @@ export function ItemDetailPage({
               />
             </div>
           </label>
-          <details className="metadata-section" open>
+          <details className="metadata-section">
             <summary>
               <div className="section-heading">
                 <Database aria-hidden />
@@ -389,6 +389,7 @@ export function ItemDetailPage({
             <dl className="metadata-grid mt-6">
               {(
                 [
+                  ["detail.slug", item.slug],
                   ["detail.objectKey", item.objectKey],
                   ["detail.sha256", item.sha256],
                 ] as const

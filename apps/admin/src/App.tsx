@@ -23,18 +23,18 @@ import { useGuardedHashNavigation } from "./hooks/useGuardedHashNavigation.js";
 
 export type Route =
   | { name: "upload" }
-  | { name: "items" }
+  | { name: "items"; filters?: string }
   | { name: "dashboard" }
   | { name: "apiKeys" }
   | { name: "detail"; id: string };
 
 export function parseRouteHash(hash: string): Route {
-  const route = hash.replace(/^#\/?/, "");
+  const [route = "", filters = ""] = hash.replace(/^#\/?/, "").split("?", 2);
   if (route.length === 0 || route === "upload") {
     return { name: "upload" };
   }
   if (route === "items") {
-    return { name: "items" };
+    return filters ? { name: "items", filters } : { name: "items" };
   }
   if (route === "dashboard") {
     return { name: "dashboard" };
@@ -201,6 +201,8 @@ export function App() {
         )}
         {route.name === "items" && (
           <ItemListPage
+            key={route.filters ?? ""}
+            initialFilters={route.filters ?? ""}
             onEdit={(id) => navigate(`/items/${id}`)}
             onUpload={() => navigate("/")}
           />

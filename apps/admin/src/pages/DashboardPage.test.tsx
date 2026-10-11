@@ -58,4 +58,22 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Operations")).toBeTruthy();
     expect(screen.getByText("GC 0 deleted; reconciliation 0 findings")).toBeTruthy();
   });
+
+  it("shows each lifecycle metric once and links to its matching file filter", async () => {
+    render(
+      <SettingsProvider>
+        <DashboardPage onUpload={vi.fn()} />
+      </SettingsProvider>,
+    );
+    await screen.findByText("3 MB");
+    for (const [label, filter] of [
+      ["URL expired", "expiry=url-expired"],
+      ["Deleting soon", "expiry=file-7"],
+      ["Deleted", "status=deleted"],
+    ]) {
+      const labels = screen.getAllByText(label!);
+      expect(labels).toHaveLength(1);
+      expect(labels[0]?.closest("a")?.getAttribute("href")).toBe(`#/items?${filter}`);
+    }
+  });
 });

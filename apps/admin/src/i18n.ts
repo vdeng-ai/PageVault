@@ -304,12 +304,14 @@ const en = {
   "dashboard.distributionDeleted": "Files removed",
   "dashboard.operationsTitle": "Operations",
   "dashboard.operationsSubtitle":
-    "Small operational signals from existing PageVault metadata.",
+    "Check the latest maintenance result and recent activity.",
+  "dashboard.viewFiles": "View files",
+  "detail.slug": "Link identifier",
   "dashboard.lastMaintenance": "Last maintenance",
   "dashboard.noMaintenance": "No scheduled maintenance result recorded yet.",
   "dashboard.recentAudit": "Recent audit events",
   "dashboard.recentAuditDetail":
-    "Latest administrative changes, capped to a small list.",
+    "Recent changes to your files and sharing settings.",
   "dashboard.sourceNote": "Data comes from current file records.",
   "apiKeys.securityHint":
     "Keys only allow uploads. The full key is shown once, when created.",
@@ -621,12 +623,13 @@ const zh = {
   "dashboard.distributionPrivate": "私有或受限内容",
   "dashboard.distributionDeleted": "文件已移除",
   "dashboard.operationsTitle": "运行状态",
-  "dashboard.operationsSubtitle":
-    "直接复用 PageVault 现有元数据的轻量运行信号。",
+  "dashboard.operationsSubtitle": "查看最近的自动维护结果和操作记录。",
+  "dashboard.viewFiles": "查看文件",
+  "detail.slug": "链接标识",
   "dashboard.lastMaintenance": "最近维护",
   "dashboard.noMaintenance": "尚未记录定时维护结果。",
   "dashboard.recentAudit": "最近审计事件",
-  "dashboard.recentAuditDetail": "最近的管理操作，仅保留小范围展示。",
+  "dashboard.recentAuditDetail": "最近对文件和分享设置的修改。",
   "dashboard.sourceNote": "数据来自当前文件记录。",
   "apiKeys.securityHint": "密钥仅拥有上传权限。完整密钥仅在创建时显示一次。",
   "apiKeys.onceWarning": "关闭后，将无法再次查看完整密钥。",

@@ -30,7 +30,8 @@ const SEARCH_DEBOUNCE_MS = 400;
 const MIB = 1024 * 1024;
 
 type CreatedWindow = "" | "7" | "30" | "90";
-type ExpiryWindow = "" | "url-7" | "url-30" | "file-7" | "file-30";
+type ExpiryWindow =
+  "" | "url-expired" | "url-7" | "url-30" | "file-7" | "file-30";
 type SizeRange = "" | "small" | "medium" | "large";
 type AdvancedListFilters = Pick<
   ListItemsParams,
@@ -62,7 +63,9 @@ function listFilterParams(input: {
     ).toISOString();
   }
 
-  if (input.expiryWindow) {
+  if (input.expiryWindow === "url-expired") {
+    params.urlExpiresBefore = now.toISOString();
+  } else if (input.expiryWindow) {
     const [target, daysText] = input.expiryWindow.split("-") as [
       "url" | "file",
       string,
@@ -104,9 +107,11 @@ type PendingConfirmation =
 export function ItemListPage({
   onEdit,
   onUpload,
+  initialFilters = "",
 }: {
   onEdit: (id: string) => void;
   onUpload: () => void;
+  initialFilters?: string;
 }) {
   const { t } = useSettings();
   const { notify } = useFeedback();
@@ -117,12 +122,31 @@ export function ItemListPage({
   const [total, setTotal] = useState<number | null>(null);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(() => {
+    const value = new URLSearchParams(initialFilters).get("status") ?? "";
+    return [
+      "active",
+      "private",
+      "disabled",
+      "deleted",
+      "url_expired",
+      "file_expired",
+    ].includes(value)
+      ? value
+      : "";
+  });
   const [visibility, setVisibility] = useState("");
   const [fileKind, setFileKind] = useState<FileKind | "">("");
   const [createdWindow, setCreatedWindow] = useState<CreatedWindow>("");
-  const [expiryWindow, setExpiryWindow] = useState<ExpiryWindow>("");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [expiryWindow, setExpiryWindow] = useState<ExpiryWindow>(() => {
+    const value = new URLSearchParams(initialFilters).get("expiry") ?? "";
+    return ["url-expired", "url-7", "url-30", "file-7", "file-30"].includes(
+      value,
+    )
+      ? (value as ExpiryWindow)
+      : "";
+  });
+  const [advancedOpen, setAdvancedOpen] = useState(Boolean(expiryWindow));
   const [sizeRange, setSizeRange] = useState<SizeRange>("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -525,6 +549,7 @@ export function ItemListPage({
                 }}
               >
                 <option value="">{t("files.expiryAny")}</option>
+                <option value="url-expired">{t("status.urlExpired")}</option>
                 <option value="url-7">
                   {t("files.urlExpiresDays", { days: 7 })}
                 </option>

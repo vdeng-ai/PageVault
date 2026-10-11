@@ -1221,7 +1221,7 @@ select option {
 .dashboard-metric-card {
   position: relative;
   display: flex;
-  gap: 25px;
+  gap: 18px;
   padding: 10px 32px 0 8px;
   border-radius: 0;
   border: 0;
@@ -1233,17 +1233,17 @@ select option {
   padding-left: 56px;
 }
 .dashboard-metric-card > svg {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   margin-top: 2px;
 }
 .metric-label {
-  font-weight: 650;
-  font-size: 17px;
+  font-weight: 600;
+  font-size: 14px;
 }
 .metric-value {
-  font-size: 52px;
-  font-weight: 700;
+  font-size: 36px;
+  font-weight: 600;
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
   margin: 10px 0 2px;
@@ -1252,16 +1252,44 @@ select option {
 }
 .metric-detail {
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: 13px;
 }
 .dashboard-secondary-metrics {
-  padding: 8px 0 8px;
+  padding: 4px 0 18px;
 }
 .dashboard-secondary-metrics .metric-value {
-  font-size: 42px;
+  font-size: 28px;
 }
 .metric-warning .metric-value {
   color: var(--warning);
+}
+.metric-content {
+  min-width: 0;
+}
+.metric-action {
+  color: var(--text);
+  text-decoration: none;
+  transition: background-color 130ms;
+}
+.metric-action:hover {
+  background: var(--surface-hover);
+}
+.metric-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.metric-action-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.detail-filename {
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
 }
 .dashboard-panels {
   display: grid;
@@ -1272,8 +1300,8 @@ select option {
   min-width: 0;
 }
 .dashboard-panel h2 {
-  font-size: 26px;
-  font-weight: 650;
+  font-size: 19px;
+  font-weight: 600;
   margin: 0 0 3px;
 }
 .dashboard-panel p {
@@ -1748,7 +1776,7 @@ select option {
     gap: 15px;
   }
   .metric-value {
-    font-size: 44px;
+    font-size: 36px;
   }
   .detail-layout {
     gap: 24px;
@@ -2051,11 +2079,11 @@ select option {
     padding-bottom: 0;
   }
   .metric-value {
-    font-size: 42px;
+    font-size: 32px;
     margin-top: 7px;
   }
   .dashboard-secondary-metrics .metric-value {
-    font-size: 34px;
+    font-size: 28px;
   }
   .distribution-table th,
   .distribution-table td {

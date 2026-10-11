@@ -132,6 +132,50 @@ describe("ItemListPage request behavior", () => {
     expect(vi.mocked(listItems)).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    "expiry=url-expired",
+    "expiry=file-7",
+    "status=deleted",
+    "status=unknown&expiry=unknown",
+  ])(
+    "loads dashboard filter %s through the existing paginated API",
+    async (filters) => {
+      render(
+        <SettingsProvider>
+          <FeedbackProvider>
+            <ItemListPage
+              initialFilters={filters}
+              onEdit={vi.fn()}
+              onUpload={vi.fn()}
+            />
+          </FeedbackProvider>
+        </SettingsProvider>,
+      );
+      await waitFor(() => expect(listItems).toHaveBeenCalledTimes(1));
+      const params = vi.mocked(listItems).mock.calls[0]![0];
+      expect(params).toMatchObject({ page: 1, pageSize: 20 });
+      if (filters === "expiry=url-expired") {
+        expect(params.urlExpiresAfter).toBeUndefined();
+        expect(params.status).toBe("");
+        expect(Date.parse(params.urlExpiresBefore!)).not.toBeNaN();
+      }
+      if (filters === "expiry=file-7") {
+        expect(
+          Date.parse(params.fileExpiresBefore!) -
+            Date.parse(params.fileExpiresAfter!),
+        ).toBe(7 * 24 * 60 * 60 * 1000);
+      }
+      if (filters === "status=deleted") {
+        expect(params.status).toBe("deleted");
+      }
+      if (filters.includes("unknown")) {
+        expect(params.status).toBe("");
+        expect(params.urlExpiresBefore).toBeUndefined();
+        expect(params.fileExpiresBefore).toBeUndefined();
+      }
+    },
+  );
+
   async function openMenu() {
     const user = userEvent.setup();
     render(
