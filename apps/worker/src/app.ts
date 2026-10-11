@@ -79,6 +79,25 @@ function createAdminApp(createService: ServiceFactory, fetchAsset: AssetFetcher)
   registerAuthRoutes(app);
   registerAdminRoutes(app, createService);
 
+  // Documentation is static and needs no administrator session or storage reads.
+  app.on(["GET", "HEAD"], ["/llms.txt", "/upload-api.md"], async (c) => {
+    const asset = await fetchAsset(c.req.raw, c.env);
+    if (!asset.ok) return asset;
+    const headers = new Headers(asset.headers);
+    headers.set(
+      "Content-Type",
+      c.req.path === "/llms.txt"
+        ? "text/plain; charset=utf-8"
+        : "text/markdown; charset=utf-8",
+    );
+    headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+    headers.set("X-Content-Type-Options", "nosniff");
+    return new Response(c.req.method === "HEAD" ? null : asset.body, {
+      status: asset.status,
+      headers,
+    });
+  });
+
   app.get("*", async (c) => fetchAsset(c.req.raw, c.env));
   app.onError((error, c) => jsonError(error, c.get("requestId")));
 

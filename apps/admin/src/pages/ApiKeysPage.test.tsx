@@ -72,6 +72,57 @@ describe("ApiKeysPage", () => {
     vi.clearAllMocks();
   });
 
+  it("copies instance-specific instructions without copying an issued token", async () => {
+    vi.mocked(listApiKeys).mockResolvedValue([existingKey]);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByText("CI uploader");
+    const summary = screen.getByText("Usage guide").closest("summary")!;
+    expect(summary.parentElement?.hasAttribute("open")).toBe(false);
+    await user.click(summary);
+    expect(summary.parentElement?.hasAttribute("open")).toBe(true);
+    const example = screen.getByLabelText("cURL upload example").textContent;
+    expect(example).toContain(window.location.origin);
+    expect(example).toContain("$PAGEVAULT_API_KEY");
+    expect(example).toContain("Idempotency-Key: $UPLOAD_ID");
+    await user.click(screen.getByRole("button", { name: "Copy cURL example" }));
+    expect(await navigator.clipboard.readText()).toBe(example);
+    expect(screen.getByRole("button", { name: "Example copied" })).toBeTruthy();
+    await user.click(
+      screen.getByRole("button", { name: "Copy AI integration guide" }),
+    );
+    const guide = await navigator.clipboard.readText();
+    expect(
+      screen.getByRole("button", { name: "AI guide copied" }),
+    ).toBeTruthy();
+    expect(guide).toContain(`Admin base URL: \`${window.location.origin}\``);
+    expect(guide).toContain(example);
+    expect(guide).toContain("idempotency_conflict");
+    expect(guide).not.toContain("YOUR_ADMIN_HOST");
+    expect(guide).not.toContain(existingKey.prefix);
+    expect(
+      screen.getByRole("link", { name: "Open llms.txt" }).getAttribute("href"),
+    ).toBe("/llms.txt");
+  });
+
+  it("shows the guide in Chinese and reports clipboard failure", async () => {
+    window.localStorage.setItem("pagevault.admin.language", "zh-CN");
+    vi.mocked(listApiKeys).mockResolvedValue([]);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("暂无 API 密钥");
+    await user.click(screen.getByText("使用说明"));
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    });
+    await user.click(screen.getByRole("button", { name: "复制 AI 接入说明" }));
+    expect((await screen.findByRole("status")).textContent).toContain(
+      "无法复制",
+    );
+    expect(screen.getByLabelText("cURL 上传示例")).toBeTruthy();
+  });
+
   it("creates a key and reveals its token once", async () => {
     vi.mocked(listApiKeys).mockResolvedValue([]);
     vi.mocked(createApiKey).mockResolvedValue({

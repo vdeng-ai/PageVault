@@ -9,11 +9,15 @@ export function CopyButton({
   label,
   className = "btn btn-secondary",
   iconOnly = false,
+  errorLabel,
+  copiedLabel,
 }: {
   value: string;
   label: string;
   className?: string;
   iconOnly?: boolean;
+  errorLabel?: string;
+  copiedLabel?: string;
 }) {
   const { t } = useSettings();
   const { notify } = useFeedback();
@@ -26,7 +30,7 @@ export function CopyButton({
     const timer = window.setTimeout(() => setCopiedValue(null), 2000);
     return () => window.clearTimeout(timer);
   }, [copiedValue]);
-  const text = copied ? t("common.copied") : label;
+  const text = copied ? (copiedLabel ?? t("common.copied")) : label;
   return (
     <button
       className={className}
@@ -38,11 +42,11 @@ export function CopyButton({
         void copyText(value)
           .then(() => {
             setCopiedValue({ value });
-            notify(t("common.copied"), "success");
+            notify(copiedLabel ?? t("common.copied"), "success");
           })
           .catch(() => {
             setCopiedValue(null);
-            notify(t("common.copyFailed"), "error");
+            notify(errorLabel ?? t("common.copyFailed"), "error");
           });
       }}
     >

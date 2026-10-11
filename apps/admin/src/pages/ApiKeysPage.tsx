@@ -33,6 +33,7 @@ import { GlassDialog } from "../components/Glass.js";
 import { useExitPresence } from "../hooks/useExitPresence.js";
 import { useSettings } from "../settings.js";
 import { copyText } from "../clipboard.js";
+import { ApiUsageGuide } from "../components/ApiUsageGuide.js";
 
 function ApiKeyDialog({
   open,
@@ -530,6 +531,8 @@ export function ApiKeysPage() {
           {t("apiKeys.revokeHint")}
         </p>
       </div>
+
+      <ApiUsageGuide />
 
       <ApiKeyDialog
         open={dialogOpen}

@@ -41,6 +41,8 @@ Upload API keys use `Authorization: Bearer <key>` and are accepted only by `POST
 
 ## API Keys
 
+The API Keys page includes a collapsible quick start and a copyable AI upload guide with the current admin origin. Static, credential-free documentation is available without an admin session at `/llms.txt` and `/upload-api.md` on the admin hostname only. Both files are served from admin assets without D1 or R2 access. The copied guide reuses the shipped Markdown document and substitutes the current origin; it never includes an issued key.
+
 API key management requires an authenticated admin session:
 
 - `GET /api/admin/api-keys`

@@ -227,6 +227,37 @@ const en = {
   "detail.sha256": "SHA-256",
   "detail.rawLink": "Raw file link",
 
+  "apiKeys.usageTitle": "Usage guide",
+  "apiKeys.usageSubtitle": "Upload with cURL or connect your AI agent.",
+  "apiKeys.quickStart": "Quick start",
+  "apiKeys.quickStartHint":
+    "Set PAGEVAULT_API_KEY securely in your environment, replace report.html with your file, and choose a unique UPLOAD_ID. Keep the ID unchanged when retrying. This example publishes a public file.",
+  "apiKeys.curlExample": "cURL upload example",
+  "apiKeys.copyExample": "Copy cURL example",
+  "apiKeys.exampleCopied": "Example copied",
+  "apiKeys.aiGuideCopied": "AI guide copied",
+  "apiKeys.guideCopyFailed":
+    "Could not copy. Select the example or open the full guide to copy it manually.",
+  "apiKeys.uploadParameters": "Upload parameters",
+  "apiKeys.fileParameter":
+    "Required. HTML, Markdown, PDF, SVG, PNG, JPEG, or WebP, with the original filename.",
+  "apiKeys.visibilityParameter":
+    "public allows anyone with the link to view the file; private allows administrator access only. Defaults to public.",
+  "apiKeys.urlExpiryParameter":
+    "Link lifetime in days. A positive integer; defaults to 15.",
+  "apiKeys.fileExpiryParameter":
+    "File retention in days. A positive integer; defaults to 30. Keep it at least as long as the link lifetime for uninterrupted sharing.",
+  "apiKeys.uploadLimitHint":
+    "The default size limit is 10 MiB. The administrator can configure the size limit and expiry defaults for this instance.",
+  "apiKeys.resultHint":
+    "Use publicUrl from the response to share a public file. To retrieve original bytes, replace /p/ with /raw/ in that URL. Private files cannot be opened through either public link.",
+  "apiKeys.forAi": "Use with AI",
+  "apiKeys.forAiHint":
+    "Copy the complete guide with this site's address, upload permissions, and retry rules. It uses a key environment variable and contains no real credentials.",
+  "apiKeys.copyAiGuide": "Copy AI integration guide",
+  "apiKeys.openLlms": "Open llms.txt",
+  "apiKeys.fullGuide": "Full API guide",
+
   "apiKeys.title": "API Keys",
   "apiKeys.subtitle": "Upload credentials",
   "apiKeys.activeSummary": ({ count }) => `${count} active`,
@@ -553,6 +584,35 @@ const zh = {
   "detail.objectKey": "对象键",
   "detail.sha256": "SHA-256",
   "detail.rawLink": "原文件链接",
+
+  "apiKeys.usageTitle": "使用说明",
+  "apiKeys.usageSubtitle": "使用 cURL 上传，或接入你的 AI 助手。",
+  "apiKeys.quickStart": "快速开始",
+  "apiKeys.quickStartHint":
+    "在环境变量中安全设置 PAGEVAULT_API_KEY，将 report.html 替换为你的文件，并为每次上传选择唯一的 UPLOAD_ID。重试时保持该 ID 不变。此示例会公开发布文件。",
+  "apiKeys.curlExample": "cURL 上传示例",
+  "apiKeys.copyExample": "复制 cURL 示例",
+  "apiKeys.exampleCopied": "示例已复制",
+  "apiKeys.aiGuideCopied": "AI 说明已复制",
+  "apiKeys.guideCopyFailed": "无法复制，请选择示例或打开完整说明手动复制。",
+  "apiKeys.uploadParameters": "上传参数",
+  "apiKeys.fileParameter":
+    "必填。支持 HTML、Markdown、PDF、SVG、PNG、JPEG 和 WebP，保留原文件名。",
+  "apiKeys.visibilityParameter":
+    "public：持有链接的人均可访问；private：仅管理员可访问。默认 public。",
+  "apiKeys.urlExpiryParameter": "链接有效天数，必须为正整数，默认 15 天。",
+  "apiKeys.fileExpiryParameter":
+    "文件保留天数，必须为正整数，默认 30 天。建议不短于链接有效期，避免文件提前到期。",
+  "apiKeys.uploadLimitHint":
+    "默认大小限制为 10 MiB。管理员可为当前实例配置大小限制和默认有效期。",
+  "apiKeys.resultHint":
+    "使用响应中的 publicUrl 分享公开文件。将该地址中的 /p/ 替换为 /raw/ 可访问原文件。私有文件无法通过这两种公开链接访问。",
+  "apiKeys.forAi": "给 AI 使用",
+  "apiKeys.forAiHint":
+    "复制包含当前站点地址、上传权限和重试规则的完整说明。说明使用密钥环境变量，不包含真实凭证。",
+  "apiKeys.copyAiGuide": "复制 AI 接入说明",
+  "apiKeys.openLlms": "打开 llms.txt",
+  "apiKeys.fullGuide": "完整 API 说明",
 
   "apiKeys.title": "API 密钥",
   "apiKeys.subtitle": "管理自动化上传所使用的凭证。",

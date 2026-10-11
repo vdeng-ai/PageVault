@@ -1,0 +1,9 @@
+# PageVault
+
+> PageVault is a personal file publisher for AI-generated content. It preserves original files and returns controlled share links.
+
+This is the administrator hostname. Upload automation uses an upload-only API key; public share URLs use a separate hostname. Supported formats are HTML, Markdown, PDF, SVG, PNG, JPEG, and WebP. Obtain credentials securely from the administrator; this documentation contains no secrets.
+
+## API
+
+- [Upload API guide](/upload-api.md): Instance address, Bearer authentication, multipart upload example, fields, supported formats, response links, and idempotent retry rules. Use the same origin as this llms.txt file to resolve this link and call the API.

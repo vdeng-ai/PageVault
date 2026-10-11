@@ -4,6 +4,10 @@ All notable PageVault changes are documented here. PageVault follows Semantic Ve
 
 ## [Unreleased]
 
+### Added
+
+- add a collapsible API-key usage guide with an instance-specific cURL example, copyable AI integration instructions, and static `/llms.txt` and `/upload-api.md` documentation on the admin hostname.
+
 ### Fixed
 
 - align the browser tab icon with the muted violet visual system, support light and dark browser themes, and share the versioned favicon across admin, public viewers, and error pages;

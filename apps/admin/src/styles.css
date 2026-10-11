@@ -1448,6 +1448,103 @@ select option {
   align-items: center;
   gap: 10px;
 }
+.api-usage-guide {
+  min-width: 0;
+}
+.api-usage-guide > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  list-style: none;
+}
+.api-usage-guide > summary::-webkit-details-marker {
+  display: none;
+}
+.api-usage-guide > summary > span {
+  flex: 1;
+  min-width: 0;
+}
+.api-usage-summary {
+  display: block;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+.api-usage-guide[open] .api-usage-chevron {
+  transform: rotate(180deg);
+}
+.api-usage-body {
+  display: grid;
+  gap: 24px;
+  border-top: 1px solid var(--border);
+  padding: 24px 20px;
+  min-width: 0;
+}
+.api-usage-section {
+  min-width: 0;
+}
+.api-usage-section h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.api-usage-section p {
+  margin: 8px 0 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.api-usage-endpoint {
+  display: block;
+  color: var(--accent-text);
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.api-usage-section pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.api-usage-parameters {
+  margin: 0;
+}
+.api-usage-parameters > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.api-usage-parameters dt {
+  width: 140px;
+  font-family: ui-monospace, monospace;
+}
+.api-usage-parameters dd {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+}
+.api-usage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.api-usage-doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-text);
+  font-size: 14px;
+}
 .dialog-backdrop {
   position: fixed;
   z-index: 60;
