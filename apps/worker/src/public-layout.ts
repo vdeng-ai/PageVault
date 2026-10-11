@@ -99,5 +99,5 @@ export function publicDocument({
   body: string;
   head?: string;
 }): string {
-  return `<!doctype html><html lang="zh-CN" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapePublicHtml(title)}</title>${head}<script>${themeScript}</script><style>${styles}</style></head><body>${body}</body></html>`;
+  return `<!doctype html><html lang="zh-CN" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2"><title>${escapePublicHtml(title)}</title>${head}<script>${themeScript}</script><style>${styles}</style></head><body>${body}</body></html>`;
 }

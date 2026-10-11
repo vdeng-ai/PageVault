@@ -53,6 +53,51 @@ async function upload(page, name) {
   return result;
 }
 
+test("admin, public readers and error pages share the accessible themed favicon", async ({
+  page,
+  context,
+}) => {
+  await login(page);
+  const adminIcon = page.locator('link[rel="icon"]');
+  await expect(adminIcon).toHaveAttribute("href", "/favicon.svg?v=2");
+  const adminResponse = await context.request.get(
+    `${ADMIN_URL}/favicon.svg?v=2`,
+  );
+  expect(adminResponse.status()).toBe(200);
+  expect(adminResponse.headers()["content-type"]).toContain("image/svg+xml");
+  const svg = await adminResponse.text();
+  expect(svg).toContain("#65568e");
+  expect(svg).toContain("prefers-color-scheme: dark");
+
+  const result = await upload(page, "favicon-reader.md");
+  await page.goto(result.publicUrl);
+  await expect(page.locator(".markdown-body h1")).toHaveText("Read in peace");
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+    "href",
+    "/favicon.svg?v=2",
+  );
+  const publicOrigin = new URL(result.publicUrl).origin;
+  const publicIconUrl = `${publicOrigin}/favicon.svg?v=2`;
+  const publicResponse = await context.request.get(publicIconUrl);
+  expect(publicResponse.status()).toBe(200);
+  expect(publicResponse.headers()["content-type"]).toContain("image/svg+xml");
+  expect(publicResponse.headers()["x-content-type-options"]).toBe("nosniff");
+  expect(publicResponse.headers()["cache-control"]).toContain("public");
+  expect(await publicResponse.text()).toBe(svg);
+  const head = await context.request.head(publicIconUrl);
+  expect(head.status()).toBe(200);
+  expect(await head.body()).toHaveLength(0);
+
+  const missing = await page.goto(`${publicOrigin}/p/missing-favicon-page`);
+  expect(missing.status()).toBe(404);
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+    "href",
+    "/favicon.svg?v=2",
+  );
+  const adminShell = await context.request.get(`${publicOrigin}/index.html`);
+  expect(adminShell.status()).toBe(404);
+});
+
 test("desktop publishing, local copy feedback and grouped batch controls", async ({
   page,
   context,

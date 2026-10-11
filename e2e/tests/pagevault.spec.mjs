@@ -219,7 +219,7 @@ test("Markdown, PDF range, and SVG use their lightweight public delivery paths",
   expect((await shareArt.body()).byteLength).toBeGreaterThan(1000);
 
   const hiddenAdminAsset = await context.request.get(
-    `${PUBLIC_URL}/favicon.svg`,
+    `${PUBLIC_URL}/index.html`,
   );
   expect(hiddenAdminAsset.status()).toBe(404);
 });
