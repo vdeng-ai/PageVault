@@ -141,8 +141,10 @@ describe("deployment hardening contract", () => {
       packageVersion(workerPackage),
       packageVersion(adminPackage),
     ];
-    expect(new Set(versions)).toEqual(new Set(["1.0.1"]));
-    expect(changelog).toContain("## [1.0.1]");
+    const version = packageVersion(rootPackage);
+    expect(version).toMatch(/^1\.\d+\.\d+$/);
+    expect(new Set(versions)).toEqual(new Set([version]));
+    expect(changelog).toContain(`## [${version}]`);
     expect(releaseWorkflow).toContain('"v*.*.*"');
     expect(releaseWorkflow).toContain("scripts/check-release.mjs");
     expect(releaseWorkflow).toContain("gh release create");
