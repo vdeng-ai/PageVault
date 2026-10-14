@@ -14,6 +14,7 @@ export type DerivedStatus =
 export interface VaultItem {
   id: string;
   title: string;
+  shareDescription?: string | null;
   originalFilename: string;
   slug: string;
   objectKey: string;

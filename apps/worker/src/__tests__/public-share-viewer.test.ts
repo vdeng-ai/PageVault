@@ -38,6 +38,38 @@ const urls = {
 };
 
 describe("public share viewer", () => {
+  it("uses and escapes the stored automatic description in all social metadata", async () => {
+    const html = await renderPublicShareViewer({
+      item: item({ shareDescription: '摘要 "引号" & <内容>' }),
+      ...urls,
+    });
+    for (const attribute of [
+      'name="description"',
+      'property="og:description"',
+      'name="twitter:description"',
+    ]) {
+      expect(html).toContain(
+        `<meta ${attribute} content="摘要 &quot;引号&quot; &amp; &lt;内容&gt;">`,
+      );
+    }
+    expect(html).not.toContain("HTML · 2.0 KB · 由 PageVault 分享");
+  });
+
+  it.each([undefined, null, "", "  "])(
+    "keeps the description fallback for old/empty items (%s)",
+    async (description) => {
+      const html = await renderPublicShareViewer({
+        item: item(
+          description === undefined ? {} : { shareDescription: description },
+        ),
+        ...urls,
+      });
+      expect(html).toContain(
+        '<meta property="og:description" content="HTML · 2.0 KB · 由 PageVault 分享">',
+      );
+    },
+  );
+
   it("uses fallback raster metadata and lightweight controls for HTML", async () => {
     const html = await renderPublicShareViewer({
       item: item(),
@@ -47,9 +79,7 @@ describe("public share viewer", () => {
     expect(html).toContain(
       '<meta property="og:image" content="https://public.test/share-card.png">',
     );
-    expect(html).toContain(
-      '<meta property="og:image:width" content="1200">',
-    );
+    expect(html).toContain('<meta property="og:image:width" content="1200">');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
     expect(html).toContain("data-copy-share");
     expect(html).toContain("data-fullscreen-toggle");

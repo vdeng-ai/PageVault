@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { basename, dirname } from "node:path";
 import { mkdirSync } from "node:fs";
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
 import { AppError, type MetadataRepository } from "@pagevault/core";
@@ -88,6 +88,7 @@ function htmlItemRow(row: Record<string, SQLOutputValue>): HtmlItemRow {
   return {
     id: stringField(row, "id"),
     title: stringField(row, "title"),
+    share_description: nullableStringField(row, "share_description"),
     original_filename: stringField(row, "original_filename"),
     slug: stringField(row, "slug"),
     object_key: stringField(row, "object_key"),
@@ -176,7 +177,29 @@ export class NodeSqliteRepository implements MetadataRepository {
 
   async migrate(migrationPath: string): Promise<void> {
     const sql = await readFile(migrationPath, "utf8");
-    this.db.exec(sql);
+    // D1 tracks applied migrations; SQLite needs the same once-only behavior
+    // for additive ALTER TABLE migrations when a process restarts.
+    this.db.exec(
+      "CREATE TABLE IF NOT EXISTS pagevault_migrations (name TEXT PRIMARY KEY)",
+    );
+    const name = basename(migrationPath);
+    this.db.exec("BEGIN IMMEDIATE TRANSACTION");
+    try {
+      if (
+        !this.db
+          .prepare("SELECT name FROM pagevault_migrations WHERE name = ?")
+          .get(name)
+      ) {
+        this.db.exec(sql);
+        this.db
+          .prepare("INSERT INTO pagevault_migrations (name) VALUES (?)")
+          .run(name);
+      }
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   async createApiKey(input: CreateApiKeyInput): Promise<ApiKey> {
@@ -267,7 +290,8 @@ export class NodeSqliteRepository implements MetadataRepository {
             updated_at = excluded.updated_at,
             expires_at = excluded.expires_at
           WHERE api_upload_idempotency.expires_at <= excluded.updated_at
-        `)
+        `,
+      )
       .run(
         input.apiKeyId,
         input.idempotencyKey,

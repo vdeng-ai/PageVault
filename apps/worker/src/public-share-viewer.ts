@@ -29,7 +29,10 @@ function formatFileSize(bytes: number): string {
 }
 
 function shareDescription(item: VaultItem, label: string): string {
-  return `${label} · ${formatFileSize(item.sizeBytes)} · 由 PageVault 分享`;
+  return (
+    item.shareDescription?.trim() ||
+    `${label} · ${formatFileSize(item.sizeBytes)} · 由 PageVault 分享`
+  );
 }
 
 function shareHead(input: {

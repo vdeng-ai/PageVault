@@ -80,6 +80,18 @@ function row(id: string): HtmlItemRow {
 }
 
 describe("CloudflareD1Repository listItems", () => {
+  it("persists and reads automatic descriptions alongside existing item metadata", async () => {
+    const stored = { ...row("a"), share_description: "D1 summary" };
+    const db = new FakeD1Database([stored], 1);
+    const repository = new CloudflareD1Repository(db.asD1());
+    const item = (await repository.listItems({ page: 1, pageSize: 1 }))
+      .items[0]!;
+    expect(item.shareDescription).toBe("D1 summary");
+    await repository.createItem({ item });
+    expect(db.runSqls[0]).toContain("share_description");
+    expect(db.runValues[0]?.[2]).toBe("D1 summary");
+  });
+
   it("uses lightweight pagination by default", async () => {
     const db = new FakeD1Database([row("a"), row("b"), row("c")], 3);
     const repository = new CloudflareD1Repository(db.asD1());
@@ -227,4 +239,3 @@ describe("CloudflareD1Repository API upload idempotency", () => {
     expect(db.runSqls.at(-1)).toContain("owner = ?");
   });
 });
-

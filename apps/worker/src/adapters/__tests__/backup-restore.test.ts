@@ -26,10 +26,19 @@ describe("local backup and restore", () => {
 
     try {
       await repository.migrate(initialMigration);
+      await repository.migrate(
+        fileURLToPath(
+          new URL(
+            "../../../../../migrations/0007_share_description.sql",
+            import.meta.url,
+          ),
+        ),
+      );
       await repository.createItem({
         item: {
           id: "backup",
           title: "Backup",
+          shareDescription: "Preserved backup summary",
           originalFilename: "backup.html",
           slug: "backup-a1b2c3d4",
           objectKey,
@@ -60,10 +69,13 @@ describe("local backup and restore", () => {
         join(restoredRoot, "objects"),
       );
       try {
-        await expect(restoredRepository.getItemById("backup")).resolves.toMatchObject({
+        await expect(
+          restoredRepository.getItemById("backup"),
+        ).resolves.toMatchObject({
           slug: "backup-a1b2c3d4",
           objectKey,
           sizeBytes: body.byteLength,
+          shareDescription: "Preserved backup summary",
         });
         const restoredObject = await restoredStorage.getObject(objectKey);
         expect(restoredObject?.size).toBe(body.byteLength);

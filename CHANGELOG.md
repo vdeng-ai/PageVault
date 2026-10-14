@@ -6,6 +6,7 @@ All notable PageVault changes are documented here. PageVault follows Semantic Ve
 
 ### Added
 
+- automatically extract HTML/Markdown titles and share descriptions once during upload, with bounded parsing and the existing file-type/size fallback; persist descriptions with migration `0007_share_description.sql` and track SQLite migrations so restarts apply each migration only once;
 - add a collapsible API-key usage guide with an instance-specific cURL example, copyable AI integration instructions, and static `/llms.txt` and `/upload-api.md` documentation on the admin hostname.
 
 ### Fixed
@@ -98,7 +99,5 @@ PageVault v1.0 is the first stable release of the personal-first, Cloudflare-Fre
 - schema downgrades are not automatic. Restore a pre-upgrade backup when a true rollback is required.
 
 [1.0.0]: https://github.com/vdeng-ai/PageVault/releases/tag/v1.0.0
-
 [1.0.1]: https://github.com/vdeng-ai/PageVault/releases/tag/v1.0.1
-
 [1.1.0]: https://github.com/vdeng-ai/PageVault/releases/tag/v1.1.0

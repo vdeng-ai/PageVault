@@ -44,6 +44,14 @@ describe("reconciliation adapters", () => {
 
     try {
       await repository.migrate(initial);
+      await repository.migrate(
+        fileURLToPath(
+          new URL(
+            "../../../../../migrations/0007_share_description.sql",
+            import.meta.url,
+          ),
+        ),
+      );
       await repository.migrate(maintenance);
       for (const id of ["a", "b", "c"]) {
         await repository.createItem({ item: makeItem(id) });

@@ -42,7 +42,10 @@ class MemoryStorage implements StorageProvider {
   async headObject(key: string) {
     const object = this.objects.get(key);
     if (!object) return null;
-    return { size: object.size, ...(object.contentType ? { contentType: object.contentType } : {}) };
+    return {
+      size: object.size,
+      ...(object.contentType ? { contentType: object.contentType } : {}),
+    };
   }
 
   async getObject(key: string): Promise<StoredObject | null> {
@@ -56,7 +59,10 @@ class MemoryStorage implements StorageProvider {
       object.body instanceof ArrayBuffer
         ? object.body
         : await new Response(object.body).arrayBuffer();
-    const actualLength = Math.min(length, Math.max(0, body.byteLength - offset));
+    const actualLength = Math.min(
+      length,
+      Math.max(0, body.byteLength - offset),
+    );
     return {
       body: body.slice(offset, offset + actualLength),
       offset,
@@ -342,10 +348,7 @@ class MemoryRepository implements MetadataRepository {
       .slice(0, limit);
   }
 
-  async listItemsForReconciliation(
-    cursor: string | null,
-    limit: number,
-  ) {
+  async listItemsForReconciliation(cursor: string | null, limit: number) {
     const matching = Array.from(this.items.values())
       .filter((item) => item.status !== "deleted")
       .filter((item) => !cursor || item.id > cursor)
@@ -577,6 +580,29 @@ describe("API keys", () => {
 });
 
 describe("upload", () => {
+  it("persists extracted metadata without changing original bytes, slugs or later title edits", async () => {
+    const { service, storage, repo } = createService();
+    const body = new TextEncoder().encode(
+      '<title>Content title</title><meta name="description" content="Content summary"><p>Original bytes</p>',
+    ).buffer;
+    const result = await service.uploadFile({
+      filename: "filename.html",
+      body,
+    });
+    expect(result.item.title).toBe("Content title");
+    expect(result.item.shareDescription).toBe("Content summary");
+    expect(result.item.slug).toMatch(/^filename-[0-9a-f]{8}$/);
+    expect(storage.objects.get(result.item.objectKey)?.body).toEqual(body);
+    expect(repo.items.get(result.item.id)?.shareDescription).toBe(
+      "Content summary",
+    );
+    await service.updateItem(result.item.id, { title: "Edited title" });
+    expect(repo.items.get(result.item.id)?.title).toBe("Edited title");
+    expect(repo.items.get(result.item.id)?.shareDescription).toBe(
+      "Content summary",
+    );
+  });
+
   it("uses 15/30 day defaults while preserving explicit expiry values", async () => {
     const { service } = createService();
     const now = new Date("2026-07-05T00:00:00.000Z");
@@ -636,9 +662,8 @@ describe("upload", () => {
         contentType: PNG_CONTENT_TYPE,
         storageExtension: ".png",
         slugPattern: /^diagram-[0-9a-f]{8}$/,
-        body: new Uint8Array([
-          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-        ]).buffer,
+        body: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+          .buffer,
       },
       {
         filename: "diagram.svg",
@@ -915,9 +940,7 @@ describe("storage reconciliation", () => {
       },
     ]);
     expect(dryRun.orphanObjects).toEqual(["objects/orphan/index.html"]);
-    expect(dryRun.deletedObjectsPendingCleanup).toEqual([
-      deleted.objectKey,
-    ]);
+    expect(dryRun.deletedObjectsPendingCleanup).toEqual([deleted.objectKey]);
     expect(dryRun.deletedObjectsRemoved).toEqual([]);
     expect(storage.objects.has(deleted.objectKey)).toBe(true);
     expect(storage.objects.has("objects/orphan/index.html")).toBe(true);

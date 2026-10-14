@@ -139,7 +139,7 @@ test("desktop publishing, local copy feedback and grouped batch controls", async
   );
   await page.locator('.desktop-top-nav [data-route="items"]').click();
   const title = page.getByRole("button", {
-    name: "desktop-workbench",
+    name: "Desktop preview",
     exact: true,
   });
   await expect(title).toBeVisible();
@@ -295,7 +295,7 @@ test("unsaved edits survive navigation, browser Back and a cancelled refresh", a
     page.getByRole("heading", { name: "Upload", exact: true }),
   ).toBeVisible();
   await page.goForward();
-  await expect(title).toHaveValue("navigation-guard");
+  await expect(title).toHaveValue("Read in peace");
   await title.fill("Saved title");
   const saved = page.waitForResponse(
     (r) =>
@@ -369,7 +369,7 @@ test("detail hierarchy and dashboard links lead to the corresponding file filter
   await page.getByRole("button", { name: "View details" }).click();
   await expect(
     page.getByRole("heading", {
-      name: "content-hierarchy",
+      name: "Read in peace",
       exact: true,
       level: 1,
     }),

@@ -6,16 +6,18 @@ PageVault v1.0 establishes a forward-only migration contract for both supported 
 
 The v1.0 schema baseline is:
 
-| Migration | Purpose |
-| --- | --- |
-| `0001_initial.sql` | files, audit logs, access logs |
-| `0002_api_keys.sql` | upload API keys |
-| `0003_api_upload_lock.sql` | legacy upload-lock compatibility |
-| `0004_api_upload_idempotency.sql` | retry-safe API uploads |
-| `0005_maintenance_state.sql` | reconciliation/maintenance cursors and state |
-| `0006_admin_list_indexes.sql` | lightweight admin list indexes |
+| Migration                         | Purpose                                      |
+| --------------------------------- | -------------------------------------------- |
+| `0001_initial.sql`                | files, audit logs, access logs               |
+| `0002_api_keys.sql`               | upload API keys                              |
+| `0003_api_upload_lock.sql`        | legacy upload-lock compatibility             |
+| `0004_api_upload_idempotency.sql` | retry-safe API uploads                       |
+| `0005_maintenance_state.sql`      | reconciliation/maintenance cursors and state |
+| `0006_admin_list_indexes.sql`     | lightweight admin list indexes               |
 
-All migrations are additive/idempotent and must be applied in order.
+All migrations are additive and must be applied in order. D1 tracks applied migrations; the Node runtime tracks them in `pagevault_migrations` and applies each file once inside a transaction. Migrations `0001`–`0006` also remain safe to replay when upgrading a SQLite deployment that predates migration tracking.
+
+The next application update adds `0007_share_description.sql`, a nullable `share_description` column on `html_items`. Apply it before deploying code that writes automatic share metadata. It preserves existing rows, titles, original bytes, and URLs; existing items continue to use fallback descriptions. No content backfill runs. Docker applies it automatically before listening, and subsequent restarts skip it.
 
 ## Supported upgrade path
 

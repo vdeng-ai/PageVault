@@ -13,12 +13,7 @@ async function login(page) {
 
 async function uploadViaUi(
   page,
-  {
-    name,
-    mimeType,
-    buffer,
-    visibility = "public",
-  },
+  { name, mimeType, buffer, visibility = "public" },
 ) {
   await page.goto(`${ADMIN_URL}/#/`);
   // Reload to reset UploadPage component state when a test publishes more than
@@ -131,7 +126,7 @@ test("HTML UI upload keeps share/raw behavior and works on a mobile viewport", a
 }) => {
   await login(page);
   const source =
-    "<!doctype html><html><head><title>中文测试</title></head><body><h1>你好 PageVault</h1></body></html>";
+    "<!doctype html><html><head><title>中文测试</title><meta name=description content=普通描述><meta property=og:description content=自动提取的分享摘要></head><body><h1>你好 PageVault</h1></body></html>";
   const uploaded = await uploadViaUi(page, {
     name: "产品介绍.html",
     mimeType: "text/html",
@@ -139,13 +134,21 @@ test("HTML UI upload keeps share/raw behavior and works on a mobile viewport", a
   });
 
   expect(uploaded.publicUrl).toContain(`${PUBLIC_URL}/p/`);
+  expect(uploaded.title).toBe("中文测试");
+  const details = await context.request.get(
+    `${ADMIN_URL}/api/admin/items/${uploaded.id}`,
+  );
+  expect((await details.json()).shareDescription).toBe("自动提取的分享摘要");
   const rawUrl = `${PUBLIC_URL}/raw/${encodeURIComponent(uploaded.slug)}`;
 
   const share = await context.request.get(uploaded.publicUrl);
   expect(share.status()).toBe(200);
   expect(share.headers()["content-type"]).toContain("text/html");
   const shareHtml = await share.text();
-  expect(shareHtml).toContain("产品介绍");
+  expect(shareHtml).toContain("中文测试");
+  expect(shareHtml).toContain(
+    '<meta property="og:description" content="自动提取的分享摘要">',
+  );
   expect(shareHtml).toContain(rawUrl);
 
   const raw = await context.request.get(rawUrl);
@@ -154,12 +157,33 @@ test("HTML UI upload keeps share/raw behavior and works on a mobile viewport", a
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(uploaded.publicUrl);
+  await expect(page).toHaveTitle("中文测试");
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
+    "content",
+    "自动提取的分享摘要",
+  );
   await expect(page.locator(".share-viewer-shell")).toBeVisible();
-  await expect(page.locator(".share-viewer-title")).toContainText("产品介绍");
+  await expect(page.locator(".share-viewer-title")).toContainText("中文测试");
   await expect(page.locator(".share-viewer-frame")).toBeVisible();
   await expect(page.getByRole("button", { name: "复制链接" })).toBeVisible();
   await expect(page.getByRole("button", { name: "全屏查看" })).toBeVisible();
   await expect(page.getByRole("link", { name: "打开原文件" })).toBeVisible();
+
+  await page.goto(ADMIN_URL);
+  const edited = await adminJson(
+    page,
+    `/api/admin/items/${uploaded.id}`,
+    "PATCH",
+    { title: "手动修改的标题" },
+  );
+  expect(edited.status).toBe(200);
+  await page.goto(uploaded.publicUrl);
+  await expect(page).toHaveTitle("手动修改的标题");
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
+    "content",
+    "自动提取的分享摘要",
+  );
+  expect(await (await context.request.get(rawUrl)).text()).toBe(source);
 });
 
 test("Markdown, PDF range, and SVG use their lightweight public delivery paths", async ({
@@ -178,6 +202,10 @@ test("Markdown, PDF range, and SVG use their lightweight public delivery paths",
   const markdownHtml = await markdownShare.text();
   expect(markdownHtml).toContain('<h1 id="notes">Notes</h1>');
   expect(markdownHtml).toContain("<strong>Ready</strong>");
+  expect(markdownHtml).toContain('<meta property="og:title" content="Notes">');
+  expect(markdownHtml).toContain(
+    '<meta property="og:description" content="Ready">',
+  );
 
   const pdfBytes = Buffer.from("%PDF-1.7\n0123456789abcdef");
   const pdf = await uploadViaUi(page, {
@@ -317,7 +345,6 @@ test("API Idempotency-Key replays the same upload and rejects conflicting reuse"
   });
 });
 
-
 test("admin library filters server-side and restores selected files in batch", async ({
   page,
   context,
@@ -335,12 +362,9 @@ test("admin library filters server-side and restores selected files in batch", a
     buffer: Buffer.from("%PDF-1.7\nadmin-filter"),
   });
 
-  const disable = await adminJson(
-    page,
-    `/api/admin/items/${pdf.id}`,
-    "PATCH",
-    { status: "disabled" },
-  );
+  const disable = await adminJson(page, `/api/admin/items/${pdf.id}`, "PATCH", {
+    status: "disabled",
+  });
   expect(disable.status).toBe(200);
 
   await page.goto(`${ADMIN_URL}/#/items`);

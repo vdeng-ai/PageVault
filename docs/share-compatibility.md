@@ -18,6 +18,7 @@ CI/Playwright verifies:
 - Open Graph/Twitter image selection:
   - JPEG/PNG/WebP -> original raw image;
   - HTML/Markdown/PDF/SVG -> static PageVault fallback PNG.
+- upload-time HTML/Markdown title and description extraction, persisted metadata escaping, and the legacy file-type/size description fallback.
 
 ## Manual release smoke test
 
@@ -41,6 +42,7 @@ For each link confirm:
 6. image fit/background controls work without uploading or generating another asset;
 7. the raw file remains behind PageVault visibility/status/expiry checks;
 8. the preview card uses the original raster image only for JPEG/PNG/WebP and otherwise uses the PageVault fallback image.
+9. newly uploaded HTML/Markdown links use the extracted title and content description when present, while old items and files without descriptions retain their fallback metadata.
 
 Messaging platforms cache link previews aggressively. When verifying changed metadata, use a newly published slug rather than assuming an old preview will refresh immediately.
 

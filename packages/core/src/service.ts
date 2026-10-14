@@ -20,6 +20,7 @@ import { validateFileContent } from "./file-validation.js";
 import { randomHex, sha256Hex } from "./hash.js";
 import type { MetadataRepository } from "./repository.js";
 import { buildPublicSlug } from "./slug.js";
+import { extractShareMetadata } from "./share-metadata.js";
 import type {
   StorageProvider,
   StoredObject,
@@ -381,9 +382,11 @@ export class PageVaultService {
     }
     const objectKey = `objects/${id}/index${fileType.storageExtension}`;
     const visibility = input.visibility ?? "public";
+    const shareMetadata = extractShareMetadata(fileType.kind, input.body);
     const item: VaultItem = {
       id,
-      title: titleFromFilename(input.filename),
+      title: shareMetadata.title ?? titleFromFilename(input.filename),
+      shareDescription: shareMetadata.description,
       originalFilename: input.filename,
       slug,
       objectKey,

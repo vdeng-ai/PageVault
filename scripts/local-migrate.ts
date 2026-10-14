@@ -12,6 +12,7 @@ console.log(
       "0004_api_upload_idempotency",
       "0005_maintenance_state",
       "0006_admin_list_indexes",
+      "0007_share_description",
     ],
   }),
 );

@@ -1,8 +1,128 @@
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
-import { HTML_CONTENT_TYPE, PDF_CONTENT_TYPE } from "@pagevault/core";
+import {
+  HTML_CONTENT_TYPE,
+  PDF_CONTENT_TYPE,
+  type VaultItem,
+} from "@pagevault/core";
 import { describe, expect, it } from "vitest";
 import { NodeSqliteRepository } from "../node-db.js";
+
+describe("NodeSqliteRepository share metadata migration", () => {
+  it("upgrades legacy rows, round-trips descriptions and preserves them across restarts/title edits", async () => {
+    const db = new DatabaseSync(":memory:");
+    const migration = (name: string) =>
+      fileURLToPath(
+        new URL(`../../../../../migrations/${name}`, import.meta.url),
+      );
+    const repository = new NodeSqliteRepository(db);
+    const legacy: VaultItem = {
+      id: "legacy",
+      title: "Existing title",
+      originalFilename: "legacy.html",
+      slug: "legacy-a1b2c3d4",
+      objectKey: "objects/legacy/index.html",
+      contentType: HTML_CONTENT_TYPE,
+      sizeBytes: 10,
+      sha256: "hash",
+      visibility: "public",
+      status: "active",
+      urlExpiresAt: "2027-01-01T00:00:00Z",
+      fileExpiresAt: "2027-01-01T00:00:00Z",
+      accessCount: 0,
+      lastAccessedAt: null,
+      createdAt: "2026-10-14T00:00:00Z",
+      updatedAt: "2026-10-14T00:00:00Z",
+      deletedAt: null,
+    };
+    try {
+      // Simulate an existing SQLite deployment before migration tracking.
+      const { readFile } = await import("node:fs/promises");
+      db.exec(await readFile(migration("0001_initial.sql"), "utf8"));
+      db.prepare(
+        `INSERT INTO html_items (id, title, original_filename, slug, object_key,
+        size_bytes, sha256, url_expires_at, file_expires_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(
+        legacy.id,
+        legacy.title,
+        legacy.originalFilename,
+        legacy.slug,
+        legacy.objectKey,
+        legacy.sizeBytes,
+        legacy.sha256,
+        legacy.urlExpiresAt,
+        legacy.fileExpiresAt,
+        legacy.createdAt,
+        legacy.updatedAt,
+      );
+      await repository.migrate(migration("0001_initial.sql"));
+      await repository.migrate(migration("0007_share_description.sql"));
+      expect(await repository.getItemById("legacy")).toMatchObject({
+        title: "Existing title",
+        shareDescription: null,
+      });
+      await repository.createItem({
+        item: {
+          ...legacy,
+          id: "new",
+          slug: "new",
+          objectKey: "objects/new/index.html",
+          shareDescription: "Automatic summary",
+        },
+      });
+      const restarted = new NodeSqliteRepository(db);
+      await restarted.migrate(migration("0001_initial.sql"));
+      await restarted.migrate(migration("0007_share_description.sql"));
+      await restarted.updateItem("new", { title: "Edited title" });
+      expect(await restarted.getItemById("new")).toMatchObject({
+        title: "Edited title",
+        shareDescription: "Automatic summary",
+      });
+      expect(
+        (await restarted.listItems({ page: 1, pageSize: 10 })).items.find(
+          (item) => item.id === "new",
+        )?.shareDescription,
+      ).toBe("Automatic summary");
+    } finally {
+      db.close();
+    }
+  });
+
+  it("rolls back failed migrations so a later retry can apply safely", async () => {
+    const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
+    const root = await mkdtemp("/tmp/pagevault-migration-");
+    const db = new DatabaseSync(":memory:");
+    const repository = new NodeSqliteRepository(db);
+    const path = `${root}/failed.sql`;
+    try {
+      await writeFile(
+        path,
+        "CREATE TABLE migration_probe (id TEXT); INVALID SQL;",
+      );
+      await expect(repository.migrate(path)).rejects.toThrow();
+      expect(
+        db
+          .prepare(
+            "SELECT name FROM sqlite_master WHERE name = 'migration_probe'",
+          )
+          .get(),
+      ).toBeUndefined();
+      expect(db.prepare("SELECT name FROM pagevault_migrations").all()).toEqual(
+        [],
+      );
+      await writeFile(path, "CREATE TABLE migration_probe (id TEXT);");
+      await repository.migrate(path);
+      await repository.migrate(path);
+      expect(
+        db.prepare("SELECT name FROM pagevault_migrations").all(),
+      ).toHaveLength(1);
+    } finally {
+      db.close();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("NodeSqliteRepository operations migration", () => {
   it("requires the maintenance migration and accepts empty maintenance history", async () => {
@@ -167,6 +287,14 @@ describe("NodeSqliteRepository dashboard stats", () => {
 
     try {
       await repository.migrate(migrationPath);
+      await repository.migrate(
+        fileURLToPath(
+          new URL(
+            "../../../../../migrations/0007_share_description.sql",
+            import.meta.url,
+          ),
+        ),
+      );
       await repository.createItem({
         item: {
           id: "active",
@@ -226,7 +354,6 @@ describe("NodeSqliteRepository dashboard stats", () => {
   });
 });
 
-
 describe("NodeSqliteRepository admin list filters", () => {
   it("filters by file kind, created time, expiry window, and size", async () => {
     const db = new DatabaseSync(":memory:");
@@ -273,6 +400,14 @@ describe("NodeSqliteRepository admin list filters", () => {
 
     try {
       await repository.migrate(initialMigration);
+      await repository.migrate(
+        fileURLToPath(
+          new URL(
+            "../../../../../migrations/0007_share_description.sql",
+            import.meta.url,
+          ),
+        ),
+      );
       await repository.migrate(indexMigration);
       await repository.migrate(indexMigration);
 

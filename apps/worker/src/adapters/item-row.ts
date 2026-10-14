@@ -8,6 +8,7 @@ import {
 export interface HtmlItemRow {
   id: string;
   title: string;
+  share_description?: string | null;
   original_filename: string;
   slug: string;
   object_key: string;
@@ -29,6 +30,7 @@ export function mapItemRow(row: HtmlItemRow): VaultItem {
   return {
     id: row.id,
     title: row.title,
+    shareDescription: row.share_description ?? null,
     originalFilename: row.original_filename,
     slug: row.slug,
     objectKey: row.object_key,
@@ -43,14 +45,17 @@ export function mapItemRow(row: HtmlItemRow): VaultItem {
     lastAccessedAt: row.last_accessed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    deletedAt: row.deleted_at
+    deletedAt: row.deleted_at,
   };
 }
 
-export function itemToRowValues(item: VaultItem): Array<string | number | null> {
+export function itemToRowValues(
+  item: VaultItem,
+): Array<string | number | null> {
   return [
     item.id,
     item.title,
+    item.shareDescription ?? null,
     item.originalFilename,
     item.slug,
     item.objectKey,
@@ -65,16 +70,16 @@ export function itemToRowValues(item: VaultItem): Array<string | number | null> 
     item.lastAccessedAt,
     item.createdAt,
     item.updatedAt,
-    item.deletedAt
+    item.deletedAt,
   ];
 }
 
 export const insertItemSql = `
   INSERT INTO html_items (
-    id, title, original_filename, slug, object_key, content_type, size_bytes, sha256,
+    id, title, share_description, original_filename, slug, object_key, content_type, size_bytes, sha256,
     visibility, status, url_expires_at, file_expires_at, access_count, last_accessed_at,
     created_at, updated_at, deleted_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 export interface ListSqlParts {
@@ -102,7 +107,9 @@ export function buildListWhere(input: {
   const now = new Date().toISOString();
 
   if (input.q?.trim()) {
-    conditions.push("(title LIKE ? OR original_filename LIKE ? OR slug LIKE ?)");
+    conditions.push(
+      "(title LIKE ? OR original_filename LIKE ? OR slug LIKE ?)",
+    );
     const value = `%${input.q.trim()}%`;
     values.push(value, value, value);
   }
@@ -200,6 +207,6 @@ export function buildListWhere(input: {
 
   return {
     whereSql: conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "",
-    values
+    values,
   };
 }

@@ -175,6 +175,10 @@ Share/viewer URLs stay stable:
 
 These routes always return a PageVault HTML share page with canonical/Open Graph/Twitter metadata. HTML is shown in a sandboxed iframe, Markdown is rendered into the viewer with raw HTML disabled, PDF uses the browser-native viewer, and JPEG/PNG/SVG/WebP are displayed as images.
 
+New HTML/Markdown uploads derive share metadata once from at most the first 64 KiB of the original bytes. HTML uses the first non-empty `<title>` and prefers `og:description` over `meta name="description"` in the document head. Markdown uses the first non-empty heading and first non-empty top-level prose paragraph, excluding front matter, code blocks, images, lists, and blockquotes. Titles follow the existing 200 UTF-16-unit limit without splitting surrogate pairs, and descriptions are limited to 120 Unicode characters; formatting and repeated whitespace are removed. Missing titles keep the filename-derived default, and missing descriptions keep `file type · size · 由 PageVault 分享`. Item responses may include the read-only `shareDescription` field. Existing title editing remains available; there is no manual description input. Original bytes and slug generation remain unchanged.
+
+The public viewer reads persisted metadata without extracting it again or adding storage reads/writes for previews. Existing items retain their saved titles and fallback descriptions; this change does not backfill old files. Apply migration `0007_share_description.sql` before deploying the updated code.
+
 Viewer 2.0 keeps all controls client-side: share-link copy, open-original, HTML/PDF fullscreen, and image fit/background toggles do not create server-side jobs or derived files. Raster JPEG/PNG/WebP items use the original raw image for Open Graph/Twitter preview. HTML, Markdown, PDF, and SVG use the fixed `/share-card.png` fallback so social crawlers are not required to render document or SVG content. The fallback PNG is a static asset and does not read D1 or R2.
 
 The original stored content is available separately at:
