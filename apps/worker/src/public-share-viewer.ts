@@ -3,11 +3,7 @@ import {
   type StoredObject,
   type VaultItem,
 } from "@pagevault/core";
-import {
-  escapePublicHtml,
-  publicDocument,
-  publicHeader,
-} from "./public-layout.js";
+import { escapePublicHtml, publicDocument } from "./public-layout.js";
 import {
   isMarkdownContentType,
   renderPublicMarkdownBody,
@@ -89,7 +85,7 @@ function iframeViewer(
   sandbox: boolean,
   kind: "html" | "pdf",
 ): string {
-  return `<section class="share-viewer-stage share-viewer-stage-frame"${kind === "pdf" ? " data-fullscreen-target" : ""}><iframe class="share-viewer-frame" src="${escapeAttribute(rawUrl)}" title="${escapeAttribute(title)}" referrerpolicy="no-referrer" allowfullscreen data-viewer-kind="${kind}"${sandbox ? ' sandbox="allow-scripts"' : ""}></iframe></section>`;
+  return `<section class="share-viewer-stage share-viewer-stage-frame"><iframe class="share-viewer-frame" src="${escapeAttribute(rawUrl)}" title="${escapeAttribute(title)}" referrerpolicy="no-referrer" allowfullscreen data-viewer-kind="${kind}"${sandbox ? ' sandbox="allow-scripts"' : ""}></iframe></section>`;
 }
 
 function imageViewer(rawUrl: string, title: string): string {
@@ -99,15 +95,14 @@ function imageViewer(rawUrl: string, title: string): string {
 function viewerActions(input: {
   publicUrl: string;
   rawUrl: string;
-  supportsFullscreen: boolean;
   imageControls: boolean;
-  requiresScript?: boolean;
+  readingControls: boolean;
 }): string {
-  const scriptOnly = input.requiresScript ? " hidden" : "";
   return `<div class="share-viewer-actions">
-    <button class="share-viewer-action" type="button" data-copy-share data-copy-value="${escapeAttribute(input.publicUrl)}"${scriptOnly}>复制链接</button>
-    ${input.imageControls ? '<button class="share-viewer-action" type="button" data-image-fit>查看原尺寸</button><button class="share-viewer-action" type="button" data-image-background-toggle>切换背景</button>' : ""}
-    ${input.supportsFullscreen ? `<button class="share-viewer-action" type="button" data-fullscreen-toggle${scriptOnly}>全屏查看</button>` : ""}
+    <button class="share-viewer-action" type="button" data-copy-share data-copy-value="${escapeAttribute(input.publicUrl)}" hidden>复制链接</button>
+    ${input.imageControls ? '<button class="share-viewer-action" type="button" data-image-fit hidden>查看原尺寸</button><button class="share-viewer-action" type="button" data-image-background-toggle hidden>切换背景</button>' : ""}
+    ${input.readingControls ? '<button class="share-viewer-action" type="button" data-theme-toggle hidden>切换主题</button>' : ""}
+    <button class="share-viewer-action" type="button" data-fullscreen-toggle hidden>全屏查看</button>
     <a class="share-viewer-action share-viewer-action-primary" href="${escapeAttribute(input.rawUrl)}" target="_blank" rel="noreferrer">打开原文件</a>
   </div>`;
 }
@@ -129,8 +124,6 @@ export async function renderPublicShareViewer(input: {
     capability?.kind === "png" ||
     capability?.kind === "webp";
   const isImage = isRasterImage || capability?.kind === "svg";
-  const supportsFullscreen =
-    capability?.kind === "html" || capability?.kind === "pdf";
 
   let viewer: string;
   if (isMarkdown && input.markdownObject) {
@@ -138,6 +131,7 @@ export async function renderPublicShareViewer(input: {
       {
         item: input.item,
         object: input.markdownObject,
+        showFooter: false,
       },
     )}</section>`;
   } else if (capability?.kind === "html") {
@@ -150,28 +144,22 @@ export async function renderPublicShareViewer(input: {
     viewer = `<section class="share-viewer-stage share-viewer-fallback"><div><p>当前文件可直接打开原文件查看。</p><a class="share-viewer-action share-viewer-action-primary" href="${escapeAttribute(input.rawUrl)}" target="_blank" rel="noreferrer">打开原文件</a></div></section>`;
   }
 
-  const body = isHtml
-    ? `<main class="share-immersive" data-fullscreen-target>${viewer}<details class="share-tools" data-share-tools><summary>${publicIcons["sliders-horizontal"]}<span>页面工具</span></summary><div class="share-tools-panel"><h1 class="share-tools-title">${escapePublicHtml(title)}</h1>${viewerActions(
-        {
-          publicUrl: input.publicUrl,
-          rawUrl: input.rawUrl,
-          supportsFullscreen: true,
-          imageControls: false,
-          requiresScript: true,
-        },
-      )}<p class="share-viewer-feedback" data-share-feedback aria-live="polite"></p></div></details></main>`
-    : `${publicHeader(true)}<main class="share-viewer-shell${isMarkdown ? " share-reader" : ""}"><section class="share-viewer-meta"><div class="share-viewer-copy"><p class="share-viewer-eyebrow">${escapePublicHtml(label)}</p><h1 class="share-viewer-title">${escapePublicHtml(title)}</h1><p class="share-viewer-subtitle">${escapePublicHtml(input.item.originalFilename)} · ${escapePublicHtml(formatFileSize(input.item.sizeBytes))}</p></div>${viewerActions(
-        {
-          publicUrl: input.publicUrl,
-          rawUrl: input.rawUrl,
-          supportsFullscreen,
-          imageControls: isImage,
-        },
-      )}</section><p class="share-viewer-feedback" data-share-feedback aria-live="polite"></p>${viewer}<footer class="share-viewer-footer">由 PageVault 发布与分享</footer></main>`;
+  const body = `<main class="share-immersive" data-fullscreen-target>${viewer}<details class="share-tools" data-share-tools><summary>${publicIcons["sliders-horizontal"]}<span>页面工具</span></summary><div class="share-tools-panel"><h1 class="share-tools-title">${escapePublicHtml(title)}</h1>${viewerActions(
+    {
+      publicUrl: input.publicUrl,
+      rawUrl: input.rawUrl,
+      imageControls: isImage,
+      readingControls: isMarkdown,
+    },
+  )}<p class="share-viewer-feedback" data-share-feedback aria-live="polite"></p></div></details></main>`;
 
   return publicDocument({
     title,
-    layout: isHtml ? "immersive-html" : "default",
+    layout: isHtml
+      ? "immersive-html"
+      : isMarkdown
+        ? "immersive-markdown"
+        : "immersive",
     head: shareHead({
       item: input.item,
       publicUrl: input.publicUrl,

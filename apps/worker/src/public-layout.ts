@@ -14,6 +14,7 @@ const themeScript = `
   try { root.dataset.theme=localStorage.getItem('pagevault.public.theme')==='light'?'light':'dark'; } catch (_) {}
   document.addEventListener('DOMContentLoaded',function(){
     var toggle=document.querySelector('[data-theme-toggle]');
+    if(toggle)toggle.hidden=false;
     function update(){if(toggle){var light=root.dataset.theme==='light';toggle.setAttribute('aria-label',light?'切换深色模式':'切换浅色模式');toggle.setAttribute('title',light?'切换深色模式':'切换浅色模式');}}
     update();
     if(toggle)toggle.addEventListener('click',function(){root.dataset.theme=root.dataset.theme==='light'?'dark':'light';try{localStorage.setItem('pagevault.public.theme',root.dataset.theme);}catch(_){}update();});
@@ -62,12 +63,14 @@ const themeScript = `
     });
     var imageStage=document.querySelector('[data-image-stage]');
     var imageFit=document.querySelector('[data-image-fit]');
+    if(imageStage&&imageFit)imageFit.hidden=false;
     if(imageStage&&imageFit)imageFit.addEventListener('click',function(){
       var original=imageStage.getAttribute('data-image-fit')==='original';
       imageStage.setAttribute('data-image-fit',original?'fit':'original');
       imageFit.textContent=original?'查看原尺寸':'适应屏幕';
     });
     var imageBackground=document.querySelector('[data-image-background-toggle]');
+    if(imageStage&&imageBackground)imageBackground.hidden=false;
     if(imageStage&&imageBackground)imageBackground.addEventListener('click',function(){
       var light=imageStage.getAttribute('data-image-background')==='light';
       imageStage.setAttribute('data-image-background',light?'dark':'light');
@@ -97,10 +100,19 @@ export function publicHeader(document = false): string {
 }
 
 const immersiveStyles = `
-html[data-layout=immersive-html],html[data-layout=immersive-html] body{min-width:0;width:100%;height:100%;overflow:hidden;scroll-padding:0}
+html[data-layout^=immersive],html[data-layout^=immersive] body{min-width:0;width:100%;height:100%;overflow:hidden;scroll-padding:0}
 .share-immersive{position:relative;width:100%;height:100vh;height:100dvh;overflow:hidden}
 .share-immersive .share-viewer-stage{width:100%;height:100%;min-height:0;border:0;border-radius:0}
 .share-immersive .share-viewer-frame{width:100%;height:100%;color-scheme:normal}
+.share-immersive .share-viewer-image-wrap{padding:0}
+.share-immersive .share-viewer-image{max-height:100vh;max-height:100dvh}
+.share-immersive .share-viewer-image-wrap[data-image-fit=original] .share-viewer-image{max-height:none}
+html[data-layout=immersive-markdown],html[data-layout=immersive-markdown] body{height:auto;overflow:visible;scroll-padding-top:24px}
+html[data-layout=immersive-markdown] .share-immersive{height:auto;min-height:100vh;min-height:100dvh;overflow:visible;padding:64px 0 24px}
+html[data-layout=immersive-markdown] .share-viewer-markdown{border:0;border-radius:0;background:transparent}
+html[data-layout=immersive-markdown] .reader-layout{margin-top:0;margin-bottom:0;gap:32px}
+html[data-layout=immersive-markdown] .share-immersive:fullscreen{height:100vh;height:100dvh;overflow:auto;background:var(--bg)}
+html[data-layout=immersive-markdown] .share-tools{position:fixed}
 .share-tools{position:absolute;z-index:1;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));max-width:calc(100% - 24px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));font-size:14px}
 .share-tools summary{display:flex;align-items:center;justify-content:center;gap:8px;width:max-content;max-width:100%;min-height:44px;margin-left:auto;padding:8px 12px;list-style:none;cursor:pointer;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);box-shadow:0 2px 12px #0002}
 .share-tools summary::-webkit-details-marker{display:none}
@@ -124,8 +136,8 @@ export function publicDocument({
   title: string;
   body: string;
   head?: string;
-  layout?: "default" | "immersive-html";
+  layout?: "default" | "immersive-html" | "immersive" | "immersive-markdown";
 }): string {
-  const immersive = layout === "immersive-html";
-  return `<!doctype html><html lang="zh-CN" data-theme="dark"${immersive ? ' data-layout="immersive-html"' : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1${immersive ? ",viewport-fit=cover" : ""}"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2"><title>${escapePublicHtml(title)}</title>${head}<script>${themeScript}</script><style>${styles}${immersive ? immersiveStyles : ""}</style></head><body>${body}</body></html>`;
+  const immersive = layout !== "default";
+  return `<!doctype html><html lang="zh-CN" data-theme="dark"${immersive ? ` data-layout="${layout}"` : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1${immersive ? ",viewport-fit=cover" : ""}"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2"><title>${escapePublicHtml(title)}</title>${head}<script>${themeScript}</script><style>${styles}${immersive ? immersiveStyles : ""}</style></head><body>${body}</body></html>`;
 }

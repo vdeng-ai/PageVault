@@ -14,6 +14,7 @@ export function isMarkdownContentType(contentType: string): boolean {
 export async function renderPublicMarkdownBody(input: {
   item: VaultItem;
   object: StoredObject;
+  showFooter?: boolean;
 }): Promise<string> {
   const body =
     input.object.body instanceof ArrayBuffer
@@ -26,7 +27,7 @@ export async function renderPublicMarkdownBody(input: {
   const toc = headings.length
     ? `<aside class="reader-toc" aria-label="文档目录"><details class="toc-inner" data-reader-toc data-long-toc="${headings.length > 3}"><summary>目录 <span>${headings.length}</span></summary><nav><ul>${headings.map((heading) => `<li${heading.level > 2 ? ' class="toc-nested"' : ""}><a href="#${escapePublicHtml(encodeURIComponent(heading.id))}">${escapePublicHtml(heading.text)}</a></li>`).join("")}</ul></nav></details></aside>`
     : "";
-  return `<div id="top" class="reader-layout${headings.length <= 3 ? " reader-layout-compact" : ""}"${headings.length ? "" : ' style="display:block;max-width:960px"'}>${toc}<div class="reader-content"><article class="markdown-body">${rendered.html}</article><footer class="reader-footer"><span>由 PageVault 发布</span><a href="#top">${publicIcons["arrow-up"]}返回顶部</a></footer></div></div>`;
+  return `<div id="top" class="reader-layout${headings.length <= 3 ? " reader-layout-compact" : ""}"${headings.length ? "" : ' style="display:block;max-width:960px"'}>${toc}<div class="reader-content"><article class="markdown-body">${rendered.html}</article>${input.showFooter === false ? "" : `<footer class="reader-footer"><span>由 PageVault 发布</span><a href="#top">${publicIcons["arrow-up"]}返回顶部</a></footer>`}</div></div>`;
 }
 
 export async function renderPublicMarkdownDocument(input: {

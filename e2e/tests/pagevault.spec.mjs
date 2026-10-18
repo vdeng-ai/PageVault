@@ -484,6 +484,157 @@ test("Markdown, PDF range, and SVG use their lightweight public delivery paths",
   expect(hiddenAdminAsset.status()).toBe(404);
 });
 
+test("images, PDF, and Markdown open without chrome and keep tools usable", async ({
+  page,
+  context,
+  browser,
+}) => {
+  test.setTimeout(60_000);
+  await login(page);
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXioAAAAASUVORK5CYII=",
+    "base64",
+  );
+  const files = [
+    { name: "image.png", mimeType: "image/png", buffer: png, kind: "image" },
+    {
+      name: "diagram.svg",
+      mimeType: "image/svg+xml",
+      buffer: Buffer.from(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200"><rect width="1800" height="1200" fill="#82b5a0"/></svg>',
+      ),
+      kind: "image",
+    },
+    {
+      name: "report.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.7\n0123456789abcdef"),
+      kind: "pdf",
+    },
+    {
+      name: "reading.md",
+      mimeType: "text/markdown",
+      buffer: Buffer.from(
+        `# Reading\n\n## First section\n\n${"Readable paragraph.\n\n".repeat(80)}## Last section\n\nEnd of reading.`,
+      ),
+      kind: "markdown",
+    },
+  ];
+  const publicPage = await context.newPage();
+  const errors = [];
+  publicPage.on("pageerror", (error) => errors.push(error.message));
+  publicPage.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  for (const file of files) {
+    const uploaded = await uploadViaUi(page, file);
+    const raw = await context.request.get(
+      `${PUBLIC_URL}/raw/${encodeURIComponent(uploaded.slug)}`,
+    );
+    expect(await raw.body()).toEqual(file.buffer);
+    await publicPage.goto(uploaded.publicUrl);
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      await publicPage.setViewportSize(viewport);
+      await expect(
+        publicPage.locator(".public-header, .share-viewer-meta, footer"),
+      ).toHaveCount(0);
+      await expect(publicPage.locator(".share-tools")).not.toHaveAttribute(
+        "open",
+        "",
+      );
+      expect(
+        await publicPage.evaluate(() => document.documentElement.scrollWidth),
+      ).toBe(viewport.width);
+      if (file.kind === "markdown") {
+        await expect(
+          publicPage.getByRole("heading", { name: "Reading", exact: true }),
+        ).toBeVisible();
+        expect(
+          (await publicPage.locator(".markdown-body").boundingBox()).y,
+        ).toBeLessThan(200);
+        await publicPage
+          .getByRole("heading", { name: "Last section" })
+          .scrollIntoViewIfNeeded();
+        await expect(
+          publicPage.getByRole("heading", { name: "Last section" }),
+        ).toBeInViewport();
+        await publicPage.evaluate(() => scrollTo(0, 0));
+      } else {
+        await expect
+          .poll(() => publicPage.locator(".share-viewer-stage").boundingBox())
+          .toEqual({ x: 0, y: 0, ...viewport });
+        if (file.kind === "image") {
+          expect(
+            await publicPage
+              .locator("img")
+              .evaluate((img) => img.complete && img.naturalWidth > 0),
+          ).toBe(true);
+        }
+      }
+      await publicPage.locator(".share-tools summary").click();
+      await expect(
+        publicPage.getByRole("link", { name: "打开原文件" }),
+      ).toBeVisible();
+      if (file.kind === "image") {
+        await publicPage.getByRole("button", { name: "查看原尺寸" }).click();
+        await expect(publicPage.locator("[data-image-stage]")).toHaveAttribute(
+          "data-image-fit",
+          "original",
+        );
+        await publicPage.getByRole("button", { name: "适应屏幕" }).click();
+        await publicPage.locator("[data-image-background-toggle]").click();
+        await expect(publicPage.locator("[data-image-stage]")).toHaveAttribute(
+          "data-image-background",
+          "light",
+        );
+        await publicPage.locator("[data-image-background-toggle]").click();
+      }
+      if (file.kind === "markdown") {
+        await publicPage.locator("[data-theme-toggle]").click();
+        await expect(publicPage.locator("html")).toHaveAttribute(
+          "data-theme",
+          "light",
+        );
+        await publicPage.locator("[data-theme-toggle]").click();
+      }
+      await publicPage.getByRole("button", { name: "全屏查看" }).click();
+      await expect
+        .poll(() =>
+          publicPage.evaluate(() => document.fullscreenElement?.className),
+        )
+        .toBe("share-immersive");
+      await expect(publicPage.locator(".share-tools summary")).toBeVisible();
+      await publicPage.getByRole("button", { name: "退出全屏" }).click();
+      await expect
+        .poll(() => publicPage.evaluate(() => document.fullscreenElement))
+        .toBeNull();
+      await publicPage.keyboard.press("Escape");
+      await expect(publicPage.locator(".share-tools summary")).toBeFocused();
+    }
+    const noJs = await browser.newContext({ javaScriptEnabled: false });
+    try {
+      const nativePage = await noJs.newPage();
+      await nativePage.goto(uploaded.publicUrl);
+      await nativePage.locator(".share-tools summary").click();
+      await expect(
+        nativePage.getByRole("link", { name: "打开原文件" }),
+      ).toBeVisible();
+      await expect(
+        nativePage.locator(".share-tools button:visible"),
+      ).toHaveCount(0);
+      if (file.kind === "markdown")
+        await expect(nativePage.locator(".markdown-body")).toBeVisible();
+    } finally {
+      await noJs.close();
+    }
+  }
+  expect(errors).toEqual([]);
+  await publicPage.close();
+});
+
 test("private, disabled, and expired records map to the expected public states", async ({
   page,
   context,

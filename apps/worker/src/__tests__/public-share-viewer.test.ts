@@ -114,7 +114,7 @@ describe("public share viewer", () => {
     expect(body).not.toContain("<footer");
   });
 
-  it("keeps PDF in its existing framed layout", async () => {
+  it("gives PDF the same immersive layout and collapsed tools", async () => {
     const html = await renderPublicShareViewer({
       item: item({
         contentType: PDF_CONTENT_TYPE,
@@ -123,12 +123,12 @@ describe("public share viewer", () => {
       ...urls,
     });
     const body = html.split("<body>")[1] ?? "";
-    expect(html).not.toContain('data-layout="immersive-html"');
-    expect(body).toContain('class="public-header"');
-    expect(body).toContain('class="share-viewer-shell"');
-    expect(body).toContain('class="share-viewer-title"');
-    expect(body).toContain('class="share-viewer-footer"');
-    expect(body).not.toContain("<details");
+    expect(html).toContain('data-layout="immersive"');
+    expect(body).not.toContain('class="public-header"');
+    expect(body).not.toContain('class="share-viewer-shell"');
+    expect(body).not.toContain("<footer");
+    expect(body).toContain('<details class="share-tools" data-share-tools>');
+    expect(body.match(/data-fullscreen-target/g)).toHaveLength(1);
     expect(body).not.toContain("sandbox=");
   });
 
@@ -148,6 +148,12 @@ describe("public share viewer", () => {
     expect(html).not.toContain('property="og:image:width"');
     expect(html).toContain("data-image-fit");
     expect(html).toContain("data-image-background-toggle");
+    expect(html).toContain('data-layout="immersive"');
+    const body = html.split("<body>")[1] ?? "";
+    expect(body).not.toContain('class="public-header"');
+    expect(body).not.toContain("<footer");
+    expect(body).toContain("data-image-fit hidden");
+    expect(body).toContain("data-fullscreen-toggle hidden");
   });
 
   it("uses fallback art for SVG instead of relying on social SVG support", async () => {
@@ -187,8 +193,14 @@ describe("public share viewer", () => {
     });
 
     expect(html).toContain('<h1 id="notes">Notes</h1>');
+    expect(html).toContain('data-layout="immersive-markdown"');
+    const body = html.split("<body>")[1] ?? "";
+    expect(body).not.toContain('class="public-header"');
+    expect(body).not.toContain("<footer");
+    expect(body).toContain("data-theme-toggle hidden");
+    expect(body.match(/data-fullscreen-target/g)).toHaveLength(1);
     expect(html).toContain("reader-toc");
     expect(html).toContain("data-copy-share");
-    expect(html.match(/data-fullscreen-toggle/g)).toHaveLength(1);
+    expect(body.match(/data-fullscreen-toggle/g)).toHaveLength(1);
   });
 });
