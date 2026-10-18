@@ -64,7 +64,8 @@ async function adminJson(page, path, method, body) {
           "Content-Type": "application/json",
           "X-CSRF-Token": me.csrfToken,
         },
-        body: requestBody === undefined ? undefined : JSON.stringify(requestBody),
+        body:
+          requestBody === undefined ? undefined : JSON.stringify(requestBody),
       });
       const data = await response.json().catch(() => ({}));
       return { status: response.status, data };
@@ -162,9 +163,14 @@ test("HTML UI upload keeps share/raw behavior and works on a mobile viewport", a
     "content",
     "自动提取的分享摘要",
   );
-  await expect(page.locator(".share-viewer-shell")).toBeVisible();
-  await expect(page.locator(".share-viewer-title")).toContainText("中文测试");
+  await expect(page.locator(".share-immersive")).toBeVisible();
+  await expect(page.locator("[data-share-tools]")).not.toHaveAttribute(
+    "open",
+    "",
+  );
   await expect(page.locator(".share-viewer-frame")).toBeVisible();
+  await page.locator(".share-tools summary").click();
+  await expect(page.locator(".share-tools-title")).toContainText("中文测试");
   await expect(page.getByRole("button", { name: "复制链接" })).toBeVisible();
   await expect(page.getByRole("button", { name: "全屏查看" })).toBeVisible();
   await expect(page.getByRole("link", { name: "打开原文件" })).toBeVisible();
@@ -184,6 +190,232 @@ test("HTML UI upload keeps share/raw behavior and works on a mobile viewport", a
     "自动提取的分享摘要",
   );
   expect(await (await context.request.get(rawUrl)).text()).toBe(source);
+});
+
+const immersiveSource = `<!doctype html><html><head>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${"VeryLongDocumentTitle".repeat(10)}</title>
+  <style>body{margin:0;background:#faf8f2;color:#20242a;font:18px system-ui}nav{position:fixed;top:0;left:0;padding:16px;background:#e8eddf}main{padding:100px 24px 24px}#space{height:2200px}button{font:inherit;padding:12px}</style>
+  </head><body><nav>Original fixed navigation</nav><main><h1>Original HTML</h1>
+  <button id="counter">Count: 0</button><div id="space"></div><p id="end">End of document</p></main>
+  <script>
+  window.loadToken=Math.random();
+  document.querySelector('#counter').addEventListener('click',function(){this.textContent='Count: 1';});
+  try{window.parent.document.body;document.body.dataset.parentAccess='allowed';}catch(_){document.body.dataset.parentAccess='blocked';}
+  try{localStorage.getItem('test');document.body.dataset.storageAccess='allowed';}catch(_){document.body.dataset.storageAccess='blocked';}
+  </script></body></html>`;
+
+async function publishImmersive(page) {
+  await login(page);
+  return uploadViaUi(page, {
+    name: "immersive.html",
+    mimeType: "text/html",
+    buffer: Buffer.from(immersiveSource),
+  });
+}
+
+test("immersive HTML fills desktop and mobile viewports without moving or reloading content", async ({
+  page,
+  context,
+}) => {
+  const uploaded = await publishImmersive(page);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  let rawRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/raw/")) rawRequests++;
+  });
+  await page.goto(uploaded.publicUrl);
+  const frame = page.frameLocator(".share-viewer-frame");
+  await expect(frame.locator("body")).toHaveAttribute(
+    "data-parent-access",
+    "blocked",
+  );
+  await expect(frame.locator("body")).toHaveAttribute(
+    "data-storage-access",
+    "blocked",
+  );
+  await frame.getByRole("button", { name: "Count: 0" }).click();
+  await expect(frame.getByRole("button", { name: "Count: 1" })).toBeVisible();
+  const loadToken = await frame
+    .locator("body")
+    .evaluate(() => window.loadToken);
+
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+    { width: 260, height: 568 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const iframe = page.locator(".share-viewer-frame");
+    await expect(iframe).toHaveAttribute("sandbox", "allow-scripts");
+    await expect
+      .poll(() => iframe.boundingBox())
+      .toEqual({ x: 0, y: 0, ...viewport });
+    expect(
+      await page.evaluate(() => ({
+        width: document.documentElement.scrollWidth,
+        height: document.documentElement.scrollHeight,
+      })),
+    ).toEqual(viewport);
+    await expect(
+      page.locator(".public-header, .share-viewer-meta, .share-viewer-footer"),
+    ).toHaveCount(0);
+    await frame.locator("#end").scrollIntoViewIfNeeded();
+    await expect(frame.locator("#end")).toBeInViewport();
+    expect(await frame.locator("nav").boundingBox()).toMatchObject({ y: 0 });
+    const scrollBefore = await frame.locator("body").evaluate(() => scrollY);
+    const summary = page.locator(".share-tools summary");
+    await expect(summary).toHaveCSS("min-height", "44px");
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".share-tools")).toHaveAttribute("open", "");
+    const panel = await page.locator(".share-tools-panel").boundingBox();
+    expect(panel.x).toBeGreaterThanOrEqual(0);
+    expect(panel.width).toBeLessThanOrEqual(280);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(viewport.width);
+    expect(panel.y + panel.height).toBeLessThanOrEqual(viewport.height);
+    await page.getByRole("button", { name: "复制链接" }).focus();
+    await page.keyboard.press("Escape");
+    await expect(summary).toBeFocused();
+    await expect(page.locator(".share-tools")).not.toHaveAttribute("open", "");
+    expect(await iframe.boundingBox()).toEqual({ x: 0, y: 0, ...viewport });
+    expect(await frame.locator("body").evaluate(() => scrollY)).toBe(
+      scrollBefore,
+    );
+    expect(await frame.locator("body").evaluate(() => window.loadToken)).toBe(
+      loadToken,
+    );
+  }
+  expect(rawRequests).toBe(1);
+  const raw = await context.request.get(
+    `${PUBLIC_URL}/raw/${encodeURIComponent(uploaded.slug)}`,
+  );
+  expect(await raw.text()).toBe(immersiveSource);
+  await page.locator(".share-tools summary").click();
+  await page.reload();
+  await expect(page.locator(".share-tools")).not.toHaveAttribute("open", "");
+  expect(errors).toEqual([]);
+});
+
+test("immersive toolbar copies links, handles failures, and stays reachable in fullscreen", async ({
+  page,
+  context,
+}) => {
+  const uploaded = await publishImmersive(page);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: PUBLIC_URL,
+  });
+  await page.goto(uploaded.publicUrl);
+  const summary = page.locator(".share-tools summary");
+  await summary.click();
+  await expect(page.getByRole("link", { name: "打开原文件" })).toHaveAttribute(
+    "href",
+    `${PUBLIC_URL}/raw/${encodeURIComponent(uploaded.slug)}`,
+  );
+  await page.getByRole("button", { name: "复制链接" }).click();
+  await expect(page.locator("[data-share-feedback]")).toHaveText("链接已复制");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    uploaded.publicUrl,
+  );
+  await page.getByRole("button", { name: "全屏查看" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.fullscreenElement?.className))
+    .toBe("share-immersive");
+  await expect(summary).toBeVisible();
+  await summary.click();
+  await summary.click();
+
+  // Exercise the legacy clipboard fallback while its temporary input must be
+  // inside the fullscreen element to receive focus.
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    }),
+  );
+  await page.getByRole("button", { name: "复制链接" }).click();
+  await expect(page.locator("[data-share-feedback]")).toHaveText("链接已复制");
+  await page.getByRole("button", { name: "退出全屏" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.fullscreenElement))
+    .toBeNull();
+  await expect(summary).toBeVisible();
+
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async () => {
+          throw new Error("denied");
+        },
+      },
+    }),
+  );
+  await page.getByRole("button", { name: "复制链接" }).click();
+  await expect(page.locator("[data-share-feedback]")).toHaveText(
+    "复制失败，请手动复制地址栏链接",
+  );
+  await summary.click();
+  await expect(page.locator(".share-tools")).not.toHaveAttribute("open", "");
+});
+
+test("immersive HTML keeps native tools without JavaScript and hides unsupported fullscreen", async ({
+  page,
+  browser,
+}) => {
+  const uploaded = await publishImmersive(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(document, "fullscreenEnabled", { value: false });
+  });
+  await page.goto(uploaded.publicUrl);
+  await page.locator(".share-tools summary").click();
+  await expect(page.locator("[data-fullscreen-toggle]")).toBeHidden();
+  await expect(page.getByRole("button", { name: "复制链接" })).toBeVisible();
+
+  const noJs = await browser.newContext({
+    javaScriptEnabled: false,
+    viewport: { width: 390, height: 844 },
+  });
+  try {
+    const nativePage = await noJs.newPage();
+    await nativePage.goto(uploaded.publicUrl);
+    await expect(
+      nativePage
+        .frameLocator("iframe")
+        .getByRole("heading", { name: "Original HTML" }),
+    ).toBeVisible();
+    await nativePage.locator(".share-tools summary").click();
+    await expect(nativePage.locator(".share-tools")).toHaveAttribute(
+      "open",
+      "",
+    );
+    await expect(
+      nativePage.locator("[data-copy-share], [data-fullscreen-toggle]"),
+    ).toHaveCount(2);
+    await expect(nativePage.locator("[data-copy-share]")).toBeHidden();
+    await expect(nativePage.locator("[data-fullscreen-toggle]")).toBeHidden();
+    const popupPromise = nativePage.waitForEvent("popup");
+    await nativePage.getByRole("link", { name: "打开原文件" }).click();
+    const popup = await popupPromise;
+    await expect(popup).toHaveURL(
+      `${PUBLIC_URL}/raw/${encodeURIComponent(uploaded.slug)}`,
+    );
+    await expect(
+      popup.getByRole("heading", { name: "Original HTML" }),
+    ).toBeVisible();
+    await nativePage.locator(".share-tools summary").click();
+    await expect(nativePage.locator(".share-tools")).not.toHaveAttribute(
+      "open",
+      "",
+    );
+  } finally {
+    await noJs.close();
+  }
 });
 
 test("Markdown, PDF range, and SVG use their lightweight public delivery paths", async ({
@@ -391,7 +623,10 @@ test("admin library filters server-side and restores selected files in batch", a
     .locator('input[aria-label^="Select admin-filter-pdf"]:visible')
     .first()
     .check();
-  await page.locator(".batch-group summary").filter({ hasText: "More" }).click();
+  await page
+    .locator(".batch-group summary")
+    .filter({ hasText: "More" })
+    .click();
   await page.getByRole("button", { name: "Restore" }).click();
 
   await page.getByLabel("All status").selectOption("active");

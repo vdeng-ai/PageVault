@@ -181,6 +181,8 @@ The public viewer reads persisted metadata without extracting it again or adding
 
 Viewer 2.0 keeps all controls client-side: share-link copy, open-original, HTML/PDF fullscreen, and image fit/background toggles do not create server-side jobs or derived files. Raster JPEG/PNG/WebP items use the original raw image for Open Graph/Twitter preview. HTML, Markdown, PDF, and SVG use the fixed `/share-card.png` fallback so social crawlers are not required to render document or SVG content. The fallback PNG is a static asset and does not read D1 or R2.
 
+HTML share pages fill the available browser viewport with the sandboxed original document. A collapsed **页面工具** (Page tools) disclosure in the upper-right corner exposes the document title, copy-link, fullscreen, and open-original actions. Opening or closing it does not resize or reload the document. The disclosure starts closed on every page load; Escape closes it while focus is within the tools. Fullscreen includes both the document and tools. Unsupported fullscreen is hidden; without JavaScript the native disclosure and open-original link remain available, while copy and fullscreen are hidden. The tools inherit the existing public theme without changing the uploaded document's theme. Markdown, PDF, and image share pages retain their existing layouts. This presentation change applies to existing HTML links without re-uploading files or migrating data.
+
 The original stored content is available separately at:
 
 - `/raw/:slug`

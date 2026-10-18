@@ -10,6 +10,9 @@ CI/Playwright verifies:
 - original bytes remain under `/raw/:slug`;
 - mobile layout at a 390px viewport;
 - HTML iframe sandboxing;
+- immersive HTML layout at desktop, phone portrait, and phone landscape sizes, with scrolling confined to the original document;
+- native HTML tools starting collapsed, keyboard dismissal, clipboard success/failure, and no-JavaScript/unsupported-fullscreen fallbacks;
+- HTML tools remaining reachable in fullscreen, without reloading or resizing the document when toggled;
 - PDF byte-range delivery;
 - Markdown server rendering and TOC output;
 - Viewer 2.0 controls;
@@ -43,6 +46,8 @@ For each link confirm:
 7. the raw file remains behind PageVault visibility/status/expiry checks;
 8. the preview card uses the original raster image only for JPEG/PNG/WebP and otherwise uses the PageVault fallback image.
 9. newly uploaded HTML/Markdown links use the extracted title and content description when present, while old items and files without descriptions retain their fallback metadata.
+
+For HTML specifically, confirm that the original page fills the available viewport without the PageVault header, metadata block, frame border, or footer. Check that the **页面工具** entry remains inside the device safe area as the browser address bar expands/collapses and after rotating the phone. Open the tools to access the actions; check long titles, keyboard focus, copy feedback, and opening/closing without resetting the document's scroll position. Scroll a long original document to its end and verify its fixed navigation and scripts still work. Where fullscreen is supported, confirm the tools remain reachable and can exit fullscreen. Safari and embedded WeChat browser checks require manual validation in addition to the Chromium suite.
 
 Messaging platforms cache link previews aggressively. When verifying changed metadata, use a newly published slug rather than assuming an old preview will refresh immediately.
 

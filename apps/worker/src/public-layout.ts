@@ -28,12 +28,13 @@ const themeScript = `
     var feedback=document.querySelector('[data-share-feedback]');
     function announce(message){if(feedback){feedback.textContent=message;window.setTimeout(function(){if(feedback.textContent===message)feedback.textContent='';},1800);}}
     var copyButton=document.querySelector('[data-copy-share]');
+    if(copyButton)copyButton.hidden=false;
     if(copyButton)copyButton.addEventListener('click',async function(){
       var value=copyButton.getAttribute('data-copy-value')||location.href;
       try{
         if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(value);}
         else{
-          var input=document.createElement('textarea');input.value=value;input.setAttribute('readonly','');input.style.position='fixed';input.style.opacity='0';document.body.appendChild(input);input.select();var success=document.execCommand('copy');input.remove();copyButton.focus({preventScroll:true});if(!success)throw new Error('copy-failed');
+          var input=document.createElement('textarea');input.value=value;input.setAttribute('readonly','');input.style.position='fixed';input.style.opacity='0';(document.fullscreenElement||document.body).appendChild(input);input.select();var success=document.execCommand('copy');input.remove();copyButton.focus({preventScroll:true});if(!success)throw new Error('copy-failed');
         }
         copyButton.textContent='已复制';copyButton.setAttribute('aria-label','链接已复制');
         window.setTimeout(function(){copyButton.textContent='复制链接';copyButton.removeAttribute('aria-label');},2000);
@@ -43,8 +44,9 @@ const themeScript = `
     var fullscreenButton=document.querySelector('[data-fullscreen-toggle]');
     var fullscreenTarget=document.querySelector('[data-fullscreen-target]');
     if(fullscreenButton&&fullscreenTarget){
-      if(!fullscreenTarget.requestFullscreen){fullscreenButton.hidden=true;}
+      if(!fullscreenTarget.requestFullscreen||document.fullscreenEnabled===false){fullscreenButton.hidden=true;}
       else{
+        fullscreenButton.hidden=false;
         fullscreenButton.addEventListener('click',async function(){
           try{
             if(document.fullscreenElement){await document.exitFullscreen();}
@@ -54,6 +56,10 @@ const themeScript = `
         document.addEventListener('fullscreenchange',function(){fullscreenButton.textContent=document.fullscreenElement?'退出全屏':'全屏查看';});
       }
     }
+    var tools=document.querySelector('[data-share-tools]');
+    if(tools)tools.addEventListener('keydown',function(event){
+      if(event.key==='Escape'&&tools.open){event.preventDefault();tools.open=false;tools.querySelector('summary').focus({preventScroll:true});}
+    });
     var imageStage=document.querySelector('[data-image-stage]');
     var imageFit=document.querySelector('[data-image-fit]');
     if(imageStage&&imageFit)imageFit.addEventListener('click',function(){
@@ -90,14 +96,36 @@ export function publicHeader(document = false): string {
   return `<header class="public-header"><div class="public-brand"><span class="brand-mark">${publicIcons["shield-check"]}</span><span>PageVault</span>${document ? '<span class="public-label">分享文档</span>' : ""}</div><button class="theme-button" data-theme-toggle type="button" aria-label="切换浅色模式"><span class="theme-moon">${publicIcons.moon}</span><span class="theme-sun">${publicIcons.sun}</span></button></header>`;
 }
 
+const immersiveStyles = `
+html[data-layout=immersive-html],html[data-layout=immersive-html] body{min-width:0;width:100%;height:100%;overflow:hidden;scroll-padding:0}
+.share-immersive{position:relative;width:100%;height:100vh;height:100dvh;overflow:hidden}
+.share-immersive .share-viewer-stage{width:100%;height:100%;min-height:0;border:0;border-radius:0}
+.share-immersive .share-viewer-frame{width:100%;height:100%;color-scheme:normal}
+.share-tools{position:absolute;z-index:1;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));max-width:calc(100% - 24px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));font-size:14px}
+.share-tools summary{display:flex;align-items:center;justify-content:center;gap:8px;width:max-content;max-width:100%;min-height:44px;margin-left:auto;padding:8px 12px;list-style:none;cursor:pointer;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);box-shadow:0 2px 12px #0002}
+.share-tools summary::-webkit-details-marker{display:none}
+.share-tools summary svg{width:18px;height:18px}
+.share-tools summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.share-tools-panel{width:280px;max-width:100%;max-height:calc(100vh - 80px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));max-height:calc(100dvh - 80px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow:auto;margin-top:8px;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);box-shadow:0 4px 20px #0002}
+.share-tools-title{margin:0 0 12px;font-size:15px;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+.share-tools .share-viewer-actions{display:flex;flex-direction:column;max-width:none;gap:8px}
+.share-tools .share-viewer-action{width:100%;white-space:normal;overflow-wrap:anywhere}
+.share-tools .share-viewer-action[hidden]{display:none}
+.share-tools .share-viewer-feedback{min-height:0;margin:0;text-align:left;overflow-wrap:anywhere}
+.share-tools .share-viewer-feedback:not(:empty){margin-top:10px}
+`;
+
 export function publicDocument({
   title,
   body,
   head = "",
+  layout = "default",
 }: {
   title: string;
   body: string;
   head?: string;
+  layout?: "default" | "immersive-html";
 }): string {
-  return `<!doctype html><html lang="zh-CN" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2"><title>${escapePublicHtml(title)}</title>${head}<script>${themeScript}</script><style>${styles}</style></head><body>${body}</body></html>`;
+  const immersive = layout === "immersive-html";
+  return `<!doctype html><html lang="zh-CN" data-theme="dark"${immersive ? ' data-layout="immersive-html"' : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1${immersive ? ",viewport-fit=cover" : ""}"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2"><title>${escapePublicHtml(title)}</title>${head}<script>${themeScript}</script><style>${styles}${immersive ? immersiveStyles : ""}</style></head><body>${body}</body></html>`;
 }

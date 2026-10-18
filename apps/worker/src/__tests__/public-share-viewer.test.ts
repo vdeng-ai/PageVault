@@ -2,6 +2,7 @@ import {
   HTML_CONTENT_TYPE,
   MARKDOWN_CONTENT_TYPE,
   PNG_CONTENT_TYPE,
+  PDF_CONTENT_TYPE,
   SVG_CONTENT_TYPE,
   type VaultItem,
 } from "@pagevault/core";
@@ -85,6 +86,50 @@ describe("public share viewer", () => {
     expect(html).toContain("data-fullscreen-toggle");
     expect(html).toContain('sandbox="allow-scripts"');
     expect(html).not.toContain("allow-same-origin");
+  });
+
+  it("gives HTML a collapsed native toolbar inside its fullscreen target", async () => {
+    const html = await renderPublicShareViewer({
+      item: item({ title: 'Document <title> & "quotes"' }),
+      ...urls,
+    });
+    const body = html.split("<body>")[1] ?? "";
+
+    expect(html).toContain('data-layout="immersive-html"');
+    expect(body).toContain(
+      '<main class="share-immersive" data-fullscreen-target>',
+    );
+    expect(body.match(/data-fullscreen-target/g)).toHaveLength(1);
+    expect(body).toContain('<details class="share-tools" data-share-tools>');
+    expect(body).not.toContain(" open");
+    expect(body).toContain("页面工具</span></summary>");
+    expect(body).toContain("Document &lt;title&gt; &amp; &quot;quotes&quot;");
+    expect(body).toContain("data-fullscreen-toggle hidden");
+    expect(body).toContain(
+      'data-copy-value="https://public.test/p/shared-a1b2c3d4" hidden',
+    );
+    expect(body).toContain('aria-live="polite"');
+    expect(body).not.toContain('class="public-header"');
+    expect(body).not.toContain('class="share-viewer-meta"');
+    expect(body).not.toContain("<footer");
+  });
+
+  it("keeps PDF in its existing framed layout", async () => {
+    const html = await renderPublicShareViewer({
+      item: item({
+        contentType: PDF_CONTENT_TYPE,
+        originalFilename: "report.pdf",
+      }),
+      ...urls,
+    });
+    const body = html.split("<body>")[1] ?? "";
+    expect(html).not.toContain('data-layout="immersive-html"');
+    expect(body).toContain('class="public-header"');
+    expect(body).toContain('class="share-viewer-shell"');
+    expect(body).toContain('class="share-viewer-title"');
+    expect(body).toContain('class="share-viewer-footer"');
+    expect(body).not.toContain("<details");
+    expect(body).not.toContain("sandbox=");
   });
 
   it("uses raster images themselves for social previews without fake dimensions", async () => {
