@@ -175,6 +175,27 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
       }
     }
 
+    // Also used by sandboxed private Markdown previews, whose origin is opaque.
+    if (
+      (hostname === adminHost ||
+        hostname === publicHost ||
+        isLocalDevHost(hostname, env)) &&
+      (request.method === "GET" || request.method === "HEAD") &&
+      url.pathname.startsWith("/assets/")
+    ) {
+      const asset = await fetchAsset(request, env);
+      const headers = new Headers(asset.headers);
+      headers.set("Access-Control-Allow-Origin", "*");
+      headers.set("X-Content-Type-Options", "nosniff");
+      if (url.pathname === "/assets/markdown-diagrams.js") {
+        headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+      }
+      return new Response(request.method === "HEAD" ? null : asset.body, {
+        status: asset.status,
+        headers,
+      });
+    }
+
     if (hostname === adminHost || isLocalDevHost(hostname, env)) {
       return adminApp.fetch(request, env, ctx);
     }

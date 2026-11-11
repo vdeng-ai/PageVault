@@ -34,6 +34,19 @@ PageVault 是一个为个人使用设计的自托管发布工具，用于在微�
 - **Deploy your way** — 可长期保持轻量运行在 Cloudflare 免费层，也支持 Docker。
 - **Deliberately small scope** — 仅支持 HTML、Markdown、PDF、SVG、PNG、JPEG 和 WebP；不规划 DOCX/PPTX 转换、OCR、视频处理或服务端渲染流水线。
 
+## Markdown 图表
+
+使用 `mermaid` 代码块编写流程图、时序图等 Mermaid 图表：
+
+````markdown
+```mermaid
+flowchart LR
+  A[上传] --> B[分享]
+```
+````
+
+上传预览、登录后的文件预览和公开分享页均支持图表。渲染器随站点部署，仅在存在图表时加载；公开图表跟随阅读主题切换。语法错误的图表保留为代码，下载内容始终是原始 Markdown。
+
 ## 架构
 
 PageVault 将业务逻辑集中在 `packages/core`，并为不同运行环境提供适配器：

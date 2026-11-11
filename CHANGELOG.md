@@ -4,8 +4,15 @@ All notable PageVault changes are documented here. PageVault follows Semantic Ve
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-11
+
+### Changed
+
+- open HTML, PDF, image, and Markdown shares in immersive viewers with a compact tools menu, keeping content prominent on desktop and mobile;
+
 ### Added
 
+- render Mermaid diagrams in local Markdown previews, authenticated previews, and public readers using self-hosted, on-demand browser assets, with theme-aware SVG output and unchanged original files;
 - automatically extract HTML/Markdown titles and share descriptions once during upload, with bounded parsing and the existing file-type/size fallback; persist descriptions with migration `0007_share_description.sql` and track SQLite migrations so restarts apply each migration only once;
 - add a collapsible API-key usage guide with an instance-specific cURL example, copyable AI integration instructions, and static `/llms.txt` and `/upload-api.md` documentation on the admin hostname.
 

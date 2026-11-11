@@ -1,8 +1,12 @@
 import { fileCapabilityForFilename } from "@pagevault/core";
-import { renderMarkdown } from "@pagevault/core/markdown";
+import {
+  markdownDiagramStyles,
+  renderMarkdown,
+} from "@pagevault/core/markdown";
 import { FileText, Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSettings } from "../settings.js";
+import { renderMarkdownDiagrams } from "../markdown-diagrams.js";
 
 const previewPolicy =
   "default-src 'none'; img-src https: data: blob:; style-src 'unsafe-inline' https:; font-src https: data:; base-uri 'none'; form-action 'none';";
@@ -16,6 +20,7 @@ export function previewDocument(
     return `<!doctype html><html><head>${head}</head><body>${source}</body></html>`;
   return `<!doctype html><html><head>${head}<style>
     :root{color-scheme:light;font-family:Inter,"Noto Sans SC","PingFang SC",system-ui,sans-serif;color:#232329;background:#fff;font-size:16px;line-height:1.75}body{margin:0;padding:32px 36px 24px}h1{font-size:30px;line-height:1.3;margin:4px 0 10px;font-weight:650;letter-spacing:-.02em}h2{font-size:23px;line-height:1.4;margin:20px 0 10px}h3{font-size:21px;margin:24px 0 10px}p{margin:0 0 12px}hr{border:0;border-top:1px solid #e5e3e8;margin:22px 0}a{color:#65568e}ol,ul{padding-left:28px;margin:10px 0 14px}blockquote{border-left:3px solid #65568e;margin:20px 0;padding:10px 18px;background:#f5f4f7}blockquote p{margin:0}img{max-width:100%;height:auto}pre{overflow-x:auto;background:#f5f4f7;padding:16px;border-radius:6px}code{font-family:ui-monospace,monospace;overflow-wrap:anywhere}table{border-collapse:collapse;max-width:100%;display:block;overflow:auto}td,th{border:1px solid #e5e3e8;padding:8px 12px}@media(max-width:500px){body{padding:24px;font-size:16px}h1{font-size:27px}h2{font-size:23px}}
+    ${markdownDiagramStyles}
   </style></head><body>${renderMarkdown(source).html}</body></html>`;
 }
 
@@ -60,15 +65,22 @@ export function ContentPreview({
     const reader = new FileReader();
     let cancelled = false;
     reader.onload = () => {
-      if (!cancelled) {
+      void (async () => {
+        let document = previewDocument(
+          typeof reader.result === "string" ? reader.result : "",
+          nextCapability.preview === "markdown" ? "Markdown" : "HTML",
+        );
+        if (nextCapability.preview === "markdown") {
+          const parsed = new DOMParser().parseFromString(document, "text/html");
+          await renderMarkdownDiagrams(parsed);
+          document = `<!doctype html>${parsed.documentElement.outerHTML}`;
+        }
+        if (cancelled) return;
         setPreview({
           file,
-          document: previewDocument(
-            typeof reader.result === "string" ? reader.result : "",
-            nextCapability.preview === "markdown" ? "Markdown" : "HTML",
-          ),
+          document,
         });
-      }
+      })();
     };
     reader.onerror = () => {
       if (!cancelled) setPreview({ file, error: true });

@@ -2,9 +2,12 @@ import MarkdownIt from "markdown-it";
 
 export type MarkdownHeading = { id: string; text: string; level: number };
 
+export const markdownDiagramStyles = `pre.markdown-diagram{white-space:normal;overflow-x:auto}pre.markdown-diagram svg{display:block;height:auto;margin:0 auto}pre.markdown-diagram>code[hidden]{display:none}`;
+
 export function renderMarkdown(source: string): {
   html: string;
   headings: MarkdownHeading[];
+  hasMermaid: boolean;
 } {
   const env: MarkdownRenderEnv = {
     headingSlugs: new Set<string>(),
@@ -29,6 +32,11 @@ export function renderMarkdown(source: string): {
   return {
     html: markdown.renderer.render(tokens, markdown.options, env),
     headings: env.headings ?? [],
+    hasMermaid: tokens.some(
+      (token) =>
+        token.type === "fence" &&
+        token.info.trim().split(/\s+/)[0] === "mermaid",
+    ),
   };
 }
 

@@ -1,0 +1,6 @@
+/assets/*
+  Access-Control-Allow-Origin: *
+  X-Content-Type-Options: nosniff
+
+/assets/markdown-diagrams.js
+  Cache-Control: public, max-age=0, must-revalidate

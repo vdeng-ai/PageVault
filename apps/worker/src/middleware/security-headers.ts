@@ -12,7 +12,7 @@ export const publicSecurityHeaders: Record<string, string> = {
 export const publicShareViewerHeaders: Record<string, string> = {
   ...publicSecurityHeaders,
   "Content-Security-Policy":
-    "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' https: data:; frame-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'",
+    "default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' https: data:; frame-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'",
 };
 
 export const SVG_DOCUMENT_CONTENT_SECURITY_POLICY =

@@ -34,6 +34,19 @@ English interface · Light theme · Local Markdown preview before publishing.
 - **Deploy your way** — Stay lightweight on Cloudflare's free tier or run the same service with Docker.
 - **Deliberately small scope** — HTML, Markdown, PDF, SVG, PNG, JPEG, and WebP only; no DOCX/PPTX conversion, OCR, video processing, or server-side rendering pipeline.
 
+## Markdown diagrams
+
+Use a `mermaid` fenced code block for flowcharts, sequence diagrams, and other Mermaid diagrams:
+
+````markdown
+```mermaid
+flowchart LR
+  A[Upload] --> B[Share]
+```
+````
+
+Diagrams render in upload previews, authenticated previews, and public readers. The self-hosted renderer loads only when diagrams are present; public diagrams follow the reader theme. Invalid diagrams stay visible as code, and downloads preserve the original Markdown.
+
 ## Architecture
 
 PageVault keeps business logic in `packages/core` and uses runtime-specific adapters:

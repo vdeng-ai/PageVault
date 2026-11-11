@@ -1,4 +1,5 @@
 import { publicIcons } from "./public-icons.js";
+import { markdownDiagramStyles } from "@pagevault/core/markdown";
 
 export function escapePublicHtml(value: string): string {
   return value
@@ -139,5 +140,5 @@ export function publicDocument({
   layout?: "default" | "immersive-html" | "immersive" | "immersive-markdown";
 }): string {
   const immersive = layout !== "default";
-  return `<!doctype html><html lang="zh-CN" data-theme="dark"${immersive ? ` data-layout="${layout}"` : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1${immersive ? ",viewport-fit=cover" : ""}"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2"><title>${escapePublicHtml(title)}</title>${head}<script>${themeScript}</script><style>${styles}${immersive ? immersiveStyles : ""}</style></head><body>${body}</body></html>`;
+  return `<!doctype html><html lang="zh-CN" data-theme="dark"${immersive ? ` data-layout="${layout}"` : ""}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1${immersive ? ",viewport-fit=cover" : ""}"><link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2"><title>${escapePublicHtml(title)}</title>${head}<script>${themeScript}</script><style>${styles}${markdownDiagramStyles}${immersive ? immersiveStyles : ""}</style></head><body>${body}</body></html>`;
 }

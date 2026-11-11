@@ -1,6 +1,6 @@
 {
   "name": "@pagevault/admin",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,12 +11,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@pagevault/core": "workspace:*",
     "@tailwindcss/vite": "^4.1.12",
     "lucide-react": "^0.539.0",
+    "mermaid": "12.3.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "tailwindcss": "^4.1.12",
-    "@pagevault/core": "workspace:*"
+    "tailwindcss": "^4.1.12"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",

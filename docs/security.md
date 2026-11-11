@@ -11,6 +11,7 @@ Public requests are only accepted on the configured public hostname and only for
 - `GET /raw/:slug/`
 - `GET /raw/:slug.html`
 - `GET /share-card.png` (fixed static PageVault fallback art)
+- `GET /favicon.svg` and `GET /assets/*` (PageVault-owned static browser assets)
 - the equivalent `HEAD` requests
 
 Everything else on the public hostname returns `404`, including `/`, `/api/*`, `/admin/*`, `/files`, `/list`, and `/sitemap.xml`.
@@ -64,6 +65,8 @@ Uploaded HTML is stored unchanged. The public share URL under `/p/:slug` is a Pa
 Markdown is stored as original bytes. The share viewer renders it with raw HTML disabled, while `/raw/:slug` returns the original Markdown bytes. JPEG, PNG, SVG, and WebP share pages use the raw image as their viewer; only raster JPEG/PNG/WebP files are also used directly as Open Graph/Twitter preview images. HTML, Markdown, PDF, and SVG use the fixed static `/share-card.png` fallback instead of asking social crawlers to execute or render uploaded content. PDF share pages embed the raw PDF, and raw PDF responses preserve `application/pdf`, inline disposition, and byte-range support. SVG raw responses receive a dedicated CSP sandbox that blocks scripts and network-loaded resources while still allowing inline styles and data-URI images/fonts.
 
 The administration interface previews selected files locally before publishing. HTML and Markdown previews use an iframe with an empty `sandbox` attribute; scripts, form submissions, and access to the admin origin are disabled. Image previews, including SVG, use a temporary object URL inside an `<img>` element. PDF previews use a temporary object URL inside an iframe so the browser can render its native PDF viewer. Temporary object URLs are revoked when the selected file changes.
+
+Mermaid fenced code blocks are rendered to SVG in the browser using a pinned, self-hosted library. Ordinary Markdown does not load Mermaid. Local upload previews render diagrams before placing them in the script-free iframe; published and authenticated readers load the same renderer on demand and follow the reader theme. Invalid diagrams remain readable code. The renderer uses strict security, disables HTML labels and click handlers, and prevents diagram configuration from overriding those settings. Original Markdown bytes are never rewritten. Static `/assets/*` responses allow anonymous CORS so authenticated previews can load modules while retaining their opaque sandbox origin; API and file responses do not gain CORS access. The stable renderer entry revalidates on each load while hashed modules retain long-lived caching.
 
 Private files can be opened through `GET /api/admin/items/:id/preview` after administrator session authentication. Upload API keys cannot read them. The response uses `Cache-Control: no-store`. HTML keeps `Content-Security-Policy: sandbox allow-scripts; frame-ancestors 'self'`; SVG uses the stricter SVG policy without `allow-scripts`; PDF uses inline disposition and is delegated to the browser's native PDF viewer without an HTML CSP. Omitting `allow-same-origin` gives uploaded HTML an opaque origin, preventing access to administrator cookies, local storage, and the parent window. Deleted or retention-expired files are not returned. This preview does not turn on public access or increment public visit counts.
 

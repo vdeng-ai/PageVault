@@ -2,6 +2,19 @@ import { describe, expect, it } from "vitest";
 import { renderMarkdown } from "../markdown.js";
 
 describe("shared Markdown renderer", () => {
+  it("detects Mermaid fences without interpreting HTML or normal code examples", () => {
+    expect(
+      renderMarkdown("```mermaid\nflowchart LR\nA-->B\n```").hasMermaid,
+    ).toBe(true);
+    expect(
+      renderMarkdown("~~~mermaid\nsequenceDiagram\nA->>B: Hi\n~~~").hasMermaid,
+    ).toBe(true);
+    expect(
+      renderMarkdown('```text\n<code class="language-mermaid">\n```')
+        .hasMermaid,
+    ).toBe(false);
+    expect(renderMarkdown("# Ordinary Markdown").hasMermaid).toBe(false);
+  });
   it("keeps explicit and repeated heading anchors consistent with the generated contents list", () => {
     const rendered = renderMarkdown(
       '<a id="custom-anchor"></a>\n\n## 使用说明\n\n## 重复标题\n\n## 重复标题',
