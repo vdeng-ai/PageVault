@@ -325,6 +325,13 @@ class MemoryRepository implements MetadataRepository {
     }
   }
 
+  async markDeletedBatch(ids: string[], deletedAt: string): Promise<void> {
+    for (const id of ids) await this.markDeleted(id, deletedAt);
+  }
+  async writeAuditLogs(input: AuditLogInput[]): Promise<void> {
+    for (const entry of input) await this.writeAuditLog(entry);
+  }
+
   async incrementAccess(id: string, accessedAt: string): Promise<void> {
     await this.incrementAccessBatch([{ id, count: 1, accessedAt }]);
   }

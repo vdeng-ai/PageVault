@@ -48,6 +48,7 @@ export interface MetadataRepository {
   getOperationsSummary(): Promise<OperationsSummary>;
   updateItem(id: string, patch: UpdateItemInput): Promise<VaultItem>;
   markDeleted(id: string, deletedAt: string): Promise<void>;
+  markDeletedBatch(ids: string[], deletedAt: string): Promise<void>;
   incrementAccess(id: string, accessedAt: string): Promise<void>;
   incrementAccessBatch(input: AccessCountInput[]): Promise<void>;
   findExpiredFiles(now: string, limit: number): Promise<VaultItem[]>;
@@ -62,4 +63,5 @@ export interface MetadataRepository {
     updatedAt: string,
   ): Promise<void>;
   writeAuditLog(input: AuditLogInput): Promise<void>;
+  writeAuditLogs(input: AuditLogInput[]): Promise<void>;
 }

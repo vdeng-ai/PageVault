@@ -42,5 +42,6 @@ export interface StorageProvider {
     length: number,
   ): Promise<StoredObjectRange | null>;
   deleteObject(key: string): Promise<void>;
+  deleteObjects?(keys: string[]): Promise<void>;
   listObjects(input: ListStoredObjectsInput): Promise<ListStoredObjectsResult>;
 }

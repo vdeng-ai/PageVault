@@ -5,6 +5,9 @@ import type { AppBindings, AssetFetcher, HonoRuntime, ServiceFactory } from "./b
 import { apiSecurityHeaders } from "./middleware/security-headers.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerMcpRoutes } from "./mcp/routes.js";
+import { mcpStoreFromEnv } from "./adapters/cloudflare-mcp.js";
+import type { McpStoreFactory } from "./mcp/oauth.js";
 import { handlePublicRequest } from "./routes/public.js";
 import { hostnameFromBaseUrl, isLocalDevHost, serviceFromCloudflareEnv } from "./runtime.js";
 
@@ -22,6 +25,8 @@ function healthResponse(status: 200 | 503, body: Record<string, string>): Respon
 export interface RequestHandlerOptions {
   createService?: ServiceFactory;
   fetchAsset?: AssetFetcher;
+  createMcpStore?: McpStoreFactory;
+  fetchMcpFile?: typeof fetch;
 }
 
 function jsonError(error: unknown, requestId?: string): Response {
@@ -58,7 +63,7 @@ function jsonError(error: unknown, requestId?: string): Response {
   );
 }
 
-function createAdminApp(createService: ServiceFactory, fetchAsset: AssetFetcher): Hono<HonoRuntime> {
+function createAdminApp(createService: ServiceFactory, fetchAsset: AssetFetcher, options: RequestHandlerOptions): Hono<HonoRuntime> {
   const app = new Hono<HonoRuntime>();
 
   app.use("/api/*", async (c, next) => {
@@ -78,9 +83,10 @@ function createAdminApp(createService: ServiceFactory, fetchAsset: AssetFetcher)
 
   registerAuthRoutes(app);
   registerAdminRoutes(app, createService);
+  registerMcpRoutes(app, createService, options.createMcpStore ?? mcpStoreFromEnv, options.fetchMcpFile);
 
   // Documentation is static and needs no administrator session or storage reads.
-  app.on(["GET", "HEAD"], ["/llms.txt", "/upload-api.md"], async (c) => {
+  app.on(["GET", "HEAD"], ["/llms.txt", "/upload-api.md", "/mcp-guide.md"], async (c) => {
     const asset = await fetchAsset(c.req.raw, c.env);
     if (!asset.ok) return asset;
     const headers = new Headers(asset.headers);
@@ -114,7 +120,7 @@ async function defaultAssetFetcher(request: Request, env: AppBindings): Promise<
 export function createRequestHandler(options: RequestHandlerOptions = {}) {
   const createService = options.createService ?? serviceFromCloudflareEnv;
   const fetchAsset = options.fetchAsset ?? defaultAssetFetcher;
-  const adminApp = createAdminApp(createService, fetchAsset);
+  const adminApp = createAdminApp(createService, fetchAsset, options);
 
   return async function handleRequest(
     request: Request,

@@ -4,10 +4,12 @@ import { createPageVaultConfig, PageVaultService } from "@pagevault/core";
 import { NodeSqliteRepository } from "./adapters/node-db.js";
 import { LocalFileStorage } from "./adapters/node-storage.js";
 import type { AppBindings } from "./bindings.js";
+import type { McpStore } from "./mcp/store.js";
 
 export interface NodeRuntime {
   env: AppBindings;
   service: PageVaultService;
+  mcpStore: McpStore;
   migrate(): Promise<void>;
   shutdown(): Promise<void>;
 }
@@ -63,6 +65,12 @@ export function createNodeRuntime(): NodeRuntime {
       numberEnv("ACCESS_COUNT_FLUSH_SECONDS", 300),
     ),
     ACCESS_COUNT_MODE: process.env.ACCESS_COUNT_MODE ?? "windowed",
+    MCP_ENABLED: process.env.MCP_ENABLED ?? "false",
+    MAINTENANCE_GC_LIMIT: String(numberEnv("MAINTENANCE_GC_LIMIT", 100)),
+    ...(process.env.MCP_OAUTH_CLIENT_ID ? { MCP_OAUTH_CLIENT_ID: process.env.MCP_OAUTH_CLIENT_ID } : {}),
+    ...(process.env.MCP_OAUTH_CLIENT_SECRET ? { MCP_OAUTH_CLIENT_SECRET: process.env.MCP_OAUTH_CLIENT_SECRET } : {}),
+    ...(process.env.MCP_OAUTH_REDIRECT_URIS ? { MCP_OAUTH_REDIRECT_URIS: process.env.MCP_OAUTH_REDIRECT_URIS } : {}),
+    ...(process.env.MCP_FILE_ALLOWED_HOSTS ? { MCP_FILE_ALLOWED_HOSTS: process.env.MCP_FILE_ALLOWED_HOSTS } : {}),
   };
   const service = new PageVaultService(
     repository,
@@ -78,6 +86,7 @@ export function createNodeRuntime(): NodeRuntime {
   return {
     env,
     service,
+    mcpStore: repository.createMcpStore(),
     migrate: async () => {
       await repository.migrate(
         resolve(process.cwd(), "migrations/0001_initial.sql"),
@@ -99,6 +108,12 @@ export function createNodeRuntime(): NodeRuntime {
       );
       await repository.migrate(
         resolve(process.cwd(), "migrations/0007_share_description.sql"),
+      );
+      await repository.migrate(
+        resolve(process.cwd(), "migrations/0008_mcp_oauth.sql"),
+      );
+      await repository.migrate(
+        resolve(process.cwd(), "migrations/0009_gc_active_expiry.sql"),
       );
     },
     shutdown: async () => {

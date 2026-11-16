@@ -4,6 +4,29 @@ All notable PageVault changes are documented here. PageVault follows Semantic Ve
 
 ## [Unreleased]
 
+## [1.3.0] - Unreleased
+
+### Added
+
+- optional, admin-host-only stateless MCP upload endpoint with `get_upload_policy`, `upload_asset` and `publish_text`, OpenAI file-parameter metadata, private-by-default writes and existing retry-safe storage;
+- predefined-client OAuth with PKCE S256, existing administrator login/consent, resource-bound hashed rotating tokens, immediate revocation and bounded token retention in the existing D1/SQLite database;
+- a collapsible ChatGPT / MCP connection panel, static upload guide, portable private-plugin packaging script and deployment/capacity documentation;
+- integration coverage with the official MCP client, real SQLite/local storage, unsafe download targets, quota-bounded batches, and browser authorization/publishing/revocation.
+- a repeatable `test:mcp:worker` smoke check using isolated local workerd/D1/R2 for OAuth, publishing, token rotation/revocation and scheduled retention; enforced before CI/deployment.
+- English and Simplified Chinese README walkthroughs for enabling MCP, connecting ChatGPT, saving/publishing files, tool limits, and packaging a private plugin.
+
+### Changed
+
+- batch R2 retention deletion, set-based metadata updates and multi-row audit inserts; add a live-expiry partial index and configurable daily GC batch (default 100, cap 500);
+- stop issuing per-file cache purges for already expired content, whose D1 state is checked before cache access;
+- optionally prune expired OAuth metadata within the existing daily maintenance invocation; no new Cloudflare product or Cron.
+
+### Compatibility
+
+- apply additive migrations `0008_mcp_oauth.sql` and `0009_gc_active_expiry.sql` before deployment; Docker applies both on startup;
+- MCP remains disabled unless `MCP_ENABLED=true`; configure the OAuth client/callback separately;
+- existing REST uploads, original bytes, file formats, administrator sessions and public share URLs remain compatible. This version has not been tagged or published.
+
 ## [1.2.0] - 2026-11-11
 
 ### Changed

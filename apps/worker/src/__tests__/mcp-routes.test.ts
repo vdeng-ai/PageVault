@@ -1,0 +1,281 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  Client,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
+import { mcpFixture } from "./mcp-fixture.js";
+
+type Fixture = Awaited<ReturnType<typeof mcpFixture>>;
+const fixtures: Fixture[] = [];
+async function fixture(fetchFile?: typeof fetch) {
+  const value = await mcpFixture(fetchFile);
+  fixtures.push(value);
+  return value;
+}
+afterEach(async () => {
+  for (const value of fixtures.splice(0)) await value.close();
+});
+
+interface ToolResult {
+  isError?: boolean;
+  structuredContent: Record<string, unknown>;
+}
+async function tool(
+  f: Fixture,
+  name: string,
+  args: Record<string, unknown>,
+  token?: string,
+) {
+  const { response, data } = await f.rpc(
+    "tools/call",
+    { name, arguments: args },
+    token,
+  );
+  expect(response.status).toBe(200);
+  return data.result as ToolResult;
+}
+
+describe("MCP upload adapter", () => {
+  it("is disabled by default and never exposed on the public host", async () => {
+    const f = await fixture();
+    f.env.MCP_ENABLED = "false";
+    expect((await f.call("/mcp")).status).toBe(404);
+    f.env.MCP_ENABLED = "true";
+    for (const path of [
+      "/mcp",
+      "/oauth/authorize",
+      "/.well-known/oauth-protected-resource/mcp",
+    ]) {
+      expect(
+        (
+          await f.handler(
+            new Request(`https://public.example.com${path}`),
+            f.env,
+          )
+        ).status,
+      ).toBe(404);
+    }
+  });
+
+  it("requires bearer credentials, rejects browser cross-origin calls and does not grant admin access", async () => {
+    const f = await fixture();
+    const denied = await f.call("/mcp");
+    expect(denied.status).toBe(401);
+    expect(denied.headers.get("WWW-Authenticate")).toContain(
+      "oauth-protected-resource/mcp",
+    );
+    expect(
+      (await f.call("/mcp", { headers: { Cookie: f.cookie } })).status,
+    ).toBe(401);
+    expect(
+      (
+        await f.call("/mcp", {
+          headers: {
+            Authorization: `Bearer ${f.key.token}`,
+            Origin: "https://evil.example",
+          },
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await f.call("/api/admin/items", {
+          headers: { Authorization: `Bearer ${f.key.token}` },
+        })
+      ).status,
+    ).toBe(401);
+    await f.service.revokeApiKey(f.key.apiKey.id);
+    expect((await f.rpc("tools/list")).response.status).toBe(401);
+  });
+
+  it("advertises exactly three tools and the complete OpenAI file parameter schema", async () => {
+    const f = await fixture();
+    const { data } = await f.rpc("tools/list");
+    const tools = (
+      data.result as {
+        tools: Array<{
+          name: string;
+          inputSchema: {
+            properties: { file?: { properties: object; required: string[] } };
+          };
+          _meta: Record<string, unknown>;
+          annotations: Record<string, boolean>;
+        }>;
+      }
+    ).tools;
+    expect(tools.map((entry) => entry.name).sort()).toEqual([
+      "get_upload_policy",
+      "publish_text",
+      "upload_asset",
+    ]);
+    const upload = tools.find((entry) => entry.name === "upload_asset")!;
+    expect(upload._meta["openai/fileParams"]).toEqual(["file"]);
+    expect(
+      Object.keys(upload.inputSchema.properties.file!.properties).sort(),
+    ).toEqual(["download_url", "file_id", "file_name", "mime_type"]);
+    expect(upload.inputSchema.properties.file!.required.sort()).toEqual([
+      "download_url",
+      "file_id",
+    ]);
+    expect(upload.annotations.readOnlyHint).toBe(false);
+    const policy = await tool(f, "get_upload_policy", {});
+    expect(policy.structuredContent).toMatchObject({
+      maxUploadSizeBytes: 10 * 1024 * 1024,
+      defaultVisibility: "private",
+      maxTextSizeBytes: 256 * 1024,
+    });
+  });
+
+  it("works with the official MCP client transport", async () => {
+    const f = await fixture();
+    const client = new Client({ name: "integration-test", version: "1.0.0" });
+    const transport = new StreamableHTTPClientTransport(
+      new URL("https://admin.example.com/mcp"),
+      {
+        requestInit: { headers: { Authorization: `Bearer ${f.key.token}` } },
+        fetch: (input, init) => f.handler(new Request(input, init), f.env),
+      },
+    );
+    try {
+      await client.connect(transport);
+      expect((await client.listTools()).tools).toHaveLength(3);
+      const response = await client.callTool({
+        name: "get_upload_policy",
+        arguments: {},
+      });
+      expect(response.isError).not.toBe(true);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("saves text privately by default, returns no public URL, and replays retries", async () => {
+    const f = await fixture();
+    const args = {
+      filename: "report.html",
+      text: "<!doctype html><title>Report</title><p>Hello</p>",
+    };
+    const first = await tool(f, "publish_text", args);
+    expect(first.isError).not.toBe(true);
+    expect(first.structuredContent).toMatchObject({
+      visibility: "private",
+      publicAvailable: false,
+      publicUrl: null,
+      rawUrl: null,
+      replayed: false,
+    });
+    const second = await tool(f, "publish_text", args);
+    expect(second.structuredContent).toMatchObject({
+      id: first.structuredContent.id,
+      replayed: true,
+    });
+    const stored = await f.service.getItem(
+      first.structuredContent.id as string,
+    );
+    const bytes = await f.storage.getObject(stored.objectKey);
+    expect(await new Response(bytes!.body).text()).toBe(args.text);
+    expect(
+      (
+        await f.handler(
+          new Request(`https://public.example.com/p/${stored.slug}`),
+          f.env,
+        )
+      ).status,
+    ).not.toBe(200);
+  });
+
+  it("publishes only when explicitly requested and returns working share/raw URLs", async () => {
+    const f = await fixture();
+    const response = await tool(f, "publish_text", {
+      filename: "hello.md",
+      text: "# Hello\n\nWorld",
+      visibility: "public",
+      url_expire_days: 2,
+      file_expire_days: 5,
+    });
+    expect(response.structuredContent).toMatchObject({
+      visibility: "public",
+      publicAvailable: true,
+    });
+    const raw = await f.handler(
+      new Request(response.structuredContent.rawUrl as string),
+      f.env,
+    );
+    expect(raw.status).toBe(200);
+    expect(await raw.text()).toBe("# Hello\n\nWorld");
+    expect(
+      (
+        await f.handler(
+          new Request(response.structuredContent.publicUrl as string),
+          f.env,
+        )
+      ).status,
+    ).toBe(200);
+  });
+
+  it("imports binary bytes unchanged and ignores temporary URL changes during retries", async () => {
+    const bytes = Buffer.from("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF");
+    const fetchFile = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => new Response(bytes));
+    const f = await fixture(fetchFile);
+    const args = {
+      file: {
+        file_id: "file_1",
+        file_name: "report.pdf",
+        download_url: "https://files.oaiusercontent.com/report?sig=one",
+      },
+    };
+    const first = await tool(f, "upload_asset", args);
+    expect(first.isError).not.toBe(true);
+    const item = await f.service.getItem(first.structuredContent.id as string);
+    const stored = await f.storage.getObject(item.objectKey);
+    expect(Buffer.from(await new Response(stored!.body).arrayBuffer())).toEqual(
+      bytes,
+    );
+    const replay = await tool(f, "upload_asset", {
+      file: {
+        ...args.file,
+        download_url: "https://files.oaiusercontent.com/report?sig=two",
+      },
+    });
+    expect(replay.structuredContent).toMatchObject({
+      id: first.structuredContent.id,
+      replayed: true,
+    });
+    expect(fetchFile.mock.calls[0]?.[1]).not.toHaveProperty("headers");
+  });
+
+  it("rejects invalid bytes, conflicting keys, unsupported formats and byte-sized oversized text", async () => {
+    const f = await fixture(async () => new Response("not a PNG"));
+    expect(
+      (
+        await tool(f, "upload_asset", {
+          file: {
+            file_id: "x",
+            file_name: "bad.png",
+            download_url: "https://files.oaiusercontent.com/x",
+          },
+        })
+      ).isError,
+    ).toBe(true);
+    const args = { filename: "a.md", text: "one", idempotency_key: "same" };
+    await tool(f, "publish_text", args);
+    expect(
+      (await tool(f, "publish_text", { ...args, text: "two" }))
+        .structuredContent.code,
+    ).toBe("idempotency_conflict");
+    expect(
+      (await tool(f, "publish_text", { filename: "a.pdf", text: "not binary" }))
+        .isError,
+    ).toBe(true);
+    expect(
+      (
+        await tool(f, "publish_text", {
+          filename: "a.md",
+          text: "中".repeat(100_000),
+        })
+      ).structuredContent.code,
+    ).toBe("payload_too_large");
+  });
+});

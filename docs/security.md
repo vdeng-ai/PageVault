@@ -1,5 +1,9 @@
 # Security
 
+## Optional MCP integration
+
+The upload-only MCP endpoint and OAuth routes exist only on the admin hostname and require explicit enablement. Every tool call validates a Bearer credential; browser cookies alone cannot authorize MCP. OAuth uses exact redirect and resource binding, PKCE S256, admin-session CSRF-protected consent, one-use codes, hashed rotating tokens and immediate grant revocation. File downloads use bounded HTTPS requests with an allowlist and revalidation on every redirect; admin credentials are never forwarded. MCP results do not return public links for private files. See [MCP](./mcp.md) for deployment and threat boundaries.
+
 ## Public Access
 
 Public requests are only accepted on the configured public hostname and only for:
@@ -42,7 +46,7 @@ The session cookie is `pagevault_session` with `HttpOnly`, `Secure`, `SameSite=L
 
 All admin write operations require `X-CSRF-Token`. The token is returned by `GET /api/auth/me` and is bound to the signed session.
 
-Upload API keys are created and revoked from the authenticated admin interface. They are cryptographically random, are shown in plaintext only in the create response, and are stored as SHA-256 digests in D1 or SQLite. A key grants access only to the upload endpoint on the admin hostname. Bearer authentication does not use CSRF protection because the key is supplied explicitly in the `Authorization` header rather than sent automatically by a browser.
+Upload API keys are created and revoked from the authenticated admin interface. They are cryptographically random, are shown in plaintext only in the create response, and are stored as SHA-256 digests in D1 or SQLite. A key grants access to the upload endpoint on the admin hostname and, when explicitly enabled, the upload-only MCP tools on that same hostname. Bearer authentication does not use CSRF protection because the key is supplied explicitly in the `Authorization` header rather than sent automatically by a browser.
 
 Revoked keys remain as metadata for administrative history but cannot authenticate. The `last used` timestamp is updated at most once per hour per key to limit database write usage.
 

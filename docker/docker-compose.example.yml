@@ -28,4 +28,9 @@ services:
       PUBLIC_HTML_CACHE_SECONDS: "3600"
       ACCESS_COUNT_MODE: windowed
       ACCESS_COUNT_FLUSH_SECONDS: "300"
+      MCP_ENABLED: "false"
+      MAINTENANCE_GC_LIMIT: "100"
+      # MCP_OAUTH_CLIENT_ID: pagevault-chatgpt
+      # MCP_OAUTH_REDIRECT_URIS: https://chatgpt.com/connector_platform_oauth_redirect
+      # Keep an optional MCP_OAUTH_CLIENT_SECRET in secure runtime configuration.
       PORT: "3000"

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-const ADMIN_URL = "http://localhost:3100";
+import { ADMIN_URL, PUBLIC_URL } from "../urls.mjs";
 const run = promisify(execFile);
 
 for (const { language, theme, width, height } of [
@@ -56,7 +56,7 @@ for (const { language, theme, width, height } of [
     ).toBeVisible();
     await expect(page.locator("vite-error-overlay")).toHaveCount(0);
 
-    const guide = page.locator(".api-usage-guide");
+    const guide = page.locator(".rest-upload-guide");
     await expect(guide).not.toHaveAttribute("open", "");
     await guide.locator("summary").focus();
     await page.keyboard.press("Enter");
@@ -131,7 +131,7 @@ for (const { language, theme, width, height } of [
           (await run("bash", ["-c", example], options)).stdout,
         );
         expect(replay.id).toBe(result.id);
-        expect(result.publicUrl).toMatch(/^http:\/\/127\.0\.0\.1:3100\/p\//);
+        expect(result.publicUrl.startsWith(`${PUBLIC_URL}/p/`)).toBe(true);
         const viewer = await request.get(result.publicUrl);
         expect(viewer.status()).toBe(200);
         const raw = await request.get(result.publicUrl.replace("/p/", "/raw/"));
@@ -157,7 +157,7 @@ for (const { language, theme, width, height } of [
     expect(head.status()).toBe(200);
     expect(await head.body()).toHaveLength(0);
     for (const path of ["/llms.txt", "/upload-api.md"]) {
-      expect((await request.get(`http://127.0.0.1:3100${path}`)).status()).toBe(
+      expect((await request.get(`${PUBLIC_URL}${path}`)).status()).toBe(
         404,
       );
     }

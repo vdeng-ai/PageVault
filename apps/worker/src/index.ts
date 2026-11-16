@@ -1,8 +1,8 @@
 import { createRequestHandler } from "./app.js";
 import type { AppBindings } from "./bindings.js";
-import { serviceFromCloudflareEnv } from "./runtime.js";
+import { maintenanceGcLimit, serviceFromCloudflareEnv } from "./runtime.js";
 import { flushAccessCounts } from "./access-counter.js";
-import { deletePublicHtmlCache } from "./public-cache.js";
+import { mcpStoreFromEnv } from "./adapters/cloudflare-mcp.js";
 
 const handleRequest = createRequestHandler();
 type WorkerEnv = Env & AppBindings;
@@ -10,10 +10,10 @@ type WorkerEnv = Env & AppBindings;
 async function runMaintenance(env: WorkerEnv): Promise<void> {
   const service = serviceFromCloudflareEnv(env);
   await flushAccessCounts(service);
-  const result = await service.runMaintenance();
-  await Promise.all(
-    result.gc.deletedSlugs.map((slug) => deletePublicHtmlCache(env, slug)),
-  );
+  const result = await service.runMaintenance({ gcLimit: maintenanceGcLimit(env) });
+  if (env.MCP_ENABLED === "true") await mcpStoreFromEnv(env).prune(Date.now());
+  // Public reads check D1 state before cache, and TTL never exceeds expiry.
+  // Expired objects need no per-file cache purge (which would exhaust Free subrequests).
 
   const reconciliation = result.reconciliation;
   const hasIssues =

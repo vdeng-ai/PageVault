@@ -20,6 +20,7 @@ import { Brand } from "./components/Brand.js";
 import { GlassNav } from "./components/Glass.js";
 import { ConfirmDialog } from "./components/Feedback.js";
 import { useGuardedHashNavigation } from "./hooks/useGuardedHashNavigation.js";
+import { oauthReturnPath } from "./oauth-return.js";
 
 export type Route =
   | { name: "upload" }
@@ -63,6 +64,12 @@ export function App() {
   );
   const navigation = useGuardedHashNavigation(changeRoute);
   const { navigate } = navigation;
+
+  useEffect(() => {
+    if (!user?.authenticated) return;
+    const target = oauthReturnPath(window.location.search, window.location.origin);
+    if (target) window.location.replace(target);
+  }, [user?.authenticated]);
 
   useEffect(() => {
     void me()

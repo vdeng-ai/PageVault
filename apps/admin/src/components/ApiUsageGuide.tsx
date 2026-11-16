@@ -12,7 +12,7 @@ export function ApiUsageGuide() {
   const example = /```bash\n([\s\S]*?)\n```/.exec(guide)?.[1] ?? "";
 
   return (
-    <details className="surface api-usage-guide">
+    <details className="surface api-usage-guide rest-upload-guide">
       <summary>
         <BookOpen size={20} aria-hidden />
         <span>

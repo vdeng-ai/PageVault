@@ -32,6 +32,7 @@ import type {
   BatchInput,
   BatchResult,
   AccessCountInput,
+  AuditLogInput,
   DashboardStats,
   CreatedApiKey,
   GcResult,
@@ -646,23 +647,40 @@ export class PageVaultService {
   ): Promise<GcResult> {
     const expired = await this.repository.findExpiredFiles(
       now.toISOString(),
-      limit,
+      Math.min(500, Math.max(1, Math.floor(limit))),
     );
     const failed: Array<{ id: string; error: string }> = [];
     const deletedSlugs: string[] = [];
     let deleted = 0;
 
-    for (const item of expired) {
+    const removed: VaultItem[] = [];
+    const fail = (items: VaultItem[], error: unknown) => {
+      for (const item of items) failed.push({ id: item.id, error: error instanceof Error ? error.message : "Unknown error" });
+    };
+    if (expired.length && this.storage.deleteObjects) {
       try {
-        await this.storage.deleteObject(item.objectKey);
-        await this.repository.markDeleted(item.id, now.toISOString());
-        await this.audit(item.id, "gc_delete", "File retention expired", now);
-        deleted += 1;
-        deletedSlugs.push(item.slug);
-      } catch (error) {
-        failed.push({
-          id: item.id,
-          error: error instanceof Error ? error.message : "Unknown error",
+        await this.storage.deleteObjects(expired.map((item) => item.objectKey));
+        removed.push(...expired);
+      } catch (error) { fail(expired, error); }
+    } else {
+      for (const item of expired) {
+        try { await this.storage.deleteObject(item.objectKey); removed.push(item); }
+        catch (error) { fail([item], error); }
+      }
+    }
+    if (removed.length) {
+      try {
+        await this.repository.markDeletedBatch(removed.map((item) => item.id), now.toISOString());
+        deleted = removed.length;
+        deletedSlugs.push(...removed.map((item) => item.slug));
+      } catch (error) { fail(removed, error); }
+      if (deleted) {
+        const audits: AuditLogInput[] = removed.map((item) => ({
+          id: createId(now), itemId: item.id, action: "gc_delete", detail: "File retention expired", createdAt: now.toISOString(),
+        }));
+        // Preserve the existing best-effort audit contract after primary data commits.
+        await this.repository.writeAuditLogs(audits).catch(() => {
+          console.error(JSON.stringify({ message: "GC audit batch failed", count: audits.length }));
         });
       }
     }

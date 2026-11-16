@@ -492,7 +492,7 @@ export function registerAdminRoutes(
 
   app.post("/api/admin/gc", requireAdminWrite, async (c) => {
     const result = await service(c, createService).garbageCollectExpiredFiles();
-    purgeSlugs(c, result.deletedSlugs);
+    // Expired content is already blocked by the state check before the cache.
     return c.json(result);
   });
 }

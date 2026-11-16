@@ -49,6 +49,12 @@ Runtime behavior is also intentionally bounded:
 
 These are project guardrails, not a promise that a particular Cloudflare account can never exceed a provider quota. Operators should still review account usage if the instance becomes unusually busy.
 
+## MCP and retention capacity
+
+MCP is optional and disabled by default. The connection panel is under API Keys, and [docs/mcp.md](./mcp.md) describes secure setup, validation and the quota model. It does not add an AI service, queue, KV or Durable Object.
+
+Daily GC supports `MAINTENANCE_GC_LIMIT` (default 100, maximum 500). R2 deletion and database metadata/audit changes use bounded batches; existing per-file audit visibility is retained. OAuth cleanup removes at most 500 expired token rows and 100 unused expired grants per pass. Deleted file metadata and historical audits remain; monitor database growth independently from R2 file retention. Measure real Worker CPU and D1 row counts before relying on the Free tier at higher volumes.
+
 ## Docker data ownership
 
 The production image runs as UID/GID `10001:10001`.

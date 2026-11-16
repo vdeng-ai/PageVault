@@ -34,6 +34,7 @@ import { useExitPresence } from "../hooks/useExitPresence.js";
 import { useSettings } from "../settings.js";
 import { copyText } from "../clipboard.js";
 import { ApiUsageGuide } from "../components/ApiUsageGuide.js";
+import { McpConnections } from "../components/McpConnections.js";
 
 function ApiKeyDialog({
   open,
@@ -533,6 +534,7 @@ export function ApiKeysPage() {
       </div>
 
       <ApiUsageGuide />
+      <McpConnections />
 
       <ApiKeyDialog
         open={dialogOpen}

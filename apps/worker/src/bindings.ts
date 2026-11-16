@@ -16,6 +16,12 @@ export interface AppBindings {
   PUBLIC_HTML_CACHE_SECONDS?: string;
   ACCESS_COUNT_FLUSH_SECONDS?: string;
   ACCESS_COUNT_MODE?: string;
+  MCP_ENABLED?: string;
+  MCP_OAUTH_CLIENT_ID?: string;
+  MCP_OAUTH_CLIENT_SECRET?: string;
+  MCP_OAUTH_REDIRECT_URIS?: string;
+  MCP_FILE_ALLOWED_HOSTS?: string;
+  MAINTENANCE_GC_LIMIT?: string;
 }
 
 export interface AppVariables {

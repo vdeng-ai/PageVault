@@ -1,4 +1,5 @@
 import { createNodeRuntime } from "./node-runtime.js";
+import { maintenanceGcLimit } from "./runtime.js";
 
 const command = process.argv[2];
 const dryRun = process.argv.includes("--dry-run");
@@ -12,7 +13,8 @@ if (command === "gc") {
   const result = await runtime.service.reconcileStorage({ dryRun });
   console.log(JSON.stringify(result));
 } else if (command === "maintenance") {
-  const result = await runtime.service.runMaintenance({ dryRun });
+  const result = await runtime.service.runMaintenance({ dryRun, gcLimit: maintenanceGcLimit(runtime.env) });
+  if (!dryRun && runtime.env.MCP_ENABLED === "true") await runtime.mcpStore.prune(Date.now());
   console.log(JSON.stringify(result));
 } else if (command === "migrate") {
   console.log(
@@ -25,6 +27,9 @@ if (command === "gc") {
         "0004_api_upload_idempotency",
         "0005_maintenance_state",
         "0006_admin_list_indexes",
+        "0007_share_description",
+        "0008_mcp_oauth",
+        "0009_gc_active_expiry",
       ],
     }),
   );

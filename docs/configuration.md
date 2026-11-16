@@ -41,6 +41,19 @@ The following lightweight tuning defaults are kept aligned between Cloudflare an
 
 Cloudflare stores these as Wrangler vars. Docker exposes the same values through environment variables.
 
+## Optional MCP settings
+
+| Name | Default | Purpose |
+| --- | --- | --- |
+| `MCP_ENABLED` | `false` | Explicitly enable `/mcp` and OAuth routes with `true`. |
+| `MCP_OAUTH_CLIENT_ID` | Unset | One predefined OAuth client ID. |
+| `MCP_OAUTH_REDIRECT_URIS` | Unset | Comma-separated exact HTTPS callback allowlist. |
+| `MCP_OAUTH_CLIENT_SECRET` | Unset | Optional confidential-client secret; omit for public-client PKCE. |
+| `MCP_FILE_ALLOWED_HOSTS` | `.oaiusercontent.com` | Replacement download host allowlist; exact names or leading-dot suffixes, no arbitrary URL import. |
+| `MAINTENANCE_GC_LIMIT` | `100` | Files per daily retention pass, capped at 500. Raise only with matching runtime headroom. |
+
+These settings also apply to Docker. MCP requires migrations 0008/0009; all remain optional for existing deployments. See [MCP connection and capacity guide](./mcp.md). Setting `MCP_ENABLED=false` disables the integration without changing the original REST API.
+
 ## Cloudflare Settings
 
 Cloudflare bindings and non-secret tuning values live in `apps/worker/wrangler.jsonc`. Keep the binding names `ASSETS`, `DB`, and `HTML_BUCKET` unless the application code is updated at the same time.

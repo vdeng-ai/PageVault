@@ -1,18 +1,21 @@
 import { serve } from "@hono/node-server";
 import { createRequestHandler } from "./app.js";
 import { createNodeRuntime, createStaticAssetFetcher } from "./node-runtime.js";
+import { maintenanceGcLimit } from "./runtime.js";
 
 const runtime = createNodeRuntime();
 await runtime.migrate();
 
 const handleRequest = createRequestHandler({
   createService: () => runtime.service,
+  createMcpStore: () => runtime.mcpStore,
   fetchAsset: createStaticAssetFetcher(),
 });
 
 const maintenanceIntervalMs = 24 * 60 * 60 * 1000;
 const maintenanceTimer = setInterval(() => {
-  void runtime.service.runMaintenance().then(async (result) => {
+  void runtime.service.runMaintenance({ gcLimit: maintenanceGcLimit(runtime.env) }).then(async (result) => {
+    if (runtime.env.MCP_ENABLED === "true") await runtime.mcpStore.prune(Date.now());
     const reconciliation = result.reconciliation;
     const findings =
       result.gc.failed.length +

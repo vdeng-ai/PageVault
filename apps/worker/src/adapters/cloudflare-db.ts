@@ -1,4 +1,5 @@
 import { AppError, type MetadataRepository } from "@pagevault/core";
+import { auditStatements, deletionStatements } from "./sql-batches.js";
 import type {
   AccessCountInput,
   ApiKey,
@@ -55,6 +56,16 @@ function mapApiKeyRow(row: ApiKeyRow): ApiKey {
 }
 
 export class CloudflareD1Repository implements MetadataRepository {
+  async markDeletedBatch(ids: string[], deletedAt: string): Promise<void> {
+    const statements = deletionStatements(ids, deletedAt);
+    if (statements.length) await this.db.batch(statements.map(({ sql, values }) => this.db.prepare(sql).bind(...values)));
+  }
+
+  async writeAuditLogs(input: AuditLogInput[]): Promise<void> {
+    const statements = auditStatements(input);
+    if (statements.length) await this.db.batch(statements.map(({ sql, values }) => this.db.prepare(sql).bind(...values)));
+  }
+
   async healthCheck(): Promise<void> {
     await this.db.prepare("SELECT 1 AS ok").first<{ ok: number }>();
   }

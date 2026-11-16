@@ -11,6 +11,10 @@ function numberEnv(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+export function maintenanceGcLimit(env: AppBindings): number {
+  return Math.min(500, numberEnv(env.MAINTENANCE_GC_LIMIT, 100));
+}
+
 export function serviceFromCloudflareEnv(env: AppBindings): PageVaultService {
   if (!env.DB || !env.HTML_BUCKET) {
     throw new Error("Cloudflare DB and R2 bindings are required");

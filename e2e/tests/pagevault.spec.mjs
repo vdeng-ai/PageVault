@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const ADMIN_URL = "http://localhost:3100";
-const PUBLIC_URL = "http://127.0.0.1:3100";
+import { ADMIN_URL, PUBLIC_URL } from "../urls.mjs";
 
 async function login(page) {
   await page.goto(ADMIN_URL);

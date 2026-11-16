@@ -1,7 +1,9 @@
 import { defineConfig } from "@playwright/test";
-
-const adminBaseUrl = "http://localhost:3100";
-const publicBaseUrl = "http://127.0.0.1:3100";
+import {
+  E2E_PORT,
+  ADMIN_URL as adminBaseUrl,
+  PUBLIC_URL as publicBaseUrl,
+} from "./urls.mjs";
 
 export default defineConfig({
   testDir: "./tests",
@@ -12,9 +14,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI
-    ? [["line"], ["html", { open: "never" }]]
-    : "list",
+  reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: adminBaseUrl,
     browserName: "chromium",
@@ -23,8 +23,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command:
-      "cd .. && rm -f /tmp/pagevault-e2e.sqlite && rm -rf /tmp/pagevault-e2e-objects && node apps/worker/dist/node-server.js",
+    command: `cd .. && rm -f /tmp/pagevault-e2e-${E2E_PORT}.sqlite /tmp/pagevault-e2e-${E2E_PORT}.sqlite-wal /tmp/pagevault-e2e-${E2E_PORT}.sqlite-shm && rm -rf /tmp/pagevault-e2e-${E2E_PORT}-objects && node apps/worker/dist/node-server.js`,
     url: adminBaseUrl,
     reuseExistingServer: false,
     timeout: 60_000,
@@ -41,9 +40,14 @@ export default defineConfig({
       DEFAULT_URL_EXPIRE_DAYS: "15",
       DEFAULT_FILE_EXPIRE_DAYS: "30",
       MAX_UPLOAD_SIZE_MB: "10",
-      SQLITE_PATH: "/tmp/pagevault-e2e.sqlite",
-      LOCAL_STORAGE_DIR: "/tmp/pagevault-e2e-objects",
-      PORT: "3100",
+      MCP_ENABLED: "true",
+      MCP_OAUTH_CLIENT_ID: "pagevault-e2e-client",
+      MCP_OAUTH_CLIENT_SECRET: "",
+      MCP_OAUTH_REDIRECT_URIS:
+        "https://chatgpt.com/connector_platform_oauth_redirect",
+      SQLITE_PATH: `/tmp/pagevault-e2e-${E2E_PORT}.sqlite`,
+      LOCAL_STORAGE_DIR: `/tmp/pagevault-e2e-${E2E_PORT}-objects`,
+      PORT: String(E2E_PORT),
     },
   },
 });

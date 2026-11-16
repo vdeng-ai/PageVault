@@ -162,6 +162,25 @@ export async function me(): Promise<CurrentUser> {
   return user;
 }
 
+export interface McpConnection {
+  id: string;
+  clientId: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+}
+export interface McpSettings {
+  enabled: boolean;
+  oauthConfigured: boolean;
+  endpoint: string;
+  clientId: string | null;
+  connections: McpConnection[];
+}
+export function getMcpSettings(): Promise<McpSettings> { return request("/api/admin/mcp"); }
+export function revokeMcpConnection(id: string): Promise<{ ok: boolean }> {
+  return request(`/api/admin/mcp/connections/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 export function dashboard(): Promise<DashboardStats> {
   return request<DashboardStats>("/api/admin/dashboard");
 }

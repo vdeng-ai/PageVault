@@ -21,6 +21,8 @@ The next application update adds `0007_share_description.sql`, a nullable `share
 
 ## Supported upgrade path
 
+The v1.3 MCP integration adds `0008_mcp_oauth.sql` (upload-only grants and hashed OAuth tokens) and `0009_gc_active_expiry.sql` (a partial live-file expiry index). Apply both before deploying v1.3. They do not change stored bytes, URLs, existing API keys or item visibility. MCP stays disabled unless `MCP_ENABLED=true`; configure OAuth separately as described in [MCP](./mcp.md). Docker tracks and applies both migrations automatically. Rollbacks may leave these additive tables/indexes in place.
+
 PageVault v1.0 supports upgrading an existing deployment that already has any prefix of migrations `0001` through `0006`.
 
 The supported sequence is:

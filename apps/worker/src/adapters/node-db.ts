@@ -3,6 +3,8 @@ import { basename, dirname } from "node:path";
 import { mkdirSync } from "node:fs";
 import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
 import { AppError, type MetadataRepository } from "@pagevault/core";
+import { nodeMcpStore } from "./node-mcp.js";
+import { auditStatements, deletionStatements, type BoundSql } from "./sql-batches.js";
 import type {
   AccessCountInput,
   ApiKey,
@@ -150,6 +152,24 @@ function apiKeyRow(row: Record<string, SQLOutputValue>): ApiKey {
 }
 
 export class NodeSqliteRepository implements MetadataRepository {
+  private runBatch(statements: BoundSql[]): void {
+    if (!statements.length) return;
+    this.db.exec("BEGIN IMMEDIATE TRANSACTION");
+    try {
+      for (const { sql, values } of statements) this.db.prepare(sql).run(...values);
+      this.db.exec("COMMIT");
+    } catch (error) { this.db.exec("ROLLBACK"); throw error; }
+  }
+
+  async markDeletedBatch(ids: string[], deletedAt: string): Promise<void> {
+    this.runBatch(deletionStatements(ids, deletedAt));
+  }
+  async writeAuditLogs(input: AuditLogInput[]): Promise<void> {
+    this.runBatch(auditStatements(input));
+  }
+
+  createMcpStore() { return nodeMcpStore(this.db); }
+
   async healthCheck(): Promise<void> {
     this.db.prepare("SELECT 1 AS ok").get();
   }

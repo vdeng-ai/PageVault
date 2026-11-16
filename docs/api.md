@@ -21,6 +21,8 @@ The API is designed for a single administrator and upload automation, not as a g
 
 ## Authentication
 
+Optional ChatGPT/MCP integration is documented in [MCP](./mcp.md). When enabled, `/mcp` accepts existing upload-only API keys or resource-bound OAuth access tokens, and exposes only upload-policy, file-upload and small-text-upload tools. OAuth tokens are not accepted as administrator sessions or general REST API keys. MCP defaults to private uploads; the existing multipart API defaults are unchanged.
+
 `POST /api/auth/login`
 
 ```json
@@ -37,7 +39,7 @@ The API is designed for a single administrator and upload automation, not as a g
 
 Successful login creates the signed `pagevault_session` cookie. All authenticated write requests require the `X-CSRF-Token` value returned by `GET /api/auth/me`.
 
-Upload API keys use `Authorization: Bearer <key>` and are accepted only by `POST /api/admin/items`. They cannot read items or call other admin endpoints, and they do not require a CSRF token. API-key uploads no longer share a global upload slot, so independent requests may run concurrently. External clients should send an `Idempotency-Key` header for retry-safe uploads. Idempotency is scoped to the authenticated API key, so two API keys may reuse the same header value without colliding.
+Upload API keys use `Authorization: Bearer <key>` and are accepted by `POST /api/admin/items` and, when explicitly enabled, upload-only `/mcp` tools. They cannot read items or call other admin endpoints, and they do not require a CSRF token. API-key uploads no longer share a global upload slot, so independent requests may run concurrently. External clients should send an `Idempotency-Key` header for retry-safe uploads. Idempotency is scoped to the authenticated API key, so two API keys may reuse the same header value without colliding.
 
 ## API Keys
 

@@ -197,6 +197,8 @@ Do not add heavy document conversion, OCR, server-side screenshots, media proces
 
 ## Daily maintenance
 
+The optional ChatGPT integration uses the same Worker, D1, R2 and Cron. Apply migrations 0008/0009 and configure optional MCP values only after reviewing [MCP deployment](./mcp.md). The GitHub deployment workflow forwards these optional values from production environment secrets without requiring them for existing installations.
+
 The single Cron Trigger performs a bounded maintenance pass:
 
 - delete up to the configured GC batch of file-retention-expired objects;
@@ -209,3 +211,5 @@ The single Cron Trigger performs a bounded maintenance pass:
 Reconciliation defaults to 100 database items and 100 storage objects per run and is capped at 500 per direction. Two small cursor values are stored in D1 so the next daily run continues where the previous run stopped. Reaching the end resets that direction to the beginning for the next cycle.
 
 This intentionally avoids a full D1 scan or full R2 listing in one Worker invocation.
+
+Retention now uses one bounded R2 batch delete, set-based metadata updates and multi-row audit inserts. `MAINTENANCE_GC_LIMIT` is 100 by default and capped at 500. Set it above daily expiry volume before assuming storage reaches a 30-day steady state. Expired share/raw content is rejected by the D1 state check before cache access, so GC does not issue per-file cache purges. MCP token/grant cleanup shares this existing invocation and is bounded; it adds no second Cron.

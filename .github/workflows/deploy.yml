@@ -29,6 +29,7 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run test
       - run: pnpm run build
+      - run: pnpm run test:mcp:worker
 
   playwright:
     name: Verify browser flows
@@ -102,6 +103,12 @@ jobs:
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          MCP_ENABLED: ${{ secrets.MCP_ENABLED }}
+          MCP_OAUTH_CLIENT_ID: ${{ secrets.MCP_OAUTH_CLIENT_ID }}
+          MCP_OAUTH_CLIENT_SECRET: ${{ secrets.MCP_OAUTH_CLIENT_SECRET }}
+          MCP_OAUTH_REDIRECT_URIS: ${{ secrets.MCP_OAUTH_REDIRECT_URIS }}
+          MCP_FILE_ALLOWED_HOSTS: ${{ secrets.MCP_FILE_ALLOWED_HOSTS }}
+          MAINTENANCE_GC_LIMIT: ${{ secrets.MAINTENANCE_GC_LIMIT }}
         run: |
           set -eu
 
@@ -135,6 +142,14 @@ jobs:
             printf 'ADMIN_PASSWORD_HASH=%s\n' "$ADMIN_PASSWORD_HASH"
             printf 'SESSION_SECRET=%s\n' "$SESSION_SECRET"
           } > .env.production
+
+          # Optional integration settings: do not break existing non-MCP deployments.
+          # --keep-vars preserves deployed values; use MCP_ENABLED=false to disable.
+          for name in MCP_ENABLED MCP_OAUTH_CLIENT_ID MCP_OAUTH_CLIENT_SECRET MCP_OAUTH_REDIRECT_URIS MCP_FILE_ALLOWED_HOSTS MAINTENANCE_GC_LIMIT; do
+            if [ -n "${!name}" ]; then
+              printf '%s=%s\n' "$name" "${!name}" >> .env.production
+            fi
+          done
 
           chmod 600 .env.production
 

@@ -79,6 +79,11 @@ export class CloudflareR2Storage implements StorageProvider {
     await this.bucket.delete(key);
   }
 
+  async deleteObjects(keys: string[]): Promise<void> {
+    // Core GC is capped at 500; R2 supports up to 1,000 keys per delete call.
+    if (keys.length) await this.bucket.delete(keys);
+  }
+
   async listObjects(
     input: ListStoredObjectsInput,
   ): Promise<ListStoredObjectsResult> {
