@@ -22,13 +22,15 @@ An MCP client that supports a custom Authorization header can alternatively use 
 
 Supported formats: HTML, Markdown, PDF, SVG, PNG, JPEG and WebP. Default maximum file size: 10 MiB, subject to instance settings. No Office, ZIP, video, conversion, screenshotting or multi-file website bundling.
 
-**All MCP uploads default to private**, including `publish_text`. Pass `visibility: "public"` only when the user explicitly asks to publish or share. Defaults are 15 days for a public link and 30 days for the file, unless the instance is configured differently. Use `url_expire_days` and `file_expire_days` to override them.
+**All MCP uploads default to public**, including `upload_asset` and `publish_text`. Anyone with the returned link can view the file. Defaults are 15 days for the link and 30 days for the file, unless the instance is configured differently. Honor a request for private storage or no sharing by passing `visibility: "private"`. Use `url_expire_days` and `file_expire_days` when the user requests different periods. Existing files are not changed by these defaults.
 
-Example request: “Upload the report HTML to PageVault, make a public link valid for 15 days, and retain the original for 30 days.” A request merely to save a file stays private.
+Example request: “Save this report to PageVault.” This creates a public link using the default periods. For administrator-only access, say: “Save this file privately to PageVault; do not share it.”
 
 ## Actual files, not local paths
 
 `upload_asset.file` is an OpenAI file parameter. The host supplies `download_url` and `file_id`, and optionally `mime_type` and `file_name`. Do not invent these values. Pass the file through the host's file parameter mechanism. `sandbox:/mnt/data/...`, `file://...`, plain local paths and Base64 are not remote download URLs.
+
+When `file_host_not_allowed` or `invalid_file_url` is returned, report the tool's `requestId` and safe `diagnostic` fields. Do not retry with a local path, fabricate a different URL or claim the file was saved. `host_not_allowlisted` needs administrator verification of the exact `hostname`; `https_required`/`invalid_url` needs correct host file forwarding, not a broader allowlist. A `redirect` stage identifies a blocked redirect target. Never include the original signed URL, its query, file ID or credentials in diagnostics. `get_upload_policy` returns `downloadDiagnosticsVersion: 1` on servers with this support.
 
 File downloads use an HTTPS host allowlist. Expired URLs or unavailable file references require reattaching/reselecting the file. Some ChatGPT generation surfaces may not expose a reusable file reference; actual support must be checked in the connected account. Do not claim a generated image was uploaded without a successful tool result.
 

@@ -6,6 +6,6 @@ This is the administrator hostname. Upload automation uses an upload-only API ke
 
 ## API
 
-- [ChatGPT / MCP guide](/mcp-guide.md): Optional OAuth upload tools on `/mcp`, host file parameters, private-by-default uploads, retry rules and connection revocation. MCP must be enabled by the administrator first.
+- [ChatGPT / MCP guide](/mcp-guide.md): Optional OAuth upload tools on `/mcp`, host file parameters, public-by-default uploads with standard 15-day links and 30-day retention, explicit private storage, retry rules and connection revocation. MCP must be enabled by the administrator first.
 
 - [Upload API guide](/upload-api.md): Instance address, Bearer authentication, multipart upload example, fields, supported formats, response links, and idempotent retry rules. Use the same origin as this llms.txt file to resolve this link and call the API.

@@ -32,6 +32,9 @@ async function loginForConsent(page) {
     page.getByRole("heading", { name: "允许通过聊天上传到 PageVault？" }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/oauth\/authorize\?/);
+  await expect(
+    page.getByText(/上传默认公开，持有链接的人可访问/),
+  ).toBeVisible();
   return { verifier, state };
 }
 
@@ -82,10 +85,48 @@ test("ChatGPT-style OAuth login, consent, upload, retry, share and UI revocation
   const tools = await rpc(context.request, token, "tools/list");
   expect(tools.status).toBe(200);
   expect(tools.data.result.tools).toHaveLength(3);
+  const policy = (
+    await rpc(context.request, token, "tools/call", {
+      name: "get_upload_policy",
+      arguments: {},
+    })
+  ).data.result.structuredContent;
+  expect(policy).toMatchObject({
+    defaultVisibility: "public",
+    defaultUrlExpireDays: 15,
+    defaultFileExpireDays: 30,
+  });
+
+  for (const [url, code, reason] of [
+    [
+      "https://unverified.example/PRIVATE.jpg?sig=SECRET",
+      "file_host_not_allowed",
+      "host_not_allowlisted",
+    ],
+    ["sandbox:/mnt/data/PRIVATE.jpg", "invalid_file_url", "https_required"],
+  ]) {
+    const denied = (
+      await rpc(context.request, token, "tools/call", {
+        name: "upload_asset",
+        arguments: {
+          filename: "ok.jpg",
+          file: { file_id: "FILE_ID_SECRET", download_url: url },
+        },
+      })
+    ).data.result;
+    expect(denied.isError).toBe(true);
+    expect(denied.structuredContent).toMatchObject({
+      code,
+      diagnostic: { reason },
+    });
+    expect(denied.structuredContent.requestId).toMatch(/^[a-f0-9]{24}$/);
+    expect(JSON.stringify(denied)).not.toMatch(/PRIVATE|SECRET|mnt\/data/);
+  }
 
   const args = {
     filename: "chatgpt-private.md",
     text: "# Private from chat\n\nOriginal bytes.",
+    visibility: "private",
   };
   const privateResult = (
     await rpc(context.request, token, "tools/call", {
@@ -122,11 +163,22 @@ test("ChatGPT-style OAuth login, consent, upload, retry, share and UI revocation
       arguments: {
         filename: "chatgpt-public.html",
         text: "<!doctype html><title>Chat publish</title><h1>From chat</h1>",
-        visibility: "public",
       },
     })
   ).data.result.structuredContent;
   expect(published.publicUrl).toContain(`${PUBLIC}/p/`);
+  expect(published.visibility).toBe("public");
+  const publishedMetadata = await (
+    await context.request.get(`${ADMIN}/api/admin/items/${published.id}`)
+  ).json();
+  expect(
+    Date.parse(published.urlExpiresAt) -
+      Date.parse(publishedMetadata.createdAt),
+  ).toBe(15 * 86_400_000);
+  expect(
+    Date.parse(published.fileExpiresAt) -
+      Date.parse(publishedMetadata.createdAt),
+  ).toBe(30 * 86_400_000);
   await page.goto(published.publicUrl);
   await expect(page).toHaveTitle("Chat publish");
   await expect(
@@ -140,6 +192,9 @@ test("ChatGPT-style OAuth login, consent, upload, retry, share and UI revocation
   await page.goto(`${ADMIN}/#/api-keys`);
   await page.getByText("ChatGPT / MCP", { exact: true }).click();
   await expect(page.getByText(`${ADMIN}/mcp`, { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/Public by default: anyone with the link can view the file/),
+  ).toBeVisible();
   await page
     .locator(`[data-connection-id="${connectionId}"]`)
     .getByRole("button", { name: "Revoke connection" })

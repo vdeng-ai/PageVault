@@ -10,7 +10,9 @@ The upstream `@modelcontextprotocol/server` stateless HTTP handler supports mode
 
 Tools: `get_upload_policy`, `upload_asset`, `publish_text`. All credentials are upload-only. No asset list, private reads, administrative updates or deletion tools are exposed. Existing REST API keys retain their existing REST permissions and additionally access these upload tools when MCP is enabled. Existing browser/API upload defaults and share URLs remain unchanged.
 
-MCP writes default to private. Public publishing must be explicitly requested. Public/raw links are returned only while the result is public, active and unexpired. The result includes the actual persisted expiry timestamps. Existing files and idempotent replays may have been disabled/deleted since their original upload; the result reports that current state instead of promising a working public link.
+From v1.3.3, MCP writes default to public, matching the web upload default. Standard link validity is 15 days and file retention is 30 days; the effective periods come from the existing instance settings and may be overridden per upload. Anyone with the public link can view the file. Explicit `visibility: "private"` requests remain private. Existing records and their visibility/expiry are not modified. Public/raw links are returned only while the result is public, active and unexpired. The result includes the actual persisted expiry timestamps. Existing files and idempotent replays may have been disabled/deleted since their original upload; the result reports that current state instead of promising a working public link.
+
+After upgrading, refresh the ChatGPT tool descriptors; an older client may still explicitly send `private`, which the server deliberately honors. For a packaged private plugin, update its bundled upload skill as well. Reusing an explicit idempotency key with a changed visibility remains a conflict, never a silent permission change.
 
 ## Configure before enabling
 
@@ -24,8 +26,11 @@ MCP_OAUTH_CLIENT_ID=pagevault-chatgpt
 MCP_OAUTH_REDIRECT_URIS=https://chatgpt.com/connector_platform_oauth_redirect
 # Optional: omit for a public predefined client with PKCE.
 # MCP_OAUTH_CLIENT_SECRET=<cryptographically random secret entered securely>
-# Optional: default allowlist is .oaiusercontent.com.
-# MCP_FILE_ALLOWED_HOSTS=.oaiusercontent.com
+# Optional: defaults include the exact attachment account observed in ChatGPT.
+# This overrides the defaults; never use .blob.core.windows.net.
+# MCP_FILE_ALLOWED_HOSTS=.oaiusercontent.com,oaisdmntprwestus3.blob.core.windows.net
+# Optional: temporarily trace hostname validation without logging signed URLs.
+# MCP_FILE_DIAGNOSTICS=true
 # Daily retention batch, default 100; 1..500.
 MAINTENANCE_GC_LIMIT=100
 ```
@@ -82,11 +87,29 @@ Keep administrator credentials in the ignored local secrets file. Do not pass a 
 
 `upload_asset` declares `_meta["openai/fileParams"]: ["file"]`. Its file object has required `download_url`, `file_id`, and optional `mime_type`, `file_name`. An explicit `filename` overrides the optional file metadata; MIME-based fallback names are deterministic. All four fields are declared, and optional metadata is not required.
 
-The host, not a model-written URL, must supply the file reference. Remote Workers cannot fetch `sandbox:` paths. Files are downloaded with a 20-second timeout, a three-redirect maximum, HTTPS-only host validation at each hop, and a byte limit enforced on both the declared length and decoded body. No PageVault credentials are forwarded. Signed URLs are not persisted or returned in errors. Default allowlist: subdomains of `oaiusercontent.com`. Exact additional provider hosts can be configured after verifying a real host-issued file URL; do not allow arbitrary hosts or all of `blob.core.windows.net`.
+The host, not a model-written URL, must supply the file reference. Remote Workers cannot fetch `sandbox:` paths. Files are downloaded with a 20-second timeout, a three-redirect maximum, HTTPS-only host validation at each hop, and a byte limit enforced on both the declared length and decoded body. No PageVault credentials are forwarded. Signed URLs are not persisted or returned in errors. From v1.3.2, the default allowlist contains subdomains of `oaiusercontent.com` and the exact host `oaisdmntprwestus3.blob.core.windows.net`, observed in the maintainer's actual ChatGPT attachment diagnostic. Other Azure accounts/regions and subdomains of that exact account remain blocked. This is not an exhaustive provider-domain guarantee. Exact additional hosts can be configured after verifying a real host-issued file URL; do not allow arbitrary hosts or all of `blob.core.windows.net`.
 
 The existing upload core accepts an `ArrayBuffer`. Downloads are bounded, but this is **not** an end-to-end streaming upload. Keep the default 10 MiB guardrail and measure Worker CPU/memory before increasing it. Inline text has a 256 KiB UTF-8 limit. MCP request JSON is limited to 2 MiB (including escaping), and binary Base64 uploads are not implemented. Existing content authentication, SHA-256, idempotency and partial-failure recovery are reused.
 
 Default deduplication is scoped to a credential/grant and lasts 24 hours. A newly signed download URL for the same host file ID does not create a duplicate. A retry still needs a valid downloadable file because byte validation is preserved. Supplying a new explicit key allows another intentional copy. No directories or embedded website dependency trees are imported automatically.
+
+### Diagnose blocked attachments
+
+The OpenAI file-parameter contract describes a temporary `download_url`, not a guaranteed fixed download hostname. PageVault's default allowlist is an application policy, not evidence that every host-forwarded file uses those domains. Both initial URLs and every redirect are checked. Do not add guessed provider domains, allow all of Azure/S3, or disable the allowlist.
+
+From v1.3.1, URL-validation errors contain `requestId` and a redacted `diagnostic` object. `get_upload_policy` reports `downloadDiagnosticsVersion: 1` and whether `fileDiagnosticsEnabled` is on. An error's request ID also appears in the HTTP `X-Request-Id` header.
+
+| Diagnostic                                             | Meaning and next action                                                                                                                                              |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reason: host_not_allowlisted`                         | A parsed HTTPS hostname did not match the configured allowlist. Verify the real `hostname` and provider before adding that exact host.                               |
+| `stage: redirect`                                      | The initial URL passed but a redirect was rejected; `sourceHostname`, `hostname`, and `hop` identify the blocked step.                                               |
+| `reason: https_required`                               | A sandbox/file/data/blob/HTTP reference was sent instead of a downloadable HTTPS URL. Fix the connector's file-parameter forwarding; adding domains will not fix it. |
+| `reason: invalid_url`                                  | No valid download URL was received, or a redirect was malformed. Do not retry with a filesystem path or fabricated URL.                                              |
+| `allowlistMatched: true` with another rejection reason | The hostname matched, but credentials, an alternate port, a fragment or a local/IP target was refused. Hostname matching alone never authorizes a request.           |
+
+The structured error is available without logging. For temporary server-side tracing, set `MCP_FILE_DIAGNOSTICS=true` through the existing Worker/CI secrets or Docker environment and deploy. In local Wrangler development, pass `--var MCP_FILE_DIAGNOSTICS:true` because optional names are not in `secrets.required`. Search logs for the `mcp_file_url_check` event and returned request ID. Logs contain only the generated ID, stage/hop, a classified protocol, hostnames, allowlist match and reason; no path, query, filename, file ID, bearer token or raw exception is included. Provider log sampling still applies, so use the returned diagnostic even if that request was not retained in logs. Set the flag explicitly to `false` after diagnosis.
+
+Only after verifying the actual host, edit `MCP_FILE_ALLOWED_HOSTS` to contain the existing trusted entries plus that exact hostname (comma-separated). This setting replaces, rather than appends to, the default. For an older installation explicitly configured with only `.oaiusercontent.com`, deploying v1.3.2 alone will not override that setting: update it to `.oaiusercontent.com,oaisdmntprwestus3.blob.core.windows.net` to apply this observed-host fix. Confirm the effective list by calling `get_upload_policy` again, not by relying on a previously cached result. Unknown or unverified hosts remain blocked. Retry the actual file through `upload_asset` and report only the safe diagnostic fields on failure. Never paste a signed download URL into a chat or public issue. A passing mocked-download test does not establish that a real ChatGPT attachment was uploaded.
 
 ## Cloudflare quota model
 

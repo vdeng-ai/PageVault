@@ -49,7 +49,8 @@ Cloudflare stores these as Wrangler vars. Docker exposes the same values through
 | `MCP_OAUTH_CLIENT_ID` | Unset | One predefined OAuth client ID. |
 | `MCP_OAUTH_REDIRECT_URIS` | Unset | Comma-separated exact HTTPS callback allowlist. |
 | `MCP_OAUTH_CLIENT_SECRET` | Unset | Optional confidential-client secret; omit for public-client PKCE. |
-| `MCP_FILE_ALLOWED_HOSTS` | `.oaiusercontent.com` | Replacement download host allowlist; exact names or leading-dot suffixes, no arbitrary URL import. |
+| `MCP_FILE_ALLOWED_HOSTS` | `.oaiusercontent.com,oaisdmntprwestus3.blob.core.windows.net` | Replacement download host allowlist; the observed Azure account is an exact match, not an Azure-wide suffix. An existing explicit value overrides these defaults. No arbitrary URL import. |
+| `MCP_FILE_DIAGNOSTICS` | `false` | Temporarily log hostname-only initial/redirect checks with a request ID; never logs complete URLs, signed queries, file IDs or file contents. Errors return safe diagnostics even when logging is off. |
 | `MAINTENANCE_GC_LIMIT` | `100` | Files per daily retention pass, capped at 500. Raise only with matching runtime headroom. |
 
 These settings also apply to Docker. MCP requires migrations 0008/0009; all remain optional for existing deployments. See [MCP connection and capacity guide](./mcp.md). Setting `MCP_ENABLED=false` disables the integration without changing the original REST API.

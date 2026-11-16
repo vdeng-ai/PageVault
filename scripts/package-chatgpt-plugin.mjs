@@ -49,8 +49,9 @@ const plugin = {
         category: "Productivity",
         capabilities: ["Write"],
         defaultPrompt: [
-          "Save this file privately to PageVault.",
+          "Upload this file to PageVault and return its share link.",
           "Publish this HTML to PageVault with a 15-day share link.",
+          "Save this file privately to PageVault; do not share it.",
         ],
       },
     },

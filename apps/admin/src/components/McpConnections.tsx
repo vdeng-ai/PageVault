@@ -109,8 +109,8 @@ export function McpConnections() {
                 ) : null}
                 <p>
                   {zh
-                    ? "默认私有，仅在明确要求分享时公开。支持现有七类文件；不能读取私有文件、列出资产或删除文件。"
-                    : "Private by default; publish only on an explicit sharing request. Supports the existing seven formats, without private reads, asset listing or deletion."}
+                    ? "上传默认公开，持有链接的人可访问；标准设置为链接有效 15 天、文件保留 30 天。如需私有，请在上传时明确说明。支持现有七类文件；不能读取私有文件、列出资产或删除文件。"
+                    : "Public by default: anyone with the link can view the file. Standard settings are a 15-day link and 30-day file retention. Ask for private storage when needed. Supports the existing seven formats, without private reads, asset listing or deletion."}
                 </p>
                 <a
                   className="api-usage-doc-link"

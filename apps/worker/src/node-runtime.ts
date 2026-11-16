@@ -66,6 +66,7 @@ export function createNodeRuntime(): NodeRuntime {
     ),
     ACCESS_COUNT_MODE: process.env.ACCESS_COUNT_MODE ?? "windowed",
     MCP_ENABLED: process.env.MCP_ENABLED ?? "false",
+    MCP_FILE_DIAGNOSTICS: process.env.MCP_FILE_DIAGNOSTICS ?? "false",
     MAINTENANCE_GC_LIMIT: String(numberEnv("MAINTENANCE_GC_LIMIT", 100)),
     ...(process.env.MCP_OAUTH_CLIENT_ID ? { MCP_OAUTH_CLIENT_ID: process.env.MCP_OAUTH_CLIENT_ID } : {}),
     ...(process.env.MCP_OAUTH_CLIENT_SECRET ? { MCP_OAUTH_CLIENT_SECRET: process.env.MCP_OAUTH_CLIENT_SECRET } : {}),

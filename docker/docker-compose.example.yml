@@ -29,6 +29,7 @@ services:
       ACCESS_COUNT_MODE: windowed
       ACCESS_COUNT_FLUSH_SECONDS: "300"
       MCP_ENABLED: "false"
+      MCP_FILE_DIAGNOSTICS: "false"
       MAINTENANCE_GC_LIMIT: "100"
       # MCP_OAUTH_CLIENT_ID: pagevault-chatgpt
       # MCP_OAUTH_REDIRECT_URIS: https://chatgpt.com/connector_platform_oauth_redirect

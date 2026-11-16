@@ -21,6 +21,7 @@ export interface AppBindings {
   MCP_OAUTH_CLIENT_SECRET?: string;
   MCP_OAUTH_REDIRECT_URIS?: string;
   MCP_FILE_ALLOWED_HOSTS?: string;
+  MCP_FILE_DIAGNOSTICS?: string;
   MAINTENANCE_GC_LIMIT?: string;
 }
 

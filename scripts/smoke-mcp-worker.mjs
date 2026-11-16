@@ -69,7 +69,9 @@ try {
   await writeFile(
     envFile,
     Object.entries(values)
-      .map(([key, value]) => `${key}=${value}`)
+      // Wrangler expands $NAME in dotenv files. PBKDF2 separators followed by
+      // randomized hex must stay literal, regardless of the salt/hash prefix.
+      .map(([key, value]) => `${key}=${value.replaceAll("$", "\\$")}`)
       .join("\n"),
     { mode: 0o600 },
   );
@@ -141,7 +143,7 @@ try {
   async function call(path, options = {}) {
     return fetch(`${admin}${path}`, { ...options, redirect: "manual" });
   }
-  async function rpc(token, method, params = {}) {
+  async function rpc(token, method, params = {}, expectToolError = false) {
     const response = await call("/mcp", {
       method: "POST",
       headers: {
@@ -165,11 +167,21 @@ try {
       : text;
     const payload = JSON.parse(data);
     assert.equal(payload.error, undefined);
-    assert.notEqual(
-      payload.result.isError,
-      true,
-      JSON.stringify(payload.result),
-    );
+    if (expectToolError) {
+      assert.equal(payload.result.isError, true);
+    } else {
+      assert.notEqual(
+        payload.result.isError,
+        true,
+        JSON.stringify(payload.result),
+      );
+    }
+    if (payload.result.structuredContent?.requestId) {
+      assert.equal(
+        payload.result.structuredContent.requestId,
+        response.headers.get("X-Request-Id"),
+      );
+    }
     return payload.result;
   }
   const denied = await call("/mcp");
@@ -196,7 +208,7 @@ try {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: values.ADMIN_EMAIL, password }),
   });
-  assert.equal(login.status, 200);
+  assert.equal(login.status, 200, login.ok ? "" : await login.text());
   const cookie = login.headers.get("Set-Cookie").split(";")[0];
   const me = await (
     await call("/api/auth/me", { headers: { Cookie: cookie } })
@@ -265,11 +277,56 @@ try {
     })
   ).structuredContent;
   assert.equal(policy.maxUploadSizeBytes, 10 * 1024 * 1024);
+  assert.equal(policy.defaultVisibility, "public");
+  assert.equal(policy.defaultUrlExpireDays, 15);
+  assert.equal(policy.defaultFileExpireDays, 30);
+  assert.deepEqual(policy.allowedDownloadHosts, [
+    ".oaiusercontent.com",
+    "oaisdmntprwestus3.blob.core.windows.net",
+  ]);
   checks.push("PKCE consent, code exchange and three MCP tools in workerd");
+
+  for (const [downloadUrl, code, reason, hostname] of [
+    [
+      "https://unverified.example/PRIVATE.jpg?sig=SECRET",
+      "file_host_not_allowed",
+      "host_not_allowlisted",
+      "unverified.example",
+    ],
+    [
+      "sandbox:/mnt/data/PRIVATE.jpg",
+      "invalid_file_url",
+      "https_required",
+      null,
+    ],
+  ]) {
+    const deniedFile = await rpc(
+      tokens.access_token,
+      "tools/call",
+      {
+        name: "upload_asset",
+        arguments: {
+          filename: "ok.jpg",
+          file: { file_id: "FILE_ID_SECRET", download_url: downloadUrl },
+        },
+      },
+      true,
+    );
+    assert.equal(deniedFile.isError, true);
+    assert.equal(deniedFile.structuredContent.code, code);
+    assert.equal(deniedFile.structuredContent.diagnostic.reason, reason);
+    assert.equal(deniedFile.structuredContent.diagnostic.hostname, hostname);
+    assert.match(deniedFile.structuredContent.requestId, /^[a-f0-9]{24}$/);
+    assert.doesNotMatch(JSON.stringify(deniedFile), /PRIVATE|SECRET|mnt\/data/);
+  }
+  checks.push(
+    "redacted attachment-host vs sandbox-path errors without outbound downloads",
+  );
 
   const privateArgs = {
     filename: "smoke.md",
     text: "# Private\n\nPreserve these bytes.\n",
+    visibility: "private",
   };
   const save = async (args, token = tokens.access_token) =>
     (await rpc(token, "tools/call", { name: "publish_text", arguments: args }))
@@ -288,13 +345,26 @@ try {
   const publicArgs = {
     filename: "smoke.html",
     text: "<!doctype html><title>MCP smoke</title><h1>Original</h1>",
-    visibility: "public",
   };
   const published = await save(publicArgs);
+  assert.equal(published.visibility, "public");
+  const publishedItem = await (
+    await call(`/api/admin/items/${published.id}`, {
+      headers: { Cookie: cookie },
+    })
+  ).json();
+  assert.equal(
+    Date.parse(published.urlExpiresAt) - Date.parse(publishedItem.createdAt),
+    15 * 86_400_000,
+  );
+  assert.equal(
+    Date.parse(published.fileExpiresAt) - Date.parse(publishedItem.createdAt),
+    30 * 86_400_000,
+  );
   assert.equal((await fetch(published.publicUrl)).status, 200);
   assert.equal(await (await fetch(published.rawUrl)).text(), publicArgs.text);
   checks.push(
-    "private default, idempotency, public viewer and byte-exact local R2 delivery",
+    "public default with 15/30-day expiry, explicit private storage, idempotency and byte-exact local R2 delivery",
   );
 
   const refresh = await call("/oauth/token", {

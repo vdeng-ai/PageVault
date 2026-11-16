@@ -4,6 +4,33 @@ All notable PageVault changes are documented here. PageVault follows Semantic Ve
 
 ## [Unreleased]
 
+## [1.3.3] - Unreleased
+
+### Changed
+
+- default new MCP file/text uploads to public, matching the web uploader, with standard 15-day share links and 30-day file retention; keep explicit private/custom expiry choices and existing records unchanged;
+- align tool schemas, model instructions, OAuth consent, the admin connection panel and the bundled ChatGPT upload skill with the public default;
+- replace the English and Simplified Chinese READMEs with product introduction and user instructions; keep architecture, contributor workflows and troubleshooting internals in their dedicated documents;
+- cover omitted upload options, exact expiry timestamps, explicit private storage and unchanged existing private files in integration/browser/workerd checks.
+
+## [1.3.2] - Unreleased
+
+### Fixed
+
+- permit the exact `oaisdmntprwestus3.blob.core.windows.net` attachment host observed in the maintainer's ChatGPT diagnostic, alongside the existing `.oaiusercontent.com` policy; retain HTTPS-only, per-hop validation and rejection of unrelated Azure accounts, deceptive suffixes and local targets;
+- document that explicit `MCP_FILE_ALLOWED_HOSTS` settings replace the defaults and must be updated on existing deployments;
+- cover private JPEG import from the observed host, byte preservation, retry deduplication, effective policy reporting and rejection of onward redirects to untrusted accounts. Download transport is mocked in the JPEG integration test; real attachment acceptance still requires a successful ChatGPT retry.
+
+## [1.3.1] - Unreleased
+
+### Fixed
+
+- distinguish unsupported local/sandbox file references and malformed download URLs from actual file-host allowlist failures;
+- return a server-generated request ID and hostname-only diagnostics for initial/redirect URL validation failures, without exposing filenames, file IDs, signed queries, credentials or full URLs;
+- explicitly preserve request IDs and no-store/security headers on MCP SDK responses while retaining streaming;
+- escape literal dollar signs in the isolated workerd smoke-test dotenv fixture so randomized PBKDF2 hashes are not interpreted as environment-variable references;
+- add opt-in `MCP_FILE_DIAGNOSTICS` logs and regression checks for redirect validation, exact-host configuration, unchanged byte transfer, redaction and rejected uploads that create no stored item. The download allowlist is unchanged; the reported attachment hostname still requires a real host-forwarded retry to identify.
+
 ## [1.3.0] - Unreleased
 
 ### Added

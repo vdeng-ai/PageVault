@@ -1,4 +1,5 @@
 import type { Hono } from "hono";
+import { randomHex } from "@pagevault/core";
 import type { HonoRuntime, ServiceFactory } from "../bindings.js";
 import { checkRateLimit } from "../rate-limit.js";
 import {
@@ -17,6 +18,9 @@ export function registerMcpRoutes(
 ): void {
   registerOAuthRoutes(app, createStore);
   app.all("/mcp", async (c) => {
+    const requestId = randomHex(12);
+    c.set("requestId", requestId);
+    c.header("X-Request-Id", requestId);
     c.header("Cache-Control", "no-store");
     c.header("X-Content-Type-Options", "nosniff");
     if (c.env.MCP_ENABLED !== "true") return c.notFound();
@@ -52,8 +56,16 @@ export function registerMcpRoutes(
       env: c.env,
       service,
       principal,
+      requestId,
       ...(fetchFile ? { fetchFile } : {}),
     });
-    return handler.fetch(c.req.raw);
+    // The SDK returns its own Response, bypassing Hono's prepared headers.
+    // Preserve streaming while explicitly attaching correlation/security headers.
+    const response = await handler.fetch(c.req.raw);
+    const headers = new Headers(response.headers);
+    headers.set("X-Request-Id", requestId);
+    headers.set("Cache-Control", "no-store");
+    headers.set("X-Content-Type-Options", "nosniff");
+    return new Response(response.body, { status: response.status, headers });
   });
 }

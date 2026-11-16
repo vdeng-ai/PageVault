@@ -322,7 +322,7 @@ export function registerOAuthRoutes(
       <style>body{font:16px/1.7 system-ui;margin:0;background:#f5f6fa;color:#171923}main{max-width:32rem;margin:10vh auto;padding:2rem;background:white;border-radius:20px}h1{font-size:1.5rem}code{overflow-wrap:anywhere}button{padding:.8rem 1.2rem;margin:.5rem .5rem 0 0;cursor:pointer;border-radius:8px;border:1px solid #aaa}button[value=allow]{background:#171923;color:white}</style>
       <main><h1>允许通过聊天上传到 PageVault？</h1>
       <p>客户端：<code>${escapeHtml(input.clientId)}</code><br>当前账户：${escapeHtml(session.email)}</p>
-      <p>仅允许上传文件和查询上传规则。不能读取私有文件、列出资产或删除文件。上传默认私有；明确选择公开时，持有链接的人可访问。</p>
+      <p>仅允许上传文件和查询上传规则。不能读取私有文件、列出资产或删除文件。上传默认公开，持有链接的人可访问；标准设置为链接有效 15 天、文件保留 30 天。如需仅自己查看，请在上传时明确选择私有。</p>
       <p>授权最长 30 天，可随时在后台的 API Keys 页面撤销。文件保留期限由每次上传设置决定。</p>
       <form method="post" action="/oauth/authorize">${fields.map(([key, value]) => `<input type="hidden" name="${escapeHtml(key)}" value="${escapeHtml(value)}">`).join("")}
       <button name="decision" value="allow">允许上传</button><button name="decision" value="deny">取消</button></form></main></html>`);
