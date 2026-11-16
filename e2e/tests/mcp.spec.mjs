@@ -32,6 +32,7 @@ async function loginForConsent(page) {
     page.getByRole("heading", { name: "允许通过聊天上传到 PageVault？" }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/oauth\/authorize\?/);
+  await expect(page.getByText(/本次授权有效 365 天/)).toBeVisible();
   await expect(
     page.getByText(/上传默认公开，持有链接的人可访问/),
   ).toBeVisible();
@@ -81,7 +82,9 @@ test("ChatGPT-style OAuth login, consent, upload, retry, share and UI revocation
     },
   });
   expect(tokenResponse.status()).toBe(200);
-  const { access_token: token } = await tokenResponse.json();
+  const { access_token: token, expires_in: accessSeconds } =
+    await tokenResponse.json();
+  expect(accessSeconds).toBe(3600);
   const tools = await rpc(context.request, token, "tools/list");
   expect(tools.status).toBe(200);
   expect(tools.data.result.tools).toHaveLength(3);
@@ -189,9 +192,18 @@ test("ChatGPT-style OAuth login, consent, upload, retry, share and UI revocation
     await context.request.get(`${ADMIN}/api/admin/mcp`)
   ).json();
   const connectionId = settings.connections[0].id;
+  expect(settings.grantDays).toBe(365);
+  expect(settings.accessTokenSeconds).toBe(3600);
+  expect(
+    Date.parse(settings.connections[0].expiresAt) -
+      Date.parse(settings.connections[0].createdAt),
+  ).toBe(365 * 86_400_000);
   await page.goto(`${ADMIN}/#/api-keys`);
   await page.getByText("ChatGPT / MCP", { exact: true }).click();
   await expect(page.getByText(`${ADMIN}/mcp`, { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/New connections are authorized for 365 days/),
+  ).toBeVisible();
   await expect(
     page.getByText(/Public by default: anyone with the link can view the file/),
   ).toBeVisible();

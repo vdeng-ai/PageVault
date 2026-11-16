@@ -4,6 +4,14 @@ All notable PageVault changes are documented here. PageVault follows Semantic Ve
 
 ## [Unreleased]
 
+## [1.3.4] - Unreleased
+
+### Changed
+
+- make new OAuth connection lifetimes configurable with `MCP_OAUTH_GRANT_DAYS`, defaulting to 365 days; retain the one-hour access-token cap, rotating refresh tokens, reuse detection, fixed grant deadlines and immediate revocation;
+- show the configured lifetime in consent and connection settings; pass the optional setting through Cloudflare CI and Docker without changing existing grant expiries or file retention;
+- document reauthorization for existing 30-day connections and test longer-lived refresh, expiry boundaries, invalid configuration and unchanged old grants.
+
 ## [1.3.3] - Unreleased
 
 ### Changed

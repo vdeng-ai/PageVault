@@ -174,6 +174,8 @@ export interface McpSettings {
   oauthConfigured: boolean;
   endpoint: string;
   clientId: string | null;
+  grantDays: number;
+  accessTokenSeconds: number;
   connections: McpConnection[];
 }
 export function getMcpSettings(): Promise<McpSettings> { return request("/api/admin/mcp"); }

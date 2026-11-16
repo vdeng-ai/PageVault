@@ -12,6 +12,8 @@ The server supports predefined clients with PKCE S256, not dynamic client regist
 
 An MCP client that supports a custom Authorization header can alternatively use an upload-only PageVault API key. This does not grant private-file reads, item listing or deletion. ChatGPT connection surfaces differ; use OAuth for the portable ChatGPT flow.
 
+New connections are authorized for **365 days by default**, or the period configured by the administrator and displayed on the consent page. Access tokens last up to one hour; the client can automatically refresh them within the authorization period. Refresh tokens rotate, but the original authorization deadline does not move. Existing 30-day connections retain their original expiry; authorize again to use the new period. Connection authorization is separate from share-link expiry and file retention.
+
 ## Upload tools
 
 | Tool                | Purpose                                                                        |

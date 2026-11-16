@@ -58,6 +58,8 @@ Add PageVault through a ChatGPT custom MCP/plugin connection flow that supports 
 
 Sign in to PageVault when prompted and approve upload access. Do not paste passwords or API keys into the conversation. Once connected, select PageVault when asking ChatGPT to upload a file.
 
+New connections are authorized for **365 days by default**; the authorization page shows the actual configured period. Access tokens last up to one hour and can refresh automatically within that period. You can revoke the connection at any time. Existing 30-day connections keep their original expiry; authorize again to use the new period. This does not change the 15-day share-link or 30-day file-retention defaults.
+
 ### Ask in the conversation
 
 To use the defaults:

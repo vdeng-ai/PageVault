@@ -20,6 +20,8 @@ const state = resolve(temporary, "state");
 const envFile = resolve(temporary, ".env");
 const callback = "https://chatgpt.com/connector_platform_oauth_redirect";
 const clientId = "pagevault-local-smoke";
+// Non-default value verifies that Worker configuration, consent and D1 agree.
+const grantDays = 90;
 const password = randomBytes(24).toString("hex");
 const checks = [];
 let worker;
@@ -123,6 +125,8 @@ try {
       `MCP_OAUTH_CLIENT_ID:${clientId}`,
       "--var",
       `MCP_OAUTH_REDIRECT_URIS:${callback}`,
+      "--var",
+      `MCP_OAUTH_GRANT_DAYS:${grantDays}`,
       "--var",
       "ACCESS_COUNT_MODE:off",
     ],
@@ -258,6 +262,19 @@ try {
   });
   assert.equal(exchange.status, 200);
   const tokens = await exchange.json();
+  assert.equal(tokens.expires_in, 3600);
+  const authorizationSettings = await (
+    await call("/api/admin/mcp", {
+      headers: { Cookie: cookie },
+    })
+  ).json();
+  assert.equal(authorizationSettings.grantDays, grantDays);
+  assert.equal(authorizationSettings.accessTokenSeconds, 3600);
+  const grant = authorizationSettings.connections[0];
+  assert.equal(
+    Date.parse(grant.expiresAt) - Date.parse(grant.createdAt),
+    grantDays * 86_400_000,
+  );
   const tools = (await rpc(tokens.access_token, "tools/list")).tools;
   assert.deepEqual(tools.map((tool) => tool.name).sort(), [
     "get_upload_policy",
@@ -378,6 +395,13 @@ try {
   });
   assert.equal(refresh.status, 200);
   const rotated = await refresh.json();
+  assert.equal(rotated.expires_in, 3600);
+  const refreshedSettings = await (
+    await call("/api/admin/mcp", {
+      headers: { Cookie: cookie },
+    })
+  ).json();
+  assert.deepEqual(refreshedSettings.connections[0], grant);
   assert.notEqual(rotated.refresh_token, tokens.refresh_token);
   assert.equal((await save(privateArgs, rotated.access_token)).id, saved.id);
   const revoke = await call("/oauth/revoke", {
@@ -398,7 +422,7 @@ try {
   );
   assert.equal((await fetch(published.publicUrl)).status, 200);
   checks.push(
-    "refresh preserves idempotency; revocation blocks tokens without deleting files",
+    "configured 90-day grant, one-hour access tokens, unchanged expiry on refresh and immediate revocation",
   );
 
   const expire = await call(`/api/admin/items/${published.id}`, {

@@ -107,6 +107,7 @@ jobs:
           MCP_OAUTH_CLIENT_ID: ${{ secrets.MCP_OAUTH_CLIENT_ID }}
           MCP_OAUTH_CLIENT_SECRET: ${{ secrets.MCP_OAUTH_CLIENT_SECRET }}
           MCP_OAUTH_REDIRECT_URIS: ${{ secrets.MCP_OAUTH_REDIRECT_URIS }}
+          MCP_OAUTH_GRANT_DAYS: ${{ secrets.MCP_OAUTH_GRANT_DAYS }}
           MCP_FILE_ALLOWED_HOSTS: ${{ secrets.MCP_FILE_ALLOWED_HOSTS }}
           MCP_FILE_DIAGNOSTICS: ${{ secrets.MCP_FILE_DIAGNOSTICS }}
           MAINTENANCE_GC_LIMIT: ${{ secrets.MAINTENANCE_GC_LIMIT }}
@@ -146,7 +147,7 @@ jobs:
 
           # Optional integration settings: do not break existing non-MCP deployments.
           # --keep-vars preserves deployed values; use MCP_ENABLED=false to disable.
-          for name in MCP_ENABLED MCP_OAUTH_CLIENT_ID MCP_OAUTH_CLIENT_SECRET MCP_OAUTH_REDIRECT_URIS MCP_FILE_ALLOWED_HOSTS MCP_FILE_DIAGNOSTICS MAINTENANCE_GC_LIMIT; do
+          for name in MCP_ENABLED MCP_OAUTH_CLIENT_ID MCP_OAUTH_CLIENT_SECRET MCP_OAUTH_REDIRECT_URIS MCP_OAUTH_GRANT_DAYS MCP_FILE_ALLOWED_HOSTS MCP_FILE_DIAGNOSTICS MAINTENANCE_GC_LIMIT; do
             if [ -n "${!name}" ]; then
               printf '%s=%s\n' "$name" "${!name}" >> .env.production
             fi

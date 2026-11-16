@@ -24,6 +24,8 @@ Set these **optional** values in the ignored `apps/worker/.env.production` for a
 MCP_ENABLED=true
 MCP_OAUTH_CLIENT_ID=pagevault-chatgpt
 MCP_OAUTH_REDIRECT_URIS=https://chatgpt.com/connector_platform_oauth_redirect
+# Optional: fixed lifetime of new OAuth grants, integer 1..3650; default 365.
+MCP_OAUTH_GRANT_DAYS=365
 # Optional: omit for a public predefined client with PKCE.
 # MCP_OAUTH_CLIENT_SECRET=<cryptographically random secret entered securely>
 # Optional: defaults include the exact attachment account observed in ChatGPT.
@@ -58,7 +60,9 @@ Token: https://YOUR_ADMIN_HOST/oauth/token
 
 Discovery supplies the endpoints. A connection flow without predefined-client support is not compatible with this setup until that client supplies a supported registration path; do not select DCR against a nonexistent registration endpoint.
 
-Sign in through the existing PageVault admin login, inspect the consent page and approve. The login resumes only the same-origin `/oauth/authorize` path. Consent is protected by the existing session's CSRF token and an exact Origin check. Access tokens last up to one hour. Refresh tokens rotate and the grant expires after 30 days. Reusing a consumed refresh token revokes the connection. Codes are single-use and expire after five minutes. Tokens/codes are stored only as SHA-256 hashes; every request checks current grant revocation and resource binding with one indexed lookup. No per-call OAuth audit/last-used write is added.
+Sign in through the existing PageVault admin login, inspect the consent page and approve. The login resumes only the same-origin `/oauth/authorize` path. Consent is protected by the existing session's CSRF token and an exact Origin check. Access tokens still last up to one hour (or the remaining grant lifetime, whichever is shorter). From v1.3.4, new grants last 365 days by default, configurable with `MCP_OAUTH_GRANT_DAYS` (integer 1–3650; unset/blank uses 365). Invalid configured values reject new consent with `invalid_mcp_oauth_grant_days` rather than silently choosing a different lifetime. Refresh tokens rotate within the saved grant lifetime; refreshing does not move its fixed deadline. Reusing a consumed refresh token revokes the connection. Codes are single-use and expire after five minutes. Tokens/codes are stored only as SHA-256 hashes; every request checks current grant revocation and resource binding with one indexed lookup. No per-call OAuth audit/last-used write is added.
+
+Changing the configured lifetime affects new authorizations only. Existing 30-day grants keep their original expiry, even after a refresh; authorize the connection again to start a new 365-day grant. Do not rewrite existing rows or refresh-token expiries. The consent page displays the configured period; `/api/admin/mcp` returns `grantDays`, `accessTokenSeconds` and the actual saved expiry of each connection. The setting is independent of 15-day share links and 30-day file retention. Cloudflare CI forwards the optional value; Docker reads the same environment setting. For local Wrangler testing, pass `--var MCP_OAUTH_GRANT_DAYS:90` to test a non-default period. No migration is required.
 
 Manage/revoke connections in **API Keys → ChatGPT / MCP**. Revocation does not delete files. Rotating the administrator password or session secret does not revoke independent OAuth grants; revoke those connections separately or disable MCP. There is also a standard `/oauth/revoke` endpoint and an authenticated `DELETE /api/admin/mcp/connections/:id` route.
 

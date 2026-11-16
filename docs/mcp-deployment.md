@@ -78,6 +78,18 @@ This update does not require a database migration, alter existing assets, change
 
 Deployed Worker version `18fb9aea-9ebf-4bb6-add1-81030b0d8930` at 100% traffic, confirmed by a subsequent deployment-status query. Previous version: `4ed51140-9f5d-49b6-9e9e-f1c204d42810`. The additive settings file contained only `DEFAULT_URL_EXPIRE_DAYS=15` and `DEFAULT_FILE_EXPIRE_DAYS=30`; OAuth credentials, the attachment-host fix and all other deployed secrets were inherited unchanged. No new Git commit, push or release tag was created during this update; the README changes remain in the checkout with the pending attachment fixes.
 
+## v1.3.4 configurable connection authorization
+
+New OAuth grants default to 365 days. `MCP_OAUTH_GRANT_DAYS` accepts integer days from 1 to 3650; unset/blank uses 365, while invalid configured values reject new authorization. Consent and the admin connection panel show the effective lifetime. The setting is passed through Cloudflare CI and Docker; it is not added to the required secrets list.
+
+Access tokens still last at most one hour, capped by the saved grant expiry. Refresh-token rotation, reuse detection and immediate revocation are unchanged. Refresh does not extend the grant deadline. Existing 30-day connections keep their saved expiry and need fresh OAuth consent to obtain a new 365-day grant. No existing grant, token, file, public-link expiry or retention setting was rewritten.
+
+Validation passed: typecheck, lint, build, release-contract check, 39 test files / 315 unit and integration tests, 25 Playwright tests, local workerd/D1/R2 smoke and packaging dry-run. Tests cover configured/default periods, consent/admin displays, refresh beyond day 30, the final 15 seconds of a grant, expiry of both tokens, invalid settings, unchanged old grants, reuse detection and revocation. The real local Worker smoke uses a non-default 90-day grant to verify configuration reaches the runtime; browser checks use 365 days.
+
+Deployed Worker version `32c167b5-a461-4235-8147-cfc412e7e13e` at 100% traffic, confirmed by a subsequent deployment-status query. Previous version: `a5309958-b0e8-4899-a26e-39f2ab5df42e`. The additive settings file contained only `MCP_OAUTH_GRANT_DAYS=365`; other deployed secrets and configuration were inherited. No database migrations, route/domain/Cron changes, new products or plan upgrades were performed. Source changes remain uncommitted; no new Git commit, push or release tag was created in this update.
+
+Deployment status and local test results do not claim a new authorization was completed in the maintainer's live ChatGPT account. Reauthorize that connection once to use the new 365-day period; refreshing tool definitions or an old access token does not extend an existing grant.
+
 ## Operational rollback
 
 Disable the integration explicitly with `MCP_ENABLED=false`, or deploy the previous Worker version through the normal version-deployment process. Code rollback does not undo additive D1 migrations; do not drop the new tables or remove stored files. Keep existing public routes, secrets and R2 objects intact.

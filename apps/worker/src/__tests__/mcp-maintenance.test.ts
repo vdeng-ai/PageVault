@@ -122,6 +122,8 @@ describe("batched retention and OAuth cleanup", () => {
     await f.authorize();
     expect(await f.store.list()).toHaveLength(1);
     await f.store.prune(Date.now() + 31 * 24 * 3600_000);
+    expect(await f.store.list()).toHaveLength(1);
+    await f.store.prune(Date.now() + 366 * 24 * 3600_000);
     expect(await f.store.list()).toEqual([]);
   });
 });

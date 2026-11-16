@@ -41,6 +41,7 @@ export default defineConfig({
       DEFAULT_FILE_EXPIRE_DAYS: "30",
       MAX_UPLOAD_SIZE_MB: "10",
       MCP_ENABLED: "true",
+      MCP_OAUTH_GRANT_DAYS: "365",
       MCP_OAUTH_CLIENT_ID: "pagevault-e2e-client",
       MCP_OAUTH_CLIENT_SECRET: "",
       MCP_OAUTH_REDIRECT_URIS:

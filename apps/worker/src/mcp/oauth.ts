@@ -17,8 +17,31 @@ import type { McpGrant, McpStore, McpToken } from "./store.js";
 
 export const MCP_SCOPE = "assets:upload";
 const ACCESS_SECONDS = 3600;
-const GRANT_MS = 30 * 24 * 60 * 60 * 1000;
+const DEFAULT_GRANT_DAYS = 365;
+const DAY_MS = 24 * 60 * 60 * 1000;
 export type McpStoreFactory = (env: AppBindings) => McpStore;
+
+/** Applies only at consent/creation; persisted grants keep their original expiry. */
+export function oauthGrantDays(
+  env: Pick<AppBindings, "MCP_OAUTH_GRANT_DAYS">,
+): number {
+  const value = env.MCP_OAUTH_GRANT_DAYS?.trim();
+  if (!value) return DEFAULT_GRANT_DAYS;
+  const days = Number(value);
+  if (
+    !/^\d+$/.test(value) ||
+    !Number.isInteger(days) ||
+    days < 1 ||
+    days > 3650
+  ) {
+    throw new AppError(
+      "MCP_OAUTH_GRANT_DAYS must be an integer from 1 to 3650",
+      500,
+      "invalid_mcp_oauth_grant_days",
+    );
+  }
+  return days;
+}
 
 export function mcpOrigin(env: AppBindings): string {
   return new URL(env.ADMIN_BASE_URL).origin;
@@ -323,7 +346,7 @@ export function registerOAuthRoutes(
       <main><h1>允许通过聊天上传到 PageVault？</h1>
       <p>客户端：<code>${escapeHtml(input.clientId)}</code><br>当前账户：${escapeHtml(session.email)}</p>
       <p>仅允许上传文件和查询上传规则。不能读取私有文件、列出资产或删除文件。上传默认公开，持有链接的人可访问；标准设置为链接有效 15 天、文件保留 30 天。如需仅自己查看，请在上传时明确选择私有。</p>
-      <p>授权最长 30 天，可随时在后台的 API Keys 页面撤销。文件保留期限由每次上传设置决定。</p>
+      <p>本次授权有效 ${oauthGrantDays(c.env)} 天，从同意授权时开始计算；访问令牌最长 1 小时，客户端可在授权期内自动刷新，刷新不延长授权总期限。可随时在后台的 API Keys 页面撤销。文件保留期限由每次上传设置决定。</p>
       <form method="post" action="/oauth/authorize">${fields.map(([key, value]) => `<input type="hidden" name="${escapeHtml(key)}" value="${escapeHtml(value)}">`).join("")}
       <button name="decision" value="allow">允许上传</button><button name="decision" value="deny">取消</button></form></main></html>`);
   });
@@ -369,7 +392,7 @@ export function registerOAuthRoutes(
       resource: mcpResource(c.env),
       scope: MCP_SCOPE,
       created_at: now,
-      expires_at: now + GRANT_MS,
+      expires_at: now + oauthGrantDays(c.env) * DAY_MS,
       revoked_at: null,
     };
     await createStore(c.env).createGrant(grant, {
@@ -449,6 +472,8 @@ export function registerOAuthRoutes(
       oauthConfigured: oauthConfigured(c.env),
       endpoint: mcpResource(c.env),
       clientId: c.env.MCP_OAUTH_CLIENT_ID ?? null,
+      grantDays: oauthGrantDays(c.env),
+      accessTokenSeconds: ACCESS_SECONDS,
       connections:
         enabled && oauthConfigured(c.env)
           ? (await createStore(c.env).list()).map((grant) => ({

@@ -107,6 +107,13 @@ export function McpConnections() {
                     Client ID: <code>{settings.clientId}</code>
                   </p>
                 ) : null}
+                {settings.oauthConfigured ? (
+                  <p>
+                    {zh
+                      ? `新连接授权有效 ${settings.grantDays} 天，访问令牌最长 ${settings.accessTokenSeconds / 3600} 小时，可在授权期内自动刷新。已有连接保留原到期时间；重新授权后使用新期限。`
+                      : `New connections are authorized for ${settings.grantDays} days. Access tokens last up to ${settings.accessTokenSeconds / 3600} hour and can refresh automatically within that period. Existing connections keep their expiry; authorize again to use the new period.`}
+                  </p>
+                ) : null}
                 <p>
                   {zh
                     ? "上传默认公开，持有链接的人可访问；标准设置为链接有效 15 天、文件保留 30 天。如需私有，请在上传时明确说明。支持现有七类文件；不能读取私有文件、列出资产或删除文件。"

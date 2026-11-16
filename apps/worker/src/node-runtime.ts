@@ -71,6 +71,7 @@ export function createNodeRuntime(): NodeRuntime {
     ...(process.env.MCP_OAUTH_CLIENT_ID ? { MCP_OAUTH_CLIENT_ID: process.env.MCP_OAUTH_CLIENT_ID } : {}),
     ...(process.env.MCP_OAUTH_CLIENT_SECRET ? { MCP_OAUTH_CLIENT_SECRET: process.env.MCP_OAUTH_CLIENT_SECRET } : {}),
     ...(process.env.MCP_OAUTH_REDIRECT_URIS ? { MCP_OAUTH_REDIRECT_URIS: process.env.MCP_OAUTH_REDIRECT_URIS } : {}),
+    ...(process.env.MCP_OAUTH_GRANT_DAYS ? { MCP_OAUTH_GRANT_DAYS: process.env.MCP_OAUTH_GRANT_DAYS } : {}),
     ...(process.env.MCP_FILE_ALLOWED_HOSTS ? { MCP_FILE_ALLOWED_HOSTS: process.env.MCP_FILE_ALLOWED_HOSTS } : {}),
   };
   const service = new PageVaultService(

@@ -49,6 +49,7 @@ Cloudflare stores these as Wrangler vars. Docker exposes the same values through
 | `MCP_OAUTH_CLIENT_ID` | Unset | One predefined OAuth client ID. |
 | `MCP_OAUTH_REDIRECT_URIS` | Unset | Comma-separated exact HTTPS callback allowlist. |
 | `MCP_OAUTH_CLIENT_SECRET` | Unset | Optional confidential-client secret; omit for public-client PKCE. |
+| `MCP_OAUTH_GRANT_DAYS` | `365` | Fixed lifetime in days for newly authorized connections, integer 1–3650. Unset/blank uses 365; invalid values reject new authorization. Does not change existing grants. Access tokens still last at most one hour. |
 | `MCP_FILE_ALLOWED_HOSTS` | `.oaiusercontent.com,oaisdmntprwestus3.blob.core.windows.net` | Replacement download host allowlist; the observed Azure account is an exact match, not an Azure-wide suffix. An existing explicit value overrides these defaults. No arbitrary URL import. |
 | `MCP_FILE_DIAGNOSTICS` | `false` | Temporarily log hostname-only initial/redirect checks with a request ID; never logs complete URLs, signed queries, file IDs or file contents. Errors return safe diagnostics even when logging is off. |
 | `MAINTENANCE_GC_LIMIT` | `100` | Files per daily retention pass, capped at 500. Raise only with matching runtime headroom. |
