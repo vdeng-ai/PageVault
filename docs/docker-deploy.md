@@ -5,7 +5,7 @@ Docker mode runs the PageVault service with Node.js 22, SQLite, and local object
 ## Prerequisites
 
 - Docker Engine with the Compose plugin.
-- Two DNS hostnames pointing to the reverse proxy, for example:
+- Two DNS hostnames pointing to the reverse proxy, or one IP address with separate HTTPS ports. For example:
   - `admin-html.example.com` for the administrator.
   - `h.example.com` for published files.
 - TLS termination at the reverse proxy.
@@ -82,6 +82,21 @@ h.example.com          -> http://127.0.0.1:13080
 ```
 
 Preserve the incoming `Host` header. If the proxy rewrites it to `127.0.0.1`, PageVault cannot distinguish the admin interface from the public gateway.
+
+### IP Address with Separate Ports
+
+For a deployment without DNS hostnames, configure distinct ports on the same IP address:
+
+```yaml
+ADMIN_BASE_URL: https://203.0.113.10:8443
+PUBLIC_BASE_URL: https://203.0.113.10:8444
+```
+
+Terminate TLS on both ports using a certificate trusted by your clients and valid for the IP address. Forward both listeners to `http://127.0.0.1:13080`, preserving the original `Host` header **including its port** (`203.0.113.10:8443` or `203.0.113.10:8444`). Allow both ports in the server firewall and cloud security group. The container still needs only its single internal listener.
+
+Routing compares the host and port in the request URL against the configured base URLs. The public port serves public links and shared assets; it does not expose the admin application or API. Unconfigured ports return `404`, while loopback health checks remain available for Docker.
+
+Browsers share cookies across ports on the same host. Use separate hostnames if you require cookie isolation between the admin and public surfaces.
 
 Do not serve `/data/pagevault`, the SQLite file, or the object directory directly. All public file reads must go through PageVault's metadata and expiry checks.
 
