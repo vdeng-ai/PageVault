@@ -31,8 +31,8 @@ export function serviceFromCloudflareEnv(env: AppBindings): PageVaultService {
   );
 }
 
-export function hostnameFromBaseUrl(value: string): string {
-  return new URL(value).hostname;
+export function hostFromBaseUrl(value: string): string {
+  return new URL(value).host;
 }
 
 export function isLocalDevHost(hostname: string, env: AppBindings): boolean {

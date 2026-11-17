@@ -9,7 +9,7 @@ import { registerMcpRoutes } from "./mcp/routes.js";
 import { mcpStoreFromEnv } from "./adapters/cloudflare-mcp.js";
 import type { McpStoreFactory } from "./mcp/oauth.js";
 import { handlePublicRequest } from "./routes/public.js";
-import { hostnameFromBaseUrl, isLocalDevHost, serviceFromCloudflareEnv } from "./runtime.js";
+import { hostFromBaseUrl, isLocalDevHost, serviceFromCloudflareEnv } from "./runtime.js";
 
 function healthResponse(status: 200 | 503, body: Record<string, string>): Response {
   return Response.json(body, {
@@ -129,10 +129,11 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
   ): Promise<Response> {
     const url = new URL(request.url);
     const hostname = url.hostname;
-    const adminHost = hostnameFromBaseUrl(env.ADMIN_BASE_URL);
-    const publicHost = hostnameFromBaseUrl(env.PUBLIC_BASE_URL);
+    const requestHost = url.host;
+    const adminHost = hostFromBaseUrl(env.ADMIN_BASE_URL);
+    const publicHost = hostFromBaseUrl(env.PUBLIC_BASE_URL);
     const healthHost =
-      hostname === adminHost ||
+      requestHost === adminHost ||
       hostname === "localhost" ||
       hostname === "127.0.0.1";
 
@@ -183,8 +184,8 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
 
     // Also used by sandboxed private Markdown previews, whose origin is opaque.
     if (
-      (hostname === adminHost ||
-        hostname === publicHost ||
+      (requestHost === adminHost ||
+        requestHost === publicHost ||
         isLocalDevHost(hostname, env)) &&
       (request.method === "GET" || request.method === "HEAD") &&
       url.pathname.startsWith("/assets/")
@@ -202,11 +203,11 @@ export function createRequestHandler(options: RequestHandlerOptions = {}) {
       });
     }
 
-    if (hostname === adminHost || isLocalDevHost(hostname, env)) {
+    if (requestHost === adminHost || isLocalDevHost(hostname, env)) {
       return adminApp.fetch(request, env, ctx);
     }
 
-    if (hostname === publicHost) {
+    if (requestHost === publicHost) {
       if (
         (request.method === "GET" || request.method === "HEAD") &&
         (url.pathname === "/share-card.png" || url.pathname === "/favicon.svg")
